@@ -73,6 +73,9 @@ describe("identity input scalars", () => {
     expectAccepted(MaskedEmail, [
       "a***@example.com",
       "💡***@xn--bcher-kva.example",
+      "a***@xn--mnchen-3ya.example",
+      "a***@xn--wgv71a119e.example",
+      "a***@xn--e1afmkfd.example",
       `a***@${maximumDomain}`,
       `a***@${"a".repeat(63)}.example`,
     ])
@@ -87,6 +90,7 @@ describe("identity input scalars", () => {
       "a***@xn--a.example",
       "a***@xn--abc.example",
       "a***@xn--zzzz.example",
+      "a***@xn---dzqjv47mdh.example",
       "@***@example.com",
       ".***@example.com",
       "\"***@example.com",

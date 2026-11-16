@@ -1,5 +1,8 @@
 import { z } from "zod"
 
+import { decodePunycode } from "./punycode.js"
+
+const PUNYCODE_LABEL_PREFIX = "xn--"
 const C0_C1_CONTROL_PATTERN = /[\u0000-\u001f\u007f-\u009f]/u
 const DECIMAL_NEGATIVE_ZERO_PATTERN = /^-0(?:[.]0+)?$/u
 const DOMAIN_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u
@@ -28,14 +31,20 @@ const isSingleUnicodeScalar = (value: string): boolean => {
   return isWellFormedUnicode(value) && countUnicodeScalars(value) === 1
 }
 
+const toUnicodeLabel = (label: string): string | null =>
+  label.startsWith(PUNYCODE_LABEL_PREFIX) ? decodePunycode(label.slice(PUNYCODE_LABEL_PREFIX.length)) : label
+
 const isLowercaseIdnaDomain = (domain: string): boolean => {
   if (domain.length > 253 || domain !== domain.toLowerCase()) return false
 
   const labels = domain.split(".")
   if (labels.length < 2 || !labels.every((label) => DOMAIN_LABEL_PATTERN.test(label))) return false
 
+  const unicodeLabels = labels.map(toUnicodeLabel)
+  if (unicodeLabels.some((label) => label === null || label === "")) return false
+
   try {
-    return new URL("https://" + domain).hostname === domain
+    return new URL("https://" + unicodeLabels.join(".")).hostname === domain
   } catch {
     return false
   }
