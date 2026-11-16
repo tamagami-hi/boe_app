@@ -11,11 +11,8 @@ import { formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { fundState } from "~/domain/status"
 import { paiseToRupeeText } from "~/features/admin/client-values/rupeeAmount"
-import {
-  useAdminFund,
-  usePublishFundVersion,
-  useTransitionFundLifecycle,
-} from "~/features/admin/shared/queries"
+import { useAdminFund } from "~/features/admin/shared/queries"
+import { usePublishFundVersion, useTransitionFundLifecycle } from "~/features/admin/funds/fundQueries"
 import {
   EMPTY_TERMS,
   FundTermsFields,

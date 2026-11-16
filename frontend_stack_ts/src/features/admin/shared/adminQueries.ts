@@ -3,14 +3,8 @@ import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
 
 import {
   acknowledgeAdminFundReceipt,
-  createAdminClient,
   listAdminInvestorPositions,
-  reverseAdminClientLedgerEntry,
-  archiveAdminFaq,
   cancelAdminMandate,
-  createAdminFaq,
-  decideAdminApplication,
-  editAdminFaq,
   getAdminApplication,
   getAdminFundReceipt,
   getAdminMandate,
@@ -27,7 +21,6 @@ import {
   reconcileAdminMandate,
   reconcileAdminRefund,
   retryAdminRefund,
-  setAdminFaqStatus,
 } from "~/api/generated/operations"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import type { DataOf } from "~/api/http"
@@ -70,27 +63,6 @@ export const useAdminApplication = (
     staleTime: STALE.MONEY,
     queryFn: async () =>
       (await api.request(getAdminApplication, { params: { applicationId } })).data,
-  })
-}
-
-export const useDecideApplication = (
-  applicationId: string,
-): UseMutationResult<void, Error, "approved" | "rejected"> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (outcome: "approved" | "rejected") => {
-      await api.request(decideAdminApplication, {
-        params: { applicationId },
-        query: { outcome },
-        body: {},
-        idempotencyKey: mintIdempotencyKey(),
-      })
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["admin", "applications"] })
-      await queryClient.invalidateQueries({ queryKey: qk.admin.application(applicationId) })
-    },
   })
 }
 
@@ -332,115 +304,6 @@ export const useAdminFaqs = (): PagedQuery<DataOf<typeof listAdminFaqs>> => {
   })
 }
 
-export type FaqFields = Readonly<{
-  question: string
-  answer: string
-  category: string
-  order: number
-}>
-
-export const useCreateFaq = (): UseMutationResult<void, Error, FaqFields> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: FaqFields) => {
-      await api.request(createAdminFaq, { body, idempotencyKey: mintIdempotencyKey() })
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.faqs() })
-    },
-  })
-}
-
-export const useEditFaq = (): UseMutationResult<
-  void,
-  Error,
-  Readonly<{ faqId: string } & FaqFields>
-> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ faqId, ...body }: Readonly<{ faqId: string } & FaqFields>) => {
-      await api.request(editAdminFaq, {
-        params: { faqId },
-        body,
-        idempotencyKey: mintIdempotencyKey(),
-      })
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.faqs() })
-    },
-  })
-}
-
-export const useSetFaqStatus = (): UseMutationResult<
-  void,
-  Error,
-  Readonly<{ faqId: string; status: "draft" | "published" | "archived" }>
-> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({
-      faqId,
-      status,
-    }: Readonly<{ faqId: string; status: "draft" | "published" | "archived" }>) => {
-      await api.request(setAdminFaqStatus, {
-        params: { faqId },
-        body: { status },
-        idempotencyKey: mintIdempotencyKey(),
-      })
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.faqs() })
-    },
-  })
-}
-
-export const useArchiveFaq = (): UseMutationResult<void, Error, string> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (faqId: string) => {
-      await api.request(archiveAdminFaq, {
-        params: { faqId },
-        idempotencyKey: mintIdempotencyKey(),
-      })
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.faqs() })
-    },
-  })
-}
-
-export type CreateAdminClientInput = Readonly<{
-  idempotencyKey: string
-  fullName: string
-  email: string
-  phone: string
-}>
-
-export const useCreateAdminClient = (): UseMutationResult<
-  DataOf<typeof createAdminClient>,
-  Error,
-  CreateAdminClientInput
-> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ idempotencyKey, ...body }: CreateAdminClientInput) =>
-      (
-        await api.request(createAdminClient, {
-          body,
-          idempotencyKey,
-        })
-      ).data,
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] })
-    },
-  })
-}
-
 export const useAdminInvestorPositions = (
   userId: string,
 ): UseQueryResult<DataOf<typeof listAdminInvestorPositions>> => {
@@ -451,35 +314,5 @@ export const useAdminInvestorPositions = (
     staleTime: STALE.MONEY,
     queryFn: async () =>
       (await api.request(listAdminInvestorPositions, { params: { userId } })).data,
-  })
-}
-
-export type LedgerReversalInput = Readonly<{
-  userId: string
-  entryId: string
-  reasonCode: string
-  note?: string
-}>
-
-export const useReverseClientLedgerEntry = (): UseMutationResult<
-  DataOf<typeof reverseAdminClientLedgerEntry>,
-  Error,
-  LedgerReversalInput
-> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ userId, entryId, ...body }: LedgerReversalInput) =>
-      (
-        await api.request(reverseAdminClientLedgerEntry, {
-          params: { userId, entryId },
-          body,
-          idempotencyKey: mintIdempotencyKey(),
-        })
-      ).data,
-    onSuccess: async (_data, variables) => {
-      await queryClient.invalidateQueries({ queryKey: ["admin", "investor", variables.userId] })
-      await queryClient.invalidateQueries({ queryKey: qk.admin.clientValueSummaryRoot() })
-    },
   })
 }

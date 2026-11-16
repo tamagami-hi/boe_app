@@ -9,7 +9,7 @@ import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
 import { applicationState, emailDeliveryState } from "~/domain/status"
-import { useAdminApplication, useDecideApplication } from "~/features/admin/shared/adminQueries"
+import { useAdminApplication } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
@@ -21,6 +21,8 @@ import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
 import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
+
+import { useDecideApplication } from "./applicationQueries"
 
 type Confirming = "approved" | "rejected" | null
 

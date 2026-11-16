@@ -7,7 +7,7 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useToast } from "~/app/providers/ToastProvider"
 import { parseRupees } from "~/features/admin/client-values/rupeeAmount"
-import { useCreateAdminFund } from "~/features/admin/shared/queries"
+import { useCreateAdminFund } from "~/features/admin/funds/fundQueries"
 import {
   EMPTY_TERMS,
   FundTermsFields,

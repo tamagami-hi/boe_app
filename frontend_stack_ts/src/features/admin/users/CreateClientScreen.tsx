@@ -9,7 +9,6 @@ import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
 import { EarlierInvestmentForm } from "~/features/admin/client-values/EarlierInvestmentForm"
-import { useCreateAdminClient } from "~/features/admin/shared/adminQueries"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
@@ -30,6 +29,7 @@ import {
   type ClientContact,
   type FieldRefusals,
 } from "./clientContact"
+import { useCreateAdminClient } from "./createClientQueries"
 import { PasswordLinkPanel } from "./PasswordLinkPanel"
 
 type Outcome =

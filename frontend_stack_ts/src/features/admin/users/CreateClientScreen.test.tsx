@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ApiError, TransportError } from "~/api/errors"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
-import type { CreateAdminClientInput } from "~/features/admin/shared/adminQueries"
 
 import CreateClientScreen from "./CreateClientScreen"
+import type { CreateAdminClientInput } from "./createClientQueries"
 
 type Settle = Readonly<{ onSuccess?: () => void; onError?: (error: unknown) => void }>
 
@@ -17,7 +17,7 @@ vi.mock("~/app/providers/SessionProvider", () => ({
   useSession: () => ({ hasAnyPermission: () => true }),
 }))
 
-vi.mock("~/features/admin/shared/adminQueries", () => ({
+vi.mock("./createClientQueries", () => ({
   useCreateAdminClient: () => ({
     mutate: (variables: CreateAdminClientInput, settle: Settle) => {
       sent.push(variables)

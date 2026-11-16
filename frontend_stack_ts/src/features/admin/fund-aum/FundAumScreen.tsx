@@ -12,11 +12,7 @@ import { useToast } from "~/app/providers/ToastProvider"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { parseRupees } from "~/features/admin/client-values/rupeeAmount"
-import {
-  useAdminAumHistory,
-  useAdminFund,
-  useInitializeAum,
-} from "~/features/admin/shared/queries"
+import { useAdminAumHistory, useAdminFund } from "~/features/admin/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -34,6 +30,7 @@ import {
 import { ITEM_TITLE, LIST_LABEL, LIST_VALUE } from "~/ui/recipes/datalist"
 import { ACTION_ROW, CARD_COLUMNS_WRAP, ROW_BETWEEN_BASELINE, STACK_LG } from "~/ui/recipes/layout"
 
+import { useInitializeAum } from "./aumQueries"
 import { FundSizeAdjustmentForm } from "./FundSizeAdjustmentForm"
 
 const today = (): string => new Date().toISOString().slice(0, 10)

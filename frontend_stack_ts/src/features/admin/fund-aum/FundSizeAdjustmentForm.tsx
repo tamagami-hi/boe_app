@@ -9,7 +9,6 @@ import { useToast } from "~/app/providers/ToastProvider"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { parseNonZeroSignedRupees, parseRupees } from "~/features/admin/client-values/rupeeAmount"
-import { useAppendAumGrowth } from "~/features/admin/shared/queries"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Button } from "~/ui/primitives/Button"
@@ -18,6 +17,8 @@ import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { ADMIN_FILTER, ADMIN_FILTER_ROW, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
+
+import { useAppendAumGrowth } from "./aumQueries"
 
 type AdjustmentMode = "target" | "amount" | "percent"
 

@@ -1,23 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import type { UseQueryResult } from "@tanstack/react-query"
-import type { z } from "zod"
 
-import {
-  appendAdminFundAumGrowth,
-  createAdminFund,
-  getAdminFund,
-  getAdminFundAumHistory,
-  initializeAdminFundAum,
-  listAdminFunds,
-  publishAdminFundVersion,
-  transitionAdminFundLifecycle,
-} from "~/api/generated/operations"
+import { getAdminFund, getAdminFundAumHistory, listAdminFunds } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
 import { usePagedQuery } from "~/api/paged"
 import type { PagedQuery } from "~/api/paged"
 import { STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
-import { mintIdempotencyKey } from "~/api/idempotency"
 
 export type AdminFundListFilter = Readonly<{
   state?: "draft" | "published" | "paused" | "archived"
@@ -87,110 +76,5 @@ export const useAdminAumHistory = (
         params: { fundId },
         query: { limit: LIST_PAGE_LIMIT, after },
       }),
-  })
-}
-
-type CreateFundInput = z.input<typeof createAdminFund.request.body>
-
-export const useCreateAdminFund = () => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: CreateFundInput) => {
-      const result = await api.request(createAdminFund, {
-        body,
-        idempotencyKey: mintIdempotencyKey(),
-      })
-      return result.data
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["admin", "funds"] })
-    },
-  })
-}
-
-type TermsInput = z.input<typeof publishAdminFundVersion.request.body>
-
-export const usePublishFundVersion = (fundId: string) => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: TermsInput) => {
-      await api.request(publishAdminFundVersion, {
-        params: { fundId },
-        body,
-        idempotencyKey: mintIdempotencyKey(),
-      })
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) })
-      await queryClient.invalidateQueries({ queryKey: ["admin", "funds"] })
-    },
-  })
-}
-
-export const useTransitionFundLifecycle = (fundId: string) => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (input: Readonly<{ status: "published" | "paused" | "archived"; version: number }>) => {
-      await api.request(transitionAdminFundLifecycle, {
-        params: { fundId },
-        body: { status: input.status },
-        ifMatch: `"${String(input.version)}"`,
-        idempotencyKey: mintIdempotencyKey(),
-      })
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) })
-      await queryClient.invalidateQueries({ queryKey: ["admin", "funds"] })
-    },
-  })
-}
-
-type AumInitializeInput = z.input<typeof initializeAdminFundAum.request.body>
-type AumGrowthInput = z.input<typeof appendAdminFundAumGrowth.request.body>
-
-export const useInitializeAum = (fundId: string) => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: AumInitializeInput) => {
-      await api.request(initializeAdminFundAum, {
-        params: { fundId },
-        body,
-        idempotencyKey: mintIdempotencyKey(),
-      })
-    },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) }),
-        queryClient.invalidateQueries({ queryKey: ["admin", "funds"] }),
-        queryClient.invalidateQueries({ queryKey: qk.client.fund(fundId) }),
-        queryClient.invalidateQueries({ queryKey: qk.client.funds() }),
-      ])
-    },
-  })
-}
-
-export const useAppendAumGrowth = (fundId: string) => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ body, idempotencyKey }: Readonly<{ body: AumGrowthInput; idempotencyKey: string }>) => {
-      await api.request(appendAdminFundAumGrowth, {
-        params: { fundId },
-        body,
-        idempotencyKey,
-      })
-    },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) }),
-        queryClient.invalidateQueries({ queryKey: ["admin", "funds"] }),
-        queryClient.invalidateQueries({ queryKey: qk.client.fund(fundId) }),
-        queryClient.invalidateQueries({ queryKey: qk.client.funds() }),
-      ])
-    },
   })
 }

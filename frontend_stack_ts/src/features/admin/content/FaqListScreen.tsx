@@ -7,14 +7,7 @@ import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
-import {
-  useAdminFaqs,
-  useArchiveFaq,
-  useCreateFaq,
-  useEditFaq,
-  useSetFaqStatus,
-} from "~/features/admin/shared/adminQueries"
-import type { FaqFields } from "~/features/admin/shared/adminQueries"
+import { useAdminFaqs } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { LoadMore } from "~/ui/patterns/LoadMore"
@@ -30,6 +23,9 @@ import { ADMIN_CODE, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
 import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 import { META_TEXT } from "~/ui/recipes/text"
+
+import { useArchiveFaq, useCreateFaq, useEditFaq, useSetFaqStatus } from "./faqQueries"
+import type { FaqFields } from "./faqQueries"
 
 const STATUS_TONE = {
   draft: "warning",
