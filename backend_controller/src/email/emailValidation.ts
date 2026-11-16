@@ -13,20 +13,9 @@ export class EmailValidationError extends Error {
   }
 }
 
-const HTML_ESCAPES: Readonly<Record<string, string>> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-}
-
 const SUPPORT_ADDRESS = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/u
 const LINE_BREAK = /[\r\n]/u
 const UNSAFE_URL_CHARACTER = /[\s\u0000-\u001f\u007f-\u009f]/u
-
-export const escapeHtml = (value: string): string =>
-  value.replace(/[&<>"']/gu, (character) => HTML_ESCAPES[character] ?? character)
 
 export const assertHeaderValue = (value: string): string => {
   if (LINE_BREAK.test(value)) throw new EmailValidationError("EMAIL_HEADER_INVALID")

@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto"
 
-import { groupIndian } from "../../email/emailMoney.js"
-import { escapeHtml } from "../../email/emailValidation.js"
+import { escapeHtml, groupIndian } from "../shared/displayText.js"
 import type { StatementDocument, StatementEarlyExit } from "./statementLinks.js"
 import type { StatementPeriod } from "./statements.js"
 

@@ -1,4 +1,5 @@
-import { assertHeaderValue, escapeHtml, safeActionUrl, safeSupportAddress } from "./emailValidation.js"
+import { escapeHtml } from "../domain/shared/displayText.js"
+import { assertHeaderValue, safeActionUrl, safeSupportAddress } from "./emailValidation.js"
 
 export interface RenderedEmail {
   readonly subject: string
