@@ -112,9 +112,11 @@ const LoginScreen = (): React.ReactElement => {
             />
           )}
         </FormField>
-        <ButtonLink to={CLIENT_FORGOT_PASSWORD_PATH} tone="ghost" size="sm">
-          Forgot your password?
-        </ButtonLink>
+        {port.hasPasswordReset === false ? null : (
+          <ButtonLink to={CLIENT_FORGOT_PASSWORD_PATH} tone="ghost" size="sm">
+            Forgot your password?
+          </ButtonLink>
+        )}
       </Form>
       {port.loginHelp}
     </AuthLayout>

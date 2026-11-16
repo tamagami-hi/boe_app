@@ -51,6 +51,7 @@ const AdminShellRoot = (): React.ReactElement => {
       supportPath: null,
       audienceLabel: "Administrator console",
       loginHelp: null,
+      hasPasswordReset: false,
     }),
     [runtime],
   )

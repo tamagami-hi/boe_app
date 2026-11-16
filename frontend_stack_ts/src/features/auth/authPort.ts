@@ -17,6 +17,7 @@ export type AuthPort = Readonly<{
   supportPath: string | null
   audienceLabel: string
   loginHelp: ReactNode
+  hasPasswordReset?: boolean
 }>
 
 const AuthPortContext = createContext<AuthPort | null>(null)
