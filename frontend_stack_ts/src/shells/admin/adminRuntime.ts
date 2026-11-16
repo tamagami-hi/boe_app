@@ -11,7 +11,7 @@ import {
 } from "~/api/generated/operations"
 import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
-import { createRefreshCoordinator, isAnotherUser } from "~/api/session/refresh"
+import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
 import {
   createTokenStore,
@@ -167,14 +167,16 @@ export const createAdminRuntime = (): AdminRuntime => {
    * rather than rotating.
    */
   const executeCookieRefresh = async (): Promise<RefreshOutcome> => {
+    if (heldUserId(tokenStore, "admin") === null) return "replaced"
     try {
       const recovered = await bareClient.request(getWebCsrf, { unauthenticated: true })
-      if (isAnotherUser(tokenStore, "admin", recovered.data.user.userId)) return "replaced"
+      if (!holdsUser(tokenStore, "admin", recovered.data.user.userId)) return "replaced"
       const { data } = await bareClient.request(webRefresh, {
         body: { rotationId: rotationId.value },
         headers: { "x-csrf-token": recovered.data.csrfToken },
         unauthenticated: true,
       })
+      if (!holdsUser(tokenStore, "admin", data.user.userId)) return "replaced"
       tokenStore.update("admin", {
         csrfToken: data.csrfToken,
         principal: JSON.stringify(principalFrom(data.user)),
@@ -295,7 +297,10 @@ export const createAdminRuntime = (): AdminRuntime => {
   const cookieRestore = async (): Promise<Principal | null> => {
     try {
       const { data } = await http.request(getWebCsrf, { unauthenticated: true })
-      tokenStore.set("admin", "csrfToken", data.csrfToken)
+      tokenStore.update("admin", {
+        csrfToken: data.csrfToken,
+        principal: JSON.stringify(principalFrom(data.user)),
+      })
     } catch {
       return null
     }

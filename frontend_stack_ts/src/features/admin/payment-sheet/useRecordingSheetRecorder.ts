@@ -1,7 +1,8 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
-import { isApiError, isUnknownRetryOutcome, isUnknownWriteOutcome } from "~/api/errors"
+import { isApiError, isSessionEnded, isUnknownRetryOutcome, isUnknownWriteOutcome } from "~/api/errors"
 import { mintIdempotencyKey } from "~/api/idempotency"
+import { subscribeToSessionInvalidated } from "~/api/session/scope"
 import { useSession } from "~/app/providers/SessionProvider"
 
 import { keepHeldRecording, loadHeldRecordings, releaseHeldRecording } from "./heldRecordings"
@@ -61,7 +62,8 @@ export const useRecordingSheetRecorder = (
   send: SendRecording,
   refresh: RefreshAfterRecording,
 ): SheetRecorder => {
-  const adminId = useSession().principal?.userId ?? null
+  const { principal, scope } = useSession()
+  const adminId = principal?.userId ?? null
   const [held, setHeld] = useState<ReadonlyMap<string, HeldRecording>>(() =>
     adminId === null ? new Map() : loadHeldRecordings(month, adminId),
   )
@@ -72,6 +74,15 @@ export const useRecordingSheetRecorder = (
   const active = useRef<ReadonlySet<string>>(new Set())
   const touchedUsers = useRef<ReadonlySet<string>>(new Set())
   const retried = useRef<ReadonlySet<string>>(new Set())
+  const ended = useRef(false)
+
+  useEffect(
+    () =>
+      subscribeToSessionInvalidated((detail) => {
+        if (detail.scope === scope) ended.current = true
+      }),
+    [scope],
+  )
 
   const confirm = (scheduleId: string, entry: RowEntry): void => {
     releaseHeldRecording(scheduleId, month)
@@ -85,6 +96,7 @@ export const useRecordingSheetRecorder = (
       const result = await send(job)
       confirm(scheduleId, { kind: "recorded", amountPaise: result.amountPaise, effectiveDate: result.effectiveDate })
     } catch (error) {
+      if (isSessionEnded(error)) ended.current = true
       const isUnknown = retried.current.has(job.idempotencyKey) ? isUnknownRetryOutcome : isUnknownWriteOutcome
       if (isUnknown(error)) {
         setEntries((current) => withEntry(current, scheduleId, UNKNOWN))
@@ -104,6 +116,7 @@ export const useRecordingSheetRecorder = (
   }
 
   const pump = (): void => {
+    if (ended.current) return
     const inFlight = active.current.size - queue.current.length
     const startable = queue.current.slice(0, Math.max(0, MAX_IN_FLIGHT - inFlight))
     if (startable.length === 0) return

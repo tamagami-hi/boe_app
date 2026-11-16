@@ -86,7 +86,15 @@ export const isUnknownWriteOutcome = (value: unknown): boolean => {
 
 export const isUnknownRetryOutcome = (value: unknown): boolean =>
   isUnknownWriteOutcome(value) ||
-  hasCode(value, "AUTHENTICATION_REQUIRED", "SESSION_INVALID", "CSRF_INVALID", "RATE_LIMITED")
+  hasCode(
+    value,
+    "AUTHENTICATION_REQUIRED",
+    "SESSION_INVALID",
+    "CSRF_INVALID",
+    "RATE_LIMITED",
+    "AUTHORIZATION_DENIED",
+    "ACCOUNT_NOT_ACTIVE",
+  )
 
 export const isOutage = (value: unknown): boolean => {
   if (isTransportError(value)) return value.kind === "timeout" || value.kind === "offline"

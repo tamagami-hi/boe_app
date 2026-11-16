@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ApiError, TransportError } from "~/api/errors"
 import { mintIdempotencyKey } from "~/api/idempotency"
+import { emitSessionInvalidated } from "~/api/session/scope"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 
 import { keepHeldRecording } from "./heldRecordings"
@@ -19,7 +20,7 @@ const ADMIN_ID = "a0a0a0a0-0000-4000-8000-000000000001"
 const OTHER_ADMIN_ID = "b0b0b0b0-0000-4000-8000-000000000002"
 
 vi.mock("~/app/providers/SessionProvider", () => ({
-  useSession: () => ({ principal: { userId: ADMIN_ID } }),
+  useSession: () => ({ principal: { userId: ADMIN_ID }, scope: "admin" }),
 }))
 
 const replyFor = (held: HeldRecording): Reply => ({
@@ -259,6 +260,41 @@ describe("recording a month of payments row by row", () => {
       expect(result.current.entries.get(asha.scheduleId)?.kind).toBe("recorded")
     })
     expect(sent).toHaveLength(1)
+  })
+
+  it.each([
+    { way: "the session-ended event", announce: true, rowsEnd: "recorded" },
+    { way: "a row refused because the session ended", announce: false, rowsEnd: "refused" },
+  ] as const)("sends no further row once the session ends, learnt from $way", async ({ announce, rowsEnd }) => {
+    const answers: (() => void)[] = []
+    reply = (held) =>
+      new Promise<Reply>((resolve, reject) => {
+        answers.push(() => {
+          if (announce) resolve(replyFor(held))
+          else reject(new ApiError({ code: "AUTHENTICATION_REQUIRED", message: "Sign in to continue.", status: 401, retryable: false }))
+        })
+      })
+    const jobs = ROWS.map((schedule) => ({
+      userId: schedule.userId,
+      body: recordingBodyOf(schedule, "2026-11", { amountPaise: "500000", effectiveDate: "2026-11-02" }),
+    }))
+    const { result } = renderHook(() => useRecordingSheetRecorder("2026-11", sendRecording, () => Promise.resolve()))
+    act(() => {
+      result.current.record(jobs)
+    })
+    await waitFor(() => {
+      expect(sent).toHaveLength(2)
+    })
+
+    if (announce) emitSessionInvalidated({ scope: "admin", reason: "revoked" })
+    for (const answer of answers) answer()
+    await waitFor(() => {
+      expect(ROWS.slice(0, 2).map(({ scheduleId }) => result.current.entries.get(scheduleId)?.kind)).toEqual([rowsEnd, rowsEnd])
+    })
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+
+    expect(sent).toHaveLength(2)
+    expect(result.current.entries.get(ROWS[2]?.scheduleId ?? "")?.kind).toBe("queued")
   })
 
   it("restores only the rows the signed-in admin left held, and drops another admin's", () => {

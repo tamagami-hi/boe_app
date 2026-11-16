@@ -21,10 +21,13 @@ const userIdOf = (principal: string): string | null => {
   }
 }
 
-export const isAnotherUser = (tokenStore: TokenStore, scope: SessionScope, userId: string): boolean => {
+export const heldUserId = (tokenStore: TokenStore, scope: SessionScope): string | null => {
   const held = tokenStore.read(scope, "principal")
-  return held !== null && userIdOf(held) !== userId
+  return held === null ? null : userIdOf(held)
 }
+
+export const holdsUser = (tokenStore: TokenStore, scope: SessionScope, userId: string): boolean =>
+  heldUserId(tokenStore, scope) === userId
 
 export const createRefreshCoordinator = (execute: RefreshExecutor): RefreshCoordinator => {
   const pending = new Map<SessionScope, Promise<RefreshOutcome>>()

@@ -222,8 +222,10 @@ const failure = (code: string): unknown => ({
   meta: META,
 })
 
-const readSession = (runtime: AdminRuntime): Promise<unknown> =>
-  runtime.http.request(getAdminSession, {}).catch(() => null)
+const readSession = (runtime: AdminRuntime): Promise<unknown> => {
+  runtime.tokenStore.set("admin", "principal", JSON.stringify(OPERATOR))
+  return runtime.http.request(getAdminSession, {}).catch(() => null)
+}
 
 describe("admin session end", () => {
   const originalFetch = globalThis.fetch
@@ -419,6 +421,44 @@ describe("admin cookie refresh after another admin signs in to the browser", () 
     expect(heldWritesInTab()).toBe(0)
   })
 
+  it("ends the tab's session without resending when the refresh names another admin than the CSRF recovery did", async () => {
+    const sent = routeFetch({
+      [ARCHIVE]: [[401, failure("AUTHENTICATION_REQUIRED")], [200, ARCHIVED]],
+      [CSRF]: [[200, csrfFor(OPERATOR)]],
+      [REFRESH]: [[200, refreshedAs(OTHER_OPERATOR)]],
+    })
+    const ended = listenForSessionEnd()
+    const runtime = signedInTab()
+
+    await expect(archiveFaq(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
+
+    expect(sent.map(({ route }) => route)).toEqual([ARCHIVE, CSRF, REFRESH])
+    expect(ended()).toEqual([{ scope: "admin", reason: "revoked" }])
+    expect(runtime.tokenStore.read("admin", "principal")).toBeNull()
+    expect(runtime.tokenStore.read("admin", "csrfToken")).toBeNull()
+  })
+
+  it("neither refreshes nor resends a later write once the tab's session ended because another admin took the cookies", async () => {
+    const sent = routeFetch({
+      [ARCHIVE]: [[401, failure("AUTHENTICATION_REQUIRED")], [401, failure("AUTHENTICATION_REQUIRED")], [200, ARCHIVED]],
+      [CSRF]: [[200, csrfFor(OTHER_OPERATOR)]],
+      [REFRESH]: [[200, refreshedAs(OTHER_OPERATOR)]],
+    })
+    const ended = listenForSessionEnd()
+    const runtime = signedInTab()
+    await expect(archiveFaq(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
+
+    await expect(archiveFaq(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
+
+    expect(sent.map(({ route }) => route)).toEqual([ARCHIVE, CSRF, ARCHIVE])
+    expect(sent[2]?.headers.get("x-csrf-token")).toBeNull()
+    expect(ended()).toEqual([
+      { scope: "admin", reason: "revoked" },
+      { scope: "admin", reason: "revoked" },
+    ])
+    expect(runtime.tokenStore.read("admin", "principal")).toBeNull()
+  })
+
   it("resends the write once with the same key when the refresh returns the admin the tab holds", async () => {
     const sent = routeFetch({
       [ARCHIVE]: [[401, failure("AUTHENTICATION_REQUIRED")], [200, ARCHIVED]],
@@ -437,5 +477,33 @@ describe("admin cookie refresh after another admin signs in to the browser", () 
     expect(writes[1]?.headers.get("x-csrf-token")).toBe(`rotated-csrf-of-${OPERATOR.userId}`)
     expect(ended()).toEqual([])
     expect(JSON.parse(runtime.tokenStore.read("admin", "principal") ?? "null")).toMatchObject({ userId: OPERATOR.userId })
+  })
+})
+
+const ADMIN_SESSION = "GET /v1/admin/session"
+
+describe("admin browser restore", () => {
+  const originalFetch = globalThis.fetch
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    delete window.__BOE_API_BASE__
+  })
+
+  it("holds the admin its cookies name before the first read, so an expired access cookie still refreshes", async () => {
+    const sent = routeFetch({
+      [CSRF]: [[200, csrfFor(OPERATOR)]],
+      [ADMIN_SESSION]: [[401, failure("AUTHENTICATION_REQUIRED")], [200, SESSION_RESPONSE]],
+      [REFRESH]: [[200, refreshedAs(OPERATOR)]],
+    })
+    const ended = listenForSessionEnd()
+    const runtime = createAdminRuntime()
+
+    const principal = await runtime.restore()
+
+    expect(principal).toMatchObject({ userId: OPERATOR.userId })
+    expect(sent.map(({ route }) => route)).toEqual([CSRF, ADMIN_SESSION, CSRF, REFRESH, ADMIN_SESSION])
+    expect(ended()).toEqual([])
+    expect(runtime.tokenStore.read("admin", "csrfToken")).toBe(`rotated-csrf-of-${OPERATOR.userId}`)
   })
 })

@@ -154,6 +154,8 @@ describe("a persisted held write", () => {
     { code: "AUTHENTICATION_REQUIRED", status: 401 },
     { code: "SESSION_INVALID", status: 401 },
     { code: "RATE_LIMITED", status: 429 },
+    { code: "AUTHORIZATION_DENIED", status: 403 },
+    { code: "ACCOUNT_NOT_ACTIVE", status: 403 },
   ] as const)("stays Not confirmed with its key when Check again is refused with $code before the server reads it", async ({ code, status }) => {
     replies = [timedOut, refusedWith(code, status), recorded]
     const form = openForm()
