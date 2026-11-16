@@ -13,6 +13,7 @@
   --be-bone: #faf9f6;
   --be-slate: #5c6470;
   --be-slate-2: #8a929d;
+  --be-slate-deep: #444a53;
   --be-gold: #b5894a;
   --be-gold-2: #9c7339;
   --be-green: #1f7a4d;
@@ -31,7 +32,7 @@
   --be-bg-sunken: var(--be-ivory-2);
   --be-bg-inverse: var(--be-ink);
   --be-fg: var(--be-ink);
-  --be-fg-muted: var(--be-slate);
+  --be-fg-muted: var(--be-slate-deep);
   --be-fg-faint: rgb(38 44 54 / 68%);
   --be-fg-inverse: var(--be-ivory);
   --be-accent: var(--be-gold);
