@@ -1,62 +1,79 @@
 # Product
 
-> **Scope.** This document specifies the **public marketing site** at `beonedge.in`, which is
-> a separate application on separate infrastructure (AWS) and is **not in this repository**.
-> Its only interface to this repository is `POST /api/newuser`. It is **not** the scope
-> statement for the authenticated investment application built here — that product does
-> carry invest / SIP / portfolio / returns surfaces, and the education-only boundary below
-> applies to the public site alone.
+> **Scope.** This brief describes this repository's product, the gated BeOnEdge
+> investing app, for design work and design tooling. Copy, money-display and
+> accessibility rules live in [RULES.md](RULES.md#product-copy-and-accessibility),
+> and decisions live in tally (`docs/records/`); this file points to them rather
+> than repeating them. The public education site `beonedge.in` is a separate
+> application. Its old brief is archived in
+> `release_manager/docs/Completed/PRODUCT-beonedge-in-2026-09.md`.
 
 ## Register
 
-brand
+product
 
 ## Users
 
-First-time and early-stage Indian retail learners who want to understand money in plain language: budgeting, saving, debt and credit, and reading financial news without jargon. They arrive on the public site curious but cautious, often wary of being sold to. Their context is a quick, self-directed visit (frequently on mobile) to judge whether this is a credible place to learn, not a place being pitched an investment.
-
-The public site is **education-only**. **Join BeOnEdge** is an education
-membership/signup experience: a learner submits their details, verifies their
-email, and receives any next step privately. Submission persists a
-non-credentialed application record; it does not create a learner account,
-username, password, authenticated session, or public application profile.
-Credentials exist only after a separate private activation. Public copy never
-names, hints at, or exposes internal access review, investing eligibility, or
-administrative workflow.
+- **Clients**: existing BeOnEdge investors whose account an admin opened, either
+  by approving an application sent from `beonedge.in` or by creating the client
+  directly. They come to see what they hold, what it is worth and what changed.
+- **Admins**: BeOnEdge staff who approve applications, create clients, record
+  investments and value updates, manage funds, maturities and client email, and
+  answer support requests.
 
 ## Product Purpose
 
-BeOnEdge's public surface exists to teach financial literacy and to earn enough
-trust that a learner chooses **Join BeOnEdge** to continue their education
-membership/signup. Success is a visitor who understands a money concept they
-didn't before, believes this brand is credible and on their side, and submits
-their details to keep learning. It is explicitly **not** a marketing funnel for
-investing products; it never carries invest / SIP / portfolio / returns copy or
-promises that signup creates immediate sign-in access.
+The app lets a client see their investments with BeOnEdge accurately and calmly,
+and lets admins keep that record right. Success is a client who trusts the
+screen because it is correct, current and says where a figure came from, and an
+admin who records and corrects the book quickly and without mistakes.
+
+There are four surfaces, each designed and checked on its own terms (DEC-40):
+
+| Surface | Delivered as |
+| --- | --- |
+| Client on a phone | client Android APK |
+| Client in a browser | `app.beonedge.in` |
+| Admin on a phone | admin Android APK |
+| Admin in a browser | console reached only over Tailscale (DEPLOY.md) |
+
+Reference widths (DEC-56): client phone 360 and 390; client web 768, 1280 and
+1440; admin phone 390; admin web 1280, 1440 and 1920. Fixes go client phone
+first, then client web, admin web and admin phone.
+
+Online payments and AutoPay stay disabled until the maintainer resumes them
+(DEC-14, DEC-22); investments enter the ledger when an admin records them. No
+surface carries bank details, payment methods or payment instructions (DEC-25).
 
 ## Brand Personality
 
-Premium, institutional, precise. The voice is a calm, credible financial educator: plainspoken but exact, confident without hype. It explains rather than persuades, and it never overstates. Tone is measured and respectful of the reader's intelligence and caution. Emotional goal: the reader should feel *steadied and informed*, the way good institutional guidance feels, never rushed, hyped, or talked down to.
-
-Mandatory content rules (product policy, not style preference): no "guaranteed return", "assured", "risk-free", "multibagger", "tip", "guru"; no emoji, no exclamation marks, no FOMO or urgency copy. Never abbreviate the name to "BOE" or "BE" in any client-facing string. Signal colors (green/red/amber) are reserved for money/risk state; gold is a brand accent only.
+Today's BeOnEdge identity, kept and refined per surface rather than replaced
+(DEC-45): premium, institutional, precise. The voice is a calm, credible guide:
+plain, exact and confident without hype. A client should leave steadied and
+informed, never rushed or talked down to.
 
 ## Anti-references
 
-- **Hype / trading-app energy** (neon gains, rockets, countdowns, get-rich tone, meme-stock aesthetic). Forbidden by brand policy and the opposite of the trust we need.
-- **Heavy / intimidating institutional fintech** (dense navy-and-gold banking that feels gatekept or jargon-heavy). We are institutional in *precision*, not in coldness or exclusion; a first-time learner must feel welcome.
-- **Playful / childish edutainment** (cartoon mascots, bright primary colors, gamified badges). Too casual to carry financial credibility.
-- **Generic SaaS landing template** (warm-cream background with tracked-uppercase eyebrows over every section, identical icon-card grids, gradient hero). The default AI look; reads as templated, not authored.
+- Trading-app hype: neon gains, rockets, countdowns, urgency.
+- Gatekept, jargon-heavy banking screens that make an investor feel shut out.
+- A new visual direction. The work refines the existing design system in
+  `frontend_stack_ts/src/ui/` (DEC-45); it does not replace it.
+- Screens that turn a failed read into zeros, blanks or an endless skeleton.
 
 ## Design Principles
 
-- **Educate, never sell.** Every surface teaches a concept or builds understanding. If a section's job is to persuade rather than inform, it doesn't belong on the public site.
-- **Trust through restraint.** Credibility here comes from clarity, calm, and accuracy, not from urgency, superlatives, or visual noise. When in doubt, say less and say it precisely.
-- **Plain language first.** Translate jargon for someone seeing it for the first time; never gatekeep with terminology. Approachability and institutional precision are not in tension, they reinforce each other.
-- **Precision as a brand signal.** Honest numbers and honest framing. No overstatement, no implied promises. Indian currency formatting and disclaimers where money is discussed.
-- **Respect the boundary.** The public surface stays strictly education-only.
-  Internal access, administrative, and gated-product workflows are never named,
-  hinted at, or surfaced publicly.
+- **Money truth first.** Show a figure with its source and freshness, or say
+  plainly that it could not be loaded (RULES.md rule 4).
+- **Refine, don't reinvent.** Compose the existing tokens, primitives, patterns
+  and recipes (DEC-45, RULES.md rule 12).
+- **Each surface on its own terms.** Phone and web are laid out separately, not
+  stretched or shrunk from each other (DEC-40), and checked at the widths above.
+- **Deliberate actions.** A change to money, accounts or records is an explicit
+  step, and a retry never silently repeats it (RULES.md rule 6).
+- **Keep the boundary.** Nothing private reaches the public site.
 
 ## Accessibility & Inclusion
 
-Target **WCAG 2.2 AA**: body text ≥4.5:1 and large text ≥3:1 contrast, full keyboard operability with visible focus, semantic structure, and a `prefers-reduced-motion` alternative for every animation. Given a broad, often first-time and mobile-first Indian audience, treat readability and plain language as accessibility: comfortable type sizes, generous tap targets, and copy that doesn't assume prior financial knowledge.
+WCAG 2.2 AA, as RULES.md "Product, copy, and accessibility" sets out. Treat plain
+language, readable type and generous touch targets as part of accessibility on
+every surface, phone and web alike.
