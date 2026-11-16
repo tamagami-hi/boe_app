@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { formatYearMonth } from "~/domain/dates"
@@ -30,9 +30,16 @@ export type SipScheduleEditorProps = Readonly<{
   schedule: AdminSipScheduleItem
   onReload: () => void
   onClose: () => void
+  onHoldChange?: (holding: boolean) => void
 }>
 
-export const SipScheduleEditor = ({ userId, schedule, onReload, onClose }: SipScheduleEditorProps): React.ReactElement => {
+export const SipScheduleEditor = ({
+  userId,
+  schedule,
+  onReload,
+  onClose,
+  onHoldChange,
+}: SipScheduleEditorProps): React.ReactElement => {
   const edit = useHeldWrite(useEditSipSchedule(userId), UNSENT)
   const close = useHeldWrite(useCloseSipSchedule(userId), UNSENT)
   const [rupees, setRupees] = useState(paiseToRupeeText(schedule.monthlyAmountPaise))
@@ -47,6 +54,13 @@ export const SipScheduleEditor = ({ userId, schedule, onReload, onClose }: SipSc
   const locked = pending || unresolved
   const changed = amountPaise !== schedule.monthlyAmountPaise || monthCount !== schedule.monthCount
   const done = edit.outcome.kind === "done" ? edit.outcome.result : close.outcome.kind === "done" ? close.outcome.result : null
+
+  useEffect(() => {
+    onHoldChange?.(locked)
+    return () => {
+      onHoldChange?.(false)
+    }
+  }, [locked, onHoldChange])
 
   const save = (): void => {
     if (amountPaise === null || monthCount === null) return

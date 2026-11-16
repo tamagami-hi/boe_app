@@ -79,6 +79,7 @@ export const SipScheduleSection = ({
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [exitingId, setExitingId] = useState<string | null>(null)
+  const [isPanelHolding, setPanelHolding] = useState(false)
   if (!canRead) return null
 
   const reload = (): void => {
@@ -179,6 +180,7 @@ export const SipScheduleSection = ({
                         <Button
                           size="sm"
                           tone="ghost"
+                          disabled={isPanelHolding}
                           onClick={() => {
                             setExitingId(null)
                             setEditingId(row.scheduleId)
@@ -190,6 +192,7 @@ export const SipScheduleSection = ({
                           <Button
                             size="sm"
                             tone="ghost"
+                            disabled={isPanelHolding}
                             onClick={() => {
                               setEditingId(null)
                               setExitingId(row.scheduleId)
@@ -212,6 +215,12 @@ export const SipScheduleSection = ({
           </p>
         ) : null}
 
+        {isPanelHolding ? (
+          <p className={PROSE_SM}>
+            The schedule panel below is sending a change or holding one that was not confirmed. Finish it before opening another schedule.
+          </p>
+        ) : null}
+
         {editing === undefined ? null : (
           <SipScheduleEditor
             key={editing.scheduleId}
@@ -221,6 +230,7 @@ export const SipScheduleSection = ({
             onClose={() => {
               setEditingId(null)
             }}
+            onHoldChange={setPanelHolding}
           />
         )}
 
@@ -233,6 +243,7 @@ export const SipScheduleSection = ({
             onClose={() => {
               setExitingId(null)
             }}
+            onHoldChange={setPanelHolding}
           />
         )}
       </Section>
