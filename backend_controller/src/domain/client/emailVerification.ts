@@ -42,7 +42,7 @@ const isVerified = (verification: EmailVerificationRecord): boolean => verificat
 
 const lockActiveUser = async (tx: Transaction, deps: EmailVerificationDeps, userId: string): Promise<User> => {
   const user = await deps.userRepository.lockById(tx, userId as UserId)
-  if (user === null) throw new AppError("RESOURCE_NOT_FOUND")
+  if (user === null) throw new AppError("ACCOUNT_NOT_ACTIVE")
   refuseInactiveClient(user)
   return user
 }

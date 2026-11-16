@@ -1,10 +1,14 @@
 import { randomBytes } from "node:crypto"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 import type { FastifyInstance } from "fastify"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import type { AccessTokenService } from "../../src/auth/accessToken.js"
 import type { EmailSender } from "../../src/email/emailSender.js"
+import { clearAppUpdateCache } from "../../src/release/releaseFeed.js"
 import { createClientAccountRepository } from "../../src/repositories/clientAccountRepository.js"
 import { createClientValueEntryRepository } from "../../src/repositories/clientValueEntryRepository.js"
 import { createEmailVerificationRepository } from "../../src/repositories/emailVerificationRepository.js"
@@ -30,19 +34,24 @@ import { TTL_MS } from "./passwordMailSupport.js"
 type Response = Awaited<ReturnType<FastifyInstance["inject"]>>
 
 interface RacingWrite {
-  readonly arrange: (client: SeededClient) => Promise<string>
-  readonly send: (bearer: string, arranged: string) => Promise<Response>
-  readonly written: (client: SeededClient, arranged: string) => Promise<number>
+  readonly arrange: (client: SeededClient) => Promise<void>
+  readonly send: (bearer: string) => Promise<Response>
+  readonly written: (client: SeededClient) => Promise<number>
 }
 
 const RECORDED_PAISE = 12_000_000n
 const VERIFICATION_CODE = "Rac3Ng"
 const LOCK_POLL_MS = 20
 const LOCK_WAIT_LIMIT_MS = 10_000
+const APPLICATION_ID = "com.beonedge.app.dev"
+const PUBLISHED_VERSION = "0.15.2"
+const PUBLISHED_VERSION_CODE = 1502
+const REPORTED_VERSION_CODE = 1501
 
 let harness: ErasureHarness
 let app: FastifyInstance
 let tokens: AccessTokenService
+let feedRoot: string
 
 const silentSender: EmailSender = { send: () => Promise.resolve({ messageId: null }) }
 
@@ -52,21 +61,33 @@ const post = (url: string, bearer: string, payload: object): Promise<Response> =
 const count = (table: string, where: string, values: readonly unknown[]): Promise<number> =>
   harness.stack.count(table, where, values)
 
-const insertNotification = async (client: SeededClient, kind: string): Promise<string> =>
-  String(
-    (
-      await harness.stack.first(
-        "insert into notifications (user_id, kind, title, body, payload) values ($1, $2, 'Unread', 'Unread', '{}') returning id",
-        [client.id, kind],
-      )
-    ).id,
+const publishNewerBuild = async (): Promise<void> => {
+  const directory = join(feedRoot, "client")
+  const apk = `boe.dev.client.${PUBLISHED_VERSION}.apk`
+  await mkdir(directory)
+  await writeFile(join(directory, apk), "apk bytes")
+  await writeFile(
+    join(directory, `boe.dev.client.${PUBLISHED_VERSION}.json`),
+    JSON.stringify({
+      apk,
+      target: "dev",
+      variant: "client",
+      version: PUBLISHED_VERSION,
+      versionName: PUBLISHED_VERSION,
+      versionCode: PUBLISHED_VERSION_CODE,
+      applicationId: APPLICATION_ID,
+      sha256: "a".repeat(64),
+      signing: "release",
+    }),
   )
+  clearAppUpdateCache()
+}
 
 const RACING_WRITES: readonly (readonly [string, RacingWrite])[] = [
   [
     "a support ticket",
     {
-      arrange: () => Promise.resolve(""),
+      arrange: () => Promise.resolve(),
       send: (bearer) => post("/v1/client/support/tickets", bearer, { subject: "Racing ticket", body: "Raised during erasure." }),
       written: (client) => count("support_requests", "user_id = $1 and subject = 'Racing ticket'", [client.id]),
     },
@@ -74,7 +95,7 @@ const RACING_WRITES: readonly (readonly [string, RacingWrite])[] = [
   [
     "a review",
     {
-      arrange: () => Promise.resolve(""),
+      arrange: () => Promise.resolve(),
       send: (bearer) => post("/v1/client/reviews", bearer, { rating: 4, comment: "Shared during erasure." }),
       written: (client) => count("client_reviews", "user_id = $1", [client.id]),
     },
@@ -84,39 +105,28 @@ const RACING_WRITES: readonly (readonly [string, RacingWrite])[] = [
     {
       arrange: async (client) => {
         await harness.stack.pool.query("delete from client_statement_links where user_id = $1", [client.id])
-        return ""
       },
       send: (bearer) => post("/v1/client/statement-links", bearer, { fromPeriod: "2025-01", toPeriod: "2025-01" }),
       written: (client) => count("client_statement_links", "user_id = $1", [client.id]),
     },
   ],
   [
-    "an app version report",
+    "an app version report behind the published build",
     {
-      arrange: (client) => insertNotification(client, "app_update_available"),
+      arrange: () => Promise.resolve(),
       send: (bearer) =>
-        post("/v1/client/app-version", bearer, { applicationId: "in.beonedge.app", versionName: "1.0.0", versionCode: 1 }),
-      written: (_client, notificationId) => count("notifications", "id = $1 and read_at is not null", [notificationId]),
-    },
-  ],
-  [
-    "a notification marked read",
-    {
-      arrange: (client) => insertNotification(client, "admin_note"),
-      send: (bearer, notificationId) =>
-        app.inject({
-          method: "PATCH",
-          url: `/v1/client/notifications/${notificationId}`,
-          headers: { authorization: `Bearer ${bearer}` },
-          payload: { read: true },
+        post("/v1/client/app-version", bearer, {
+          applicationId: APPLICATION_ID,
+          versionName: "0.15.1",
+          versionCode: REPORTED_VERSION_CODE,
         }),
-      written: (_client, notificationId) => count("notifications", "id = $1 and read_at is not null", [notificationId]),
+      written: (client) => count("notifications", "user_id = $1 and kind = 'app_update_available'", [client.id]),
     },
   ],
   [
     "an email verification code request",
     {
-      arrange: () => Promise.resolve(""),
+      arrange: () => Promise.resolve(),
       send: (bearer) => post("/v1/client/email-verification/start", bearer, {}),
       written: (client) => count("email_verification_codes", "user_id = $1", [client.id]),
     },
@@ -130,7 +140,6 @@ const RACING_WRITES: readonly (readonly [string, RacingWrite])[] = [
           "insert into email_verification_codes (user_id, code_hash, code_key_version, expires_at) values ($1, $2, $3, now() + interval '10 minutes')",
           [client.id, code.hash, code.keyVersion],
         )
-        return ""
       },
       send: (bearer) => post("/v1/client/email-verification/verify", bearer, { code: VERIFICATION_CODE }),
       written: (client) =>
@@ -169,6 +178,8 @@ const waitForLockWaiters = async (waiters: number, isSettled: () => boolean = ()
 }
 
 beforeAll(async () => {
+  feedRoot = await mkdtemp(join(tmpdir(), "boe-erasure-lock-feed-"))
+  await publishNewerBuild()
   harness = await startErasureHarness()
   tokens = (await adminWebAuth(harness.stack)).accessTokenService
   const { stack } = harness
@@ -186,6 +197,7 @@ beforeAll(async () => {
         unitOfWork: stack.unitOfWork,
         clock: stack.clock,
         config: { cursorKey },
+        appUpdate: { releaseRoot: feedRoot, downloadBaseUrl: null },
       })
       registerClientReviewRoutes(instance, {
         ...auth,
@@ -221,14 +233,15 @@ afterAll(async () => {
   await app.close()
   await harness.app.close()
   await harness.stack.stop()
+  await rm(feedRoot, { recursive: true, force: true })
 })
 
 describe("client writes racing an erasure", () => {
   test.each(RACING_WRITES)("%s sent while erasure holds the client is refused and leaves nothing", async (_label, write) => {
     const client = await seedErasable()
     const bearer = await signIn(client)
-    const arranged = await write.arrange(client)
-    const before = await write.written(client, arranged)
+    await write.arrange(client)
+    const before = await write.written(client)
     const mailHolder = await harness.stack.pool.connect()
     try {
       await mailHolder.query("begin")
@@ -236,7 +249,7 @@ describe("client writes racing an erasure", () => {
       const erasing = erase(harness, client.id, "kept_as_record")
       await waitForLockWaiters(1)
       let settled = false
-      const writing = write.send(bearer, arranged).finally(() => {
+      const writing = write.send(bearer).finally(() => {
         settled = true
       })
       await waitForLockWaiters(2, () => settled)
@@ -253,6 +266,6 @@ describe("client writes racing an erasure", () => {
       mailHolder.release(true)
     }
     expect(before).toBe(0)
-    expect(await write.written(client, arranged)).toBe(0)
+    expect(await write.written(client)).toBe(0)
   })
 })
