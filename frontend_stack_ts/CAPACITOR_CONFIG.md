@@ -1,8 +1,8 @@
-# capacitor.config.json — why each value is set
+# capacitor.config.ts — why each value is set
 
 Capacitor's config has no comment syntax, so the reasoning lives here. Values were
-checked against the installed Capacitor 8.3.4 source, not against documentation for
-another version.
+checked against the Capacitor 8.3.4 source when written; the installed version is now
+8.5.3, and the values still match `capacitor.config.ts` (re-read 2026-11-16).
 
 ## `server.androidScheme: "https"`
 
@@ -96,7 +96,7 @@ The naming is counter-intuitive, so from the source: `setStyle` calls
 Capacitor's default (`debug`) prints every bridge call's arguments and return
 value to logcat under the `Capacitor:V` tag. Those payloads include
 secure-storage tokens and biometric credentials — see
-`release_manager/docs/CAPACITOR_DEBUG_LOG_TOKEN_EXPOSURE.md` for the incident.
+`release_manager/docs/Completed/CAPACITOR_DEBUG_LOG_TOKEN_EXPOSURE.md` for the incident.
 
 `none` disables bridge logging for every build, debug included; production
 fails closed by construction rather than by a build-mode flag. The app ships no

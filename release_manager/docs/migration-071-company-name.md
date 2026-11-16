@@ -1,6 +1,6 @@
 # Migration 071: the company name in the published legal documents
 
-Status: on local `main` (M14 F1, decision DEC-38, 2026-11-15), not released.
+Status: released in v0.16.2 (release commit `00e1c01`; M14 F1, decision DEC-38, 2026-11-15). Whether it is deployed is not recorded here; keep the pre-flight until the maintainer has deployed it.
 
 ## What it changes
 

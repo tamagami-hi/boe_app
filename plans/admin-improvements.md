@@ -4,7 +4,7 @@ Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
-Governing process: root [RULES.md](../RULES.md). The application is in production, so every schema change follows rule 11: expand first, nothing lost, released APKs and the previous release keep working. [The previous plan](app-onboarding-contact-investment-email.md) is complete through v0.15.4 and stays as history. Its open questions Q-013 and Q-017 remain there unless this plan says otherwise.
+Governing process: root [RULES.md](../RULES.md). The application is in production, so every schema change follows rule 11: expand first, nothing lost, released APKs and the previous release keep working. [The previous plan](app-onboarding-contact-investment-email.md) is complete through v0.15.4 and stays as history. Its Q-017 was answered here as DEC-11; its open Q-013 (the sole admin can suspend or close their own account) is carried as tally question Q-45.
 
 ## 0a. Open questions and conservative defaults
 
@@ -80,6 +80,8 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-56 | 2026-11-16 | UI overhaul reference widths: client phone 360 and 390 px, client web 768, 1280 and 1440, admin phone 390, admin web 1280, 1440 and 1920. Fixes go surface by surface: client phone first, then client web, admin web and admin phone. | In force for DEC-40 (the U1 to U4 audits use these widths; U5 orders the plan this way). |
 | DEC-57 | 2026-11-16 | Node 24 (E3) lands on `main` after Phase I is released, and ships as its own release with no features, deployed to dev for about a day before production, so a problem is clearly the runtime's and an images-only rollback stays clean. | In force; lane `e-node24` waits on its branch until then. |
 | DEC-58 | 2026-11-16 | Publish `featureFlags.onlinePayments=false` (G11) right after the next production deploy. The earlier lane defaults are kept as built: the 10-minute single-use statement link, nginx's site-wide `Referrer-Policy` on the statement page, the SIP schedule rules (one active per client and fund, up to 600 months, months in any order, the recorded amount may differ), one review per client per IST month with no editing, and admin nominee edits under `clients.create`. | In force. G11 stays the maintainer's action. |
+| DEC-59 | 2026-11-16 | SIP early exit, review-7's H1: early-exit payouts stay in `withdrawal_operations` with no maturity. The maintainer accepts that after an images-only rollback to v0.16.2 the old admin app cannot load the payout list of a client who had an early exit, and could reopen an early-closed schedule, until roll-forward. Nothing is lost. | Accepted; lane `i-sip-early-exit` adds the rollback note to `DEPLOY.md`. |
+| DEC-60 | 2026-11-16 | Docs cleanup, all nine answers of the cleanup report as recommended (2026-11-16): decisions and questions live in tally alone from the Phase I close; `PRODUCT.md` is replaced by a short brief for this app before the UI fix plan; UI audits are Markdown tables plus tally findings; new programme plans and audits go under `docs/<programme>/`; this plan closes at the Phase I close; `CLAUDE.md` is trimmed and tracked; the archive under `release_manager/docs/Completed/` stays protected; the guide fixes do not wait for Node 24; review-report links in tally are accepted and tally `rule-48` is reworded. | In progress: the first docs commit is made; the rest follows as the lanes land (rule changes in `RULES.md` at the Phase I close). |
 
 #### Replaced
 
@@ -616,7 +618,7 @@ The maintainer asked on 2026-11-15 for a complete UI overhaul: check, fix and ne
 
 - **Same code, different layouts.** One frontend serves all four; `VITE_BEO_APP_TARGET` picks client or admin at build time. "Separately for mobile and web" therefore means each surface gets its own audit, its own fixes, and layouts suited to its screen and input, not a second app.
 - **The order:**
-  1. A read-only audit of each surface, recorded as tally findings with screenshots. It covers:
+  1. A read-only audit of each surface. Each audit's tables are a Markdown document under `plans/ui-overhaul/`, with one tally finding per audit and one per real defect; screenshots stay out of git (DEC-60). It covers:
      - layout and navigation, per screen width;
      - touch targets and keyboard use;
      - loading, empty and error states;
@@ -634,7 +636,7 @@ The maintainer asked on 2026-11-15 for a complete UI overhaul: check, fix and ne
 - **Settled:**
   - the visual direction (DEC-45);
   - the reference widths, and the order of the fixes, client phone first (DEC-56).
-- **Earlier client UI briefs:** `release_manager/docs/` holds three client UI-UX briefs from September 2026. They are inputs to the client audits, not decisions.
+- **Earlier client UI briefs:** `release_manager/docs/` holds four client UI-UX briefs from September 2026. They are inputs to the client audits, not decisions.
 
 ## 7. Plan changes and approval gate
 
