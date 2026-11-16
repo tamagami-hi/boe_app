@@ -26,13 +26,21 @@ const fieldLines = (fields: Readonly<Record<string, readonly string[]>>): string
     return messages.map((message) => (label === undefined ? message : `${label} ${message}`))
   })
 
+const DEFAULT_RELOAD_LABEL = "Reload the schedules"
+
 export type HeldWriteNoticeProps = Readonly<{
   write: Pick<HeldWrite<never, unknown>, "outcome" | "pending" | "checkAgain">
   subject: string
   onReload: () => void
+  reloadLabel?: string
 }>
 
-export const HeldWriteNotice = ({ write, subject, onReload }: HeldWriteNoticeProps): React.ReactElement | null => {
+export const HeldWriteNotice = ({
+  write,
+  subject,
+  onReload,
+  reloadLabel = DEFAULT_RELOAD_LABEL,
+}: HeldWriteNoticeProps): React.ReactElement | null => {
   const { outcome } = write
   if (outcome.kind === "rejected") {
     const lines = fieldLines(outcome.fields)
@@ -53,7 +61,7 @@ export const HeldWriteNotice = ({ write, subject, onReload }: HeldWriteNoticePro
             Check again
           </Button>
           <Button size="sm" tone="ghost" disabled={write.pending} onClick={onReload}>
-            Reload the schedules
+            {reloadLabel}
           </Button>
         </span>
       }
