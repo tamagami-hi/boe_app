@@ -1,6 +1,6 @@
 import { Suspense, lazy } from "react"
 import { Navigate, Route, Routes } from "react-router-dom"
-import type { ComponentType } from "react"
+import type { ComponentType, ReactNode } from "react"
 
 import { RouteErrorBoundary } from "~/app/routing/RouteErrorBoundary"
 import {
@@ -19,7 +19,7 @@ export type RouterConfig = Readonly<{
   manifest: RouteManifest
   targets: GuardTargets
   indexRedirect: string
-  eligibility: EligibilityGate
+  useEligibilityGate: () => EligibilityGate
 }>
 
 const RouteFallback = (): React.ReactElement => (
@@ -28,11 +28,32 @@ const RouteFallback = (): React.ReactElement => (
   </Page>
 )
 
-const lazyElement = (route: RouteDef): ComponentType =>
-  lazy(async () => {
+const lazyElements = new WeakMap<RouteDef, ComponentType>()
+
+const lazyElement = (route: RouteDef): ComponentType => {
+  const existing = lazyElements.get(route)
+  if (existing !== undefined) return existing
+  const created = lazy(async () => {
     const loaded = await route.element()
     return { default: loaded.default }
   })
+  lazyElements.set(route, created)
+  return created
+}
+
+type EligibleRouteProps = Readonly<{
+  config: RouterConfig
+  children: ReactNode
+}>
+
+const EligibleRoute = ({ config, children }: EligibleRouteProps): React.ReactElement => {
+  const gate = config.useEligibilityGate()
+  return (
+    <RequireEligible targets={config.targets} gate={gate}>
+      {children}
+    </RequireEligible>
+  )
+}
 
 const wrapGuards = (
   route: RouteDef,
@@ -53,11 +74,7 @@ const wrapGuards = (
   }
 
   if (route.access === "eligible") {
-    node = (
-      <RequireEligible targets={config.targets} gate={config.eligibility}>
-        {node}
-      </RequireEligible>
-    )
+    node = <EligibleRoute config={config}>{node}</EligibleRoute>
   }
 
   if (route.role !== undefined) {

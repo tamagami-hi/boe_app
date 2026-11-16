@@ -29,6 +29,8 @@ const TARGETS: GuardTargets = {
 
 const ELIGIBILITY: EligibilityGate = { loading: false, canInvest: true }
 
+const useAdminEligibilityGate = (): EligibilityGate => ELIGIBILITY
+
 const resolveAdminBackPolicy = createBackPolicyResolver(ADMIN_ROUTES, ADMIN_HOME_PATH)
 
 export const backPolicy = (input: BackPolicyInput): BackPolicy => resolveAdminBackPolicy(input)
@@ -59,7 +61,7 @@ const AdminShellRoot = (): React.ReactElement => {
         manifest: ADMIN_ROUTES,
         targets: TARGETS,
         indexRedirect: ADMIN_SPLASH_PATH,
-        eligibility: ELIGIBILITY,
+        useEligibilityGate: useAdminEligibilityGate,
       }),
     [],
   )
