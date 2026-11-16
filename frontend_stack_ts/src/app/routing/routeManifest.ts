@@ -73,6 +73,14 @@ export const matchesRoutePath = (routePath: string, pathname: string): boolean =
   })
 }
 
+const decodeSegment = (value: string): string => {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
 export const matchRouteParams = (
   routePath: string,
   pathname: string,
@@ -84,7 +92,7 @@ export const matchRouteParams = (
     if (!isParamSegment(segment)) return
     const value = pathParts[index]
     if (value === undefined) return
-    params[segment.slice(1)] = decodeURIComponent(value)
+    params[segment.slice(1)] = decodeSegment(value)
   })
   return params
 }
