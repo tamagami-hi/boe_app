@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import { ApiError, ConfigurationMismatchError, TransportError, isUnknownWriteOutcome } from "~/api/errors"
+import {
+  ApiError,
+  ConfigurationMismatchError,
+  TransportError,
+  isUnknownRetryOutcome,
+  isUnknownWriteOutcome,
+} from "~/api/errors"
 import type { ErrorCode } from "@beonedge/contracts"
 
 const apiError = (code: ErrorCode, status: number): ApiError =>
@@ -48,5 +54,12 @@ describe("whether a failed write may still have been applied", () => {
 
   it("treats a request refused before it was sent as nothing applied", () => {
     expect(isUnknownWriteOutcome(new ConfigurationMismatchError("missing key"))).toBe(false)
+  })
+})
+
+describe("whether a held write's earlier attempt may still have been applied after its retry fails", () => {
+  it("settles it when the server refused the retried write itself rather than the request", () => {
+    expect(isUnknownRetryOutcome(apiError("STATE_CONFLICT", 409))).toBe(false)
+    expect(isUnknownRetryOutcome(apiError("RESOURCE_NOT_FOUND", 404))).toBe(false)
   })
 })

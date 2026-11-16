@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 
-import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
+import { isApiError, isUnknownRetryOutcome, isUnknownWriteOutcome } from "~/api/errors"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { useSession } from "~/app/providers/SessionProvider"
 
@@ -71,6 +71,7 @@ export const useRecordingSheetRecorder = (
   const queue = useRef<readonly HeldRecording[]>([])
   const active = useRef<ReadonlySet<string>>(new Set())
   const touchedUsers = useRef<ReadonlySet<string>>(new Set())
+  const retried = useRef<ReadonlySet<string>>(new Set())
 
   const confirm = (scheduleId: string, entry: RowEntry): void => {
     releaseHeldRecording(scheduleId, month)
@@ -84,7 +85,8 @@ export const useRecordingSheetRecorder = (
       const result = await send(job)
       confirm(scheduleId, { kind: "recorded", amountPaise: result.amountPaise, effectiveDate: result.effectiveDate })
     } catch (error) {
-      if (isUnknownWriteOutcome(error)) {
+      const isUnknown = retried.current.has(job.idempotencyKey) ? isUnknownRetryOutcome : isUnknownWriteOutcome
+      if (isUnknown(error)) {
         setEntries((current) => withEntry(current, scheduleId, UNKNOWN))
         return
       }
@@ -143,6 +145,7 @@ export const useRecordingSheetRecorder = (
     checkAgain: (scheduleId) => {
       const job = held.get(scheduleId)
       if (job === undefined || active.current.has(scheduleId)) return
+      retried.current = new Set([...retried.current, job.idempotencyKey])
       enqueue([job])
     },
     recordAnother: (scheduleId) => {

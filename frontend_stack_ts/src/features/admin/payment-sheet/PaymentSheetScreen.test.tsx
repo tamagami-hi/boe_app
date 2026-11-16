@@ -99,6 +99,11 @@ const timeOut = (): Promise<Reply> => Promise.reject(new TransportError("timeout
 const badGateway = (): Promise<Reply> =>
   Promise.reject(new ApiError({ code: "INTERNAL_ERROR", message: "Bad gateway", status: 502, retryable: true }))
 
+const csrfRefused = (): Promise<Reply> =>
+  Promise.reject(
+    new ApiError({ code: "CSRF_INVALID", message: "The request could not be verified.", status: 403, retryable: false }),
+  )
+
 const monthTaken = (): Promise<Reply> =>
   Promise.reject(
     new ApiError({
@@ -312,6 +317,26 @@ describe("recording a month of payments row by row", () => {
     expect(sent[1]).toEqual(sent[0])
     expect(await screen.findByText("Not confirmed")).toBeTruthy()
     expect(heldKeys()).toEqual([sent[0]?.idempotencyKey])
+  })
+
+  it("keeps a row Not confirmed with its key held when Check again is refused before the server reads it", async () => {
+    renderSheet()
+    reply = badGateway
+    tick("Asha Rao")
+    recordTicked()
+    expect(await screen.findByText("Not confirmed")).toBeTruthy()
+
+    reply = csrfRefused
+    checkAgain("Asha Rao")
+    await waitFor(() => {
+      expect(sent).toHaveLength(2)
+    })
+
+    expect(await screen.findByText("Not confirmed")).toBeTruthy()
+    expect(screen.queryByText("Refused")).toBeNull()
+    expect(sent[1]).toEqual(sent[0])
+    expect(heldKeys()).toEqual([sent[0]?.idempotencyKey])
+    expect(recordButton()?.hasAttribute("disabled")).toBe(true)
   })
 
   it("offers no rows, Record or empty message until the walk is complete", () => {

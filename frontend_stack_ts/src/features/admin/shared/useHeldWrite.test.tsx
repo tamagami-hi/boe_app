@@ -3,7 +3,9 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { TransportError } from "~/api/errors"
+import type { ErrorCode } from "@beonedge/contracts"
+
+import { ApiError, TransportError } from "~/api/errors"
 
 import { useHeldWrite } from "./useHeldWrite"
 import type { HeldWritePersistence } from "./useHeldWrite"
@@ -32,6 +34,8 @@ const PERSIST: HeldWritePersistence<Body> = { slot: "record:asha:balanced", pars
 
 const timedOut = (): Promise<string> => Promise.reject(new TransportError("timeout", "The request timed out."))
 const recorded = (): Promise<string> => Promise.resolve("recorded")
+const refusedWith = (code: ErrorCode, status: number) => (): Promise<string> =>
+  Promise.reject(new ApiError({ code, message: `${code} happened`, status, retryable: false }))
 
 const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
 
@@ -143,5 +147,42 @@ describe("a persisted held write", () => {
 
     expect(form.result.current.held).toMatchObject({ fundId: "balanced", amountPaise: "500000" })
     expect(form.result.current.persisted).toBe(false)
+  })
+
+  it.each([
+    { code: "CSRF_INVALID", status: 403 },
+    { code: "AUTHENTICATION_REQUIRED", status: 401 },
+    { code: "SESSION_INVALID", status: 401 },
+    { code: "RATE_LIMITED", status: 429 },
+  ] as const)("stays Not confirmed with its key when Check again is refused with $code before the server reads it", async ({ code, status }) => {
+    replies = [timedOut, refusedWith(code, status), recorded]
+    const form = openForm()
+    act(() => {
+      form.result.current.submit({ fundId: "balanced", amountPaise: "500000" })
+    })
+    await waitFor(() => {
+      expect(form.result.current.outcome.kind).toBe("unknown")
+    })
+
+    act(() => {
+      form.result.current.checkAgain()
+    })
+    await waitFor(() => {
+      expect(sent).toHaveLength(2)
+      expect(form.result.current.outcome.kind).not.toBe("idle")
+    })
+    expect(form.result.current.outcome.kind).toBe("unknown")
+    expect(form.result.current.held).toEqual({ fundId: "balanced", amountPaise: "500000" })
+    expect(form.result.current.persisted).toBe(true)
+    expect(window.sessionStorage.length).toBe(1)
+
+    act(() => {
+      form.result.current.checkAgain()
+    })
+    await waitFor(() => {
+      expect(form.result.current.outcome.kind).toBe("done")
+    })
+    expect(sent).toHaveLength(3)
+    expect(new Set(sent.map(({ idempotencyKey }) => idempotencyKey)).size).toBe(1)
   })
 })

@@ -84,6 +84,10 @@ export const isUnknownWriteOutcome = (value: unknown): boolean => {
   return true
 }
 
+export const isUnknownRetryOutcome = (value: unknown): boolean =>
+  isUnknownWriteOutcome(value) ||
+  hasCode(value, "AUTHENTICATION_REQUIRED", "SESSION_INVALID", "CSRF_INVALID", "RATE_LIMITED")
+
 export const isOutage = (value: unknown): boolean => {
   if (isTransportError(value)) return value.kind === "timeout" || value.kind === "offline"
   return isApiError(value) && value.status >= 500

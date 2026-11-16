@@ -1,7 +1,7 @@
 import type { UseMutationResult } from "@tanstack/react-query"
 import { useRef, useState } from "react"
 
-import { isApiError, isUnknownWriteOutcome, type FieldErrors } from "~/api/errors"
+import { isApiError, isUnknownRetryOutcome, isUnknownWriteOutcome, type FieldErrors } from "~/api/errors"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { useSession } from "~/app/providers/SessionProvider"
 
@@ -77,7 +77,7 @@ export const useHeldWrite = <TBody extends object, TResult>(
     setPersisted(false)
   }
 
-  const send = (next: Hold<TBody>): void => {
+  const send = (next: Hold<TBody>, isUnknown: (error: unknown) => boolean): void => {
     holdOn(next)
     setPersisted(keep(next))
     setOutcome(IDLE)
@@ -89,7 +89,7 @@ export const useHeldWrite = <TBody extends object, TResult>(
           setOutcome({ kind: "done", result })
         },
         onError: (error) => {
-          if (isUnknownWriteOutcome(error)) {
+          if (isUnknown(error)) {
             setOutcome(UNKNOWN)
             return
           }
@@ -111,10 +111,10 @@ export const useHeldWrite = <TBody extends object, TResult>(
     persisted,
     submit: (body) => {
       if (current.current !== null) return
-      send({ body, idempotencyKey: mintIdempotencyKey(), place: placeOf(persist, adminId) })
+      send({ body, idempotencyKey: mintIdempotencyKey(), place: placeOf(persist, adminId) }, isUnknownWriteOutcome)
     },
     checkAgain: () => {
-      if (current.current !== null) send(current.current)
+      if (current.current !== null) send(current.current, isUnknownRetryOutcome)
     },
     reset: () => {
       if (current.current !== null) drop(current.current)
