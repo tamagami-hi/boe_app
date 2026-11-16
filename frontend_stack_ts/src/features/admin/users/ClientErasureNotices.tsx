@@ -1,5 +1,4 @@
 import { formatDateTime } from "~/domain/dates"
-import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Alert } from "~/ui/primitives/Feedback"
 import { PROSE_SM } from "~/ui/recipes/datalist"
@@ -26,16 +25,24 @@ const reasonText = (path: ErasurePath, keptBecause: KeptBecause): string => {
   return "This client completed email verification, so the account is kept as a record."
 }
 
+const PathOutcome = ({
+  title,
+  applies,
+  text,
+}: Readonly<{ title: string; applies: boolean; text: string }>): React.ReactElement => (
+  <p className={PROSE_SM}>
+    <strong>{applies ? `${title} (applies).` : `${title}.`}</strong> {text}
+  </p>
+)
+
 export const ErasurePathExplainer = ({
   path,
   keptBecause,
 }: Readonly<{ path: ErasurePath; keptBecause: KeptBecause }>): React.ReactElement => (
   <div className={STACK_SM}>
     <p className={PROSE_SM}>{`${reasonText(path, keptBecause)} Erasing it means: ${pathTitle(path).toLowerCase()}.`}</p>
-    <DataList split>
-      <DetailRow label={path === "kept_as_record" ? "Kept as a record (applies)" : "Kept as a record"}>{KEPT_TEXT}</DetailRow>
-      <DetailRow label={path === "deleted" ? "Deleted completely (applies)" : "Deleted completely"}>{DELETED_TEXT}</DetailRow>
-    </DataList>
+    <PathOutcome title="Kept as a record" applies={path === "kept_as_record"} text={KEPT_TEXT} />
+    <PathOutcome title="Deleted completely" applies={path === "deleted"} text={DELETED_TEXT} />
     <p className={PROSE_SM}>This cannot be undone.</p>
   </div>
 )

@@ -3,7 +3,8 @@ export const LIST_ROOT = "m-0 flex list-none flex-col p-0"
 export const LIST_ROW = [
   "flex items-baseline justify-between gap-4 py-3",
   "border-b border-hairline last:border-b-0",
-  "lg:grid lg:max-w-[44rem] lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-6",
+  "lg:max-w-[44rem] lg:flex-wrap lg:gap-x-6 lg:gap-y-1",
+  "lg:[&>:first-child]:flex-[0_1_14rem] lg:[&>:last-child]:flex-[1_1_10rem]",
 ].join(" ")
 
 export const LIST_LABEL = "min-w-0 shrink font-ui text-sm text-fg-muted"
@@ -14,7 +15,10 @@ export const LIST_VALUE =
 export const LIST_VALUE_LEAD =
   "min-w-0 text-right font-ui text-md font-semibold text-fg [overflow-wrap:anywhere] lg:text-left"
 
-export const LIST_SPLIT = "lg:grid lg:grid-cols-2 lg:gap-x-12"
+export const LIST_SPLIT = [
+  "lg:grid lg:gap-x-12",
+  "lg:grid-cols-[repeat(auto-fit,minmax(min(100%,max(25.5rem,calc(50%_-_1.5rem_-_1px))),1fr))]",
+].join(" ")
 
 export const STAT_ROOT = "flex flex-col gap-1"
 
