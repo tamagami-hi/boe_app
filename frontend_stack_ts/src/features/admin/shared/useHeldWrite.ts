@@ -18,6 +18,7 @@ export type HeldWrite<TBody, TResult> = Readonly<{
   outcome: HeldWriteOutcome<TResult>
   pending: boolean
   held: TBody | null
+  persisted: boolean
   submit: (body: TBody) => void
   checkAgain: () => void
   reset: () => void
@@ -39,10 +40,10 @@ const restoreHold = <TBody extends object>(persist: HeldWritePersistence<TBody> 
 }
 
 const persistence = <TBody extends object>(persist: HeldWritePersistence<TBody> | undefined) => ({
-  keep: (attempt: TBody & Keyed): void => {
-    if (persist === undefined) return
+  keep: (attempt: TBody & Keyed): boolean => {
+    if (persist === undefined) return false
     const { idempotencyKey, ...body } = attempt
-    keepHold(persist.slot, { idempotencyKey, body })
+    return keepHold(persist.slot, { idempotencyKey, body })
   },
   release: (): void => {
     if (persist !== undefined) releaseHold(persist.slot)
@@ -55,17 +56,23 @@ export const useHeldWrite = <TBody extends object, TResult>(
   persist?: HeldWritePersistence<TBody>,
 ): HeldWrite<TBody, TResult> => {
   const [held, setHeld] = useState<(TBody & Keyed) | null>(() => restoreHold(persist))
+  const [persisted, setPersisted] = useState(() => held !== null)
   const [outcome, setOutcome] = useState<HeldWriteOutcome<TResult>>(() => (held === null ? IDLE : UNKNOWN))
   const { keep, release } = persistence(persist)
 
+  const drop = (): void => {
+    release()
+    setHeld(null)
+    setPersisted(false)
+  }
+
   const send = (attempt: TBody & Keyed): void => {
     setHeld(attempt)
-    keep(attempt)
+    setPersisted(keep(attempt))
     setOutcome(IDLE)
     mutation.mutate(attempt, {
       onSuccess: (result) => {
-        release()
-        setHeld(null)
+        drop()
         setOutcome({ kind: "done", result })
       },
       onError: (error) => {
@@ -73,8 +80,7 @@ export const useHeldWrite = <TBody extends object, TResult>(
           setOutcome({ kind: "unknown" })
           return
         }
-        release()
-        setHeld(null)
+        drop()
         setOutcome(
           isApiError(error)
             ? { kind: "rejected", message: error.message, fields: error.fields ?? NO_FIELDS, code: error.code }
@@ -88,6 +94,7 @@ export const useHeldWrite = <TBody extends object, TResult>(
     outcome,
     pending: mutation.isPending,
     held,
+    persisted,
     submit: (body) => {
       send({ ...body, idempotencyKey: mintIdempotencyKey() })
     },
@@ -95,8 +102,7 @@ export const useHeldWrite = <TBody extends object, TResult>(
       if (held !== null) send(held)
     },
     reset: () => {
-      release()
-      setHeld(null)
+      drop()
       setOutcome(IDLE)
       mutation.reset()
     },

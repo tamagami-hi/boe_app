@@ -66,3 +66,17 @@ export const releaseHold = (slot: string): boolean => {
     return false
   }
 }
+
+export const clearHeldKeys = (prefix: string): boolean => {
+  const store = sessionStore()
+  if (store === null) return false
+  try {
+    const keys = Array.from({ length: store.length }, (_, index) => store.key(index) ?? "")
+    for (const key of keys.filter((candidate) => candidate.startsWith(prefix))) store.removeItem(key)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export const clearHolds = (): boolean => clearHeldKeys(`${PREFIX}:`)

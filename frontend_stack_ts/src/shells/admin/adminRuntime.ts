@@ -22,6 +22,8 @@ import type { TokenStore } from "~/api/session/tokenStore"
 import type { Principal } from "~/app/providers/SessionProvider"
 import { isPermissionCode } from "~/domain/permissions"
 import type { PermissionCode, RoleCode } from "~/domain/permissions"
+import { clearHeldRecordings } from "~/features/admin/payment-sheet/heldRecordings"
+import { clearHolds } from "~/features/admin/shared/heldWriteStore"
 import { isNative } from "~/platform/capacitor"
 import { buildAdminDevice, NATIVE_COMPATIBILITY_HEADERS } from "~/platform/nativeDevice"
 import { createSecureStoragePersistence } from "~/platform/secureStorage"
@@ -62,6 +64,19 @@ const principalFrom = (
   accountState: "active",
 })
 
+const clearHeldWrites = (): void => {
+  clearHolds()
+  clearHeldRecordings()
+}
+
+const clearingHeldWrites = (store: TokenStore): TokenStore => ({
+  ...store,
+  clear: (scope) => {
+    store.clear(scope)
+    if (scope === "admin") clearHeldWrites()
+  },
+})
+
 /**
  * The console has two transports for one API, chosen by the shell it is running
  * in — the same split `createClientRuntime` makes, in the same order.
@@ -86,10 +101,12 @@ const principalFrom = (
 export const createAdminRuntime = (): AdminRuntime => {
   const native = isNative()
   purgeLegacyLocalSecrets()
-  const tokenStore = createTokenStore({
-    persistence: native ? createSecureStoragePersistence() : createWebPersistence(),
-    persistSecrets: native,
-  })
+  const tokenStore = clearingHeldWrites(
+    createTokenStore({
+      persistence: native ? createSecureStoragePersistence() : createWebPersistence(),
+      persistSecrets: native,
+    }),
+  )
 
   let reportOutcome: (outcome: TransportOutcome) => void = () => undefined
 

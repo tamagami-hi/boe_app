@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-query"
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import type { ReactNode } from "react"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TransportError } from "~/api/errors"
 
@@ -55,6 +55,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
 })
 
 describe("a persisted held write", () => {
@@ -67,12 +68,14 @@ describe("a persisted held write", () => {
     await waitFor(() => {
       expect(form.result.current.outcome.kind).toBe("unknown")
     })
+    expect(form.result.current.persisted).toBe(true)
     form.unmount()
 
     replies = [recorded]
     const reopened = openForm()
     expect(reopened.result.current.outcome.kind).toBe("unknown")
     expect(reopened.result.current.held).toMatchObject({ fundId: "balanced", amountPaise: "500000" })
+    expect(reopened.result.current.persisted).toBe(true)
     act(() => {
       reopened.result.current.checkAgain()
     })
@@ -84,5 +87,23 @@ describe("a persisted held write", () => {
     expect(sent[1]).toEqual(sent[0])
     expect(sent[0]?.idempotencyKey.length).toBeGreaterThan(8)
     expect(window.sessionStorage.length).toBe(0)
+    expect(reopened.result.current.persisted).toBe(false)
+  })
+
+  it("reports the hold as not persisted when the tab refuses to store it", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+    })
+    replies = [timedOut]
+    const form = openForm()
+    act(() => {
+      form.result.current.submit({ fundId: "balanced", amountPaise: "500000" })
+    })
+    await waitFor(() => {
+      expect(form.result.current.outcome.kind).toBe("unknown")
+    })
+
+    expect(form.result.current.held).toMatchObject({ fundId: "balanced", amountPaise: "500000" })
+    expect(form.result.current.persisted).toBe(false)
   })
 })

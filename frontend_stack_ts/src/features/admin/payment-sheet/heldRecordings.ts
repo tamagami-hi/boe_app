@@ -1,4 +1,5 @@
 import { isIdempotencyKey } from "~/api/idempotency"
+import { clearHeldKeys } from "~/features/admin/shared/heldWriteStore"
 
 import { MONTHLY_REASON } from "./recordingSheet"
 import type { RecordingBody } from "./recordingSheet"
@@ -90,3 +91,5 @@ export const releaseHeldRecording = (scheduleId: string, month: string): boolean
     return false
   }
 }
+
+export const clearHeldRecordings = (): boolean => clearHeldKeys(`${PREFIX}:`)

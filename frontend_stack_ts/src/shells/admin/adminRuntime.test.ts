@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
+import { getAdminSession } from "~/api/generated/operations"
+import { mintIdempotencyKey } from "~/api/idempotency"
+import { keepHeldRecording, loadHeldRecordings } from "~/features/admin/payment-sheet/heldRecordings"
+import { MONTHLY_REASON } from "~/features/admin/payment-sheet/recordingSheet"
+import { keepHold, loadHold } from "~/features/admin/shared/heldWriteStore"
 import { createAdminRuntime } from "~/shells/admin/adminRuntime"
+import type { AdminRuntime } from "~/shells/admin/adminRuntime"
 
 const ACCESS_KEY = "boe.admin.accessToken"
 const REFRESH_KEY = "boe.admin.refreshToken"
@@ -172,5 +178,73 @@ describe("admin credential persistence", () => {
     const adminInstallation = localStorage.getItem(INSTALLATION_KEY)
     expect(adminInstallation).not.toBeNull()
     expect(adminInstallation).not.toBe(localStorage.getItem(CLIENT_INSTALLATION_KEY))
+  })
+})
+
+const HOLD_SLOT = "create-client"
+const HOLD_MONTH = "2026-11"
+
+const holdClientWrites = (): void => {
+  keepHold(HOLD_SLOT, {
+    idempotencyKey: mintIdempotencyKey(),
+    body: { fullName: "Asha Rao", email: "asha@example.com", phone: "+919800000000" },
+  })
+  keepHeldRecording({
+    idempotencyKey: mintIdempotencyKey(),
+    userId: "00000000-0000-4000-8000-000000000003",
+    body: {
+      fundId: "00000000-0000-4000-8000-000000000005",
+      amountPaise: "500000",
+      effectiveDate: "2026-11-05",
+      reasonCode: MONTHLY_REASON,
+      sipScheduleLink: { scheduleId: "00000000-0000-4000-8000-000000000006", month: HOLD_MONTH },
+    },
+  })
+}
+
+const heldWritesInTab = (): number =>
+  (loadHold(HOLD_SLOT, (value) => value) === null ? 0 : 1) + loadHeldRecordings(HOLD_MONTH).size
+
+const failure = (code: string): unknown => ({
+  ok: false,
+  data: null,
+  error: { code, message: `${code} happened`, retryable: false },
+  meta: META,
+})
+
+const readSession = (runtime: AdminRuntime): Promise<unknown> =>
+  runtime.http.request(getAdminSession, {}).catch(() => null)
+
+describe("admin session end", () => {
+  const originalFetch = globalThis.fetch
+
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    delete window.__BOE_API_BASE__
+    sessionStorage.clear()
+  })
+
+  it.each([
+    {
+      way: "the operator signs out",
+      status: 200,
+      body: { ok: true, data: null, error: null, meta: META },
+      end: (runtime: AdminRuntime) => runtime.logout(),
+    },
+    { way: "the server revokes the session", status: 401, body: failure("SESSION_INVALID"), end: readSession },
+    { way: "the session expires and the refresh fails", status: 401, body: failure("AUTHENTICATION_REQUIRED"), end: readSession },
+  ])("leaves no held write in the tab when $way", async ({ status, body, end }) => {
+    holdClientWrites()
+    expect(heldWritesInTab()).toBe(2)
+    stubFetch(status, body)
+
+    await end(createAdminRuntime())
+
+    expect(heldWritesInTab()).toBe(0)
+    expect(sessionStorage.length).toBe(0)
   })
 })
