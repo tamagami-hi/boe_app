@@ -23954,7 +23954,7 @@ export interface operations {
                             } | null;
                             refusal: {
                                 /** @enum {string} */
-                                code: "schedule_closed" | "no_value" | "maturity_settling" | "maturity_due" | "later_entry";
+                                code: "schedule_closed" | "already_closed_early" | "no_value" | "principal_below_zero" | "maturity_settling" | "maturity_due" | "later_entry";
                                 message: string;
                             } | null;
                         };

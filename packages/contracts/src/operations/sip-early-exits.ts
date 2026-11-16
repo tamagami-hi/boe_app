@@ -11,7 +11,15 @@ const PositivePaise = Paise.refine((value) => !/^0$/u.test(value))
 const ClientParams = z.strictObject({ userId: Uuid })
 const ScheduleParams = z.strictObject({ userId: Uuid, scheduleId: Uuid })
 
-export const SipEarlyExitRefusalCode = z.enum(["schedule_closed", "no_value", "maturity_settling", "maturity_due", "later_entry"])
+export const SipEarlyExitRefusalCode = z.enum([
+  "schedule_closed",
+  "already_closed_early",
+  "no_value",
+  "principal_below_zero",
+  "maturity_settling",
+  "maturity_due",
+  "later_entry",
+])
 export type SipEarlyExitRefusalCode = z.infer<typeof SipEarlyExitRefusalCode>
 
 export const AdminSipEarlyExitPayout = AdminWithdrawalPayout.omit({ maturityId: true })

@@ -134,6 +134,14 @@ backward-compatible is a destructive boundary: rolling back across it *requires*
 including customer activity. Such a migration needs maintainer approval under `RULES.md`
 rule 11 and must be registered as a rollback boundary (migrations 025 and 042 are).
 
+Migration 073 (SIP early exit) is not such a boundary, but an images-only rollback to
+v0.16.2 after it is degraded for any client with an early exit (DEC-59). Nothing is lost:
+
+- The v0.16.2 admin app cannot load that client's maturity payout list, so an early-exit
+  payout cannot be marked paid until the roll-forward.
+- v0.16.2 lets an early-closed SIP schedule be reopened. After the roll-forward, a second
+  early exit on that schedule is refused with `409 STATE_CONFLICT` and writes nothing.
+
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.
 

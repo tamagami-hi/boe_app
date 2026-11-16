@@ -110,30 +110,34 @@ const growBy = async (holding: Holding, growthPaise: string): Promise<void> => {
   expect(response.statusCode, response.body).toBe(201)
 }
 
-const seedHolding = async (growthPaise: string | null = null, invested = INVESTED): Promise<Holding> => {
-  const user = await stack.seedUser()
-  const holding = { userId: user.id, fundId, email: user.email }
-  if (invested === 0) return holding
+const addContribution = async (holding: Holding, invested: number): Promise<void> => {
   const order = await stack.first(
     "insert into investment_orders (user_id, fund_id, fund_version_id, type, state, amount_paise, accepted_at) " +
       "values ($1, $2, $3, 'lump_sum', 'accepted', $4, now()) returning id",
-    [user.id, fundId, fundVersionId, invested],
+    [holding.userId, fundId, fundVersionId, invested],
   )
   const payment = await stack.first(
     "insert into payments (order_id, user_id, amount_paise, state, succeeded_at) values ($1, $2, $3, 'succeeded', now()) returning id",
-    [order.id, user.id, invested],
+    [order.id, holding.userId, invested],
   )
   const allocation = await stack.first(
     "insert into investment_allocations (order_id, user_id, fund_id, amount_paise, allocated_by_user_id, request_id) " +
       "values ($1, $2, $3, $4, $5, $6) returning id",
-    [order.id, user.id, fundId, invested, finance.userId, randomUUID()],
+    [order.id, holding.userId, fundId, invested, finance.userId, randomUUID()],
   )
   await stack.pool.query(
     "insert into client_value_entries (user_id, fund_id, allocation_id, entry_type, principal_delta_paise, value_delta_paise, " +
       "effective_date, order_id, payment_id, reason_code, actor_type, created_by_user_id, request_id) " +
       "values ($1, $2, $3, 'contribution', $4, $4, '2025-01-15', $5, $6, 'investment_accepted', 'admin', $7, $8)",
-    [user.id, fundId, allocation.id, invested, order.id, payment.id, finance.userId, randomUUID()],
+    [holding.userId, fundId, allocation.id, invested, order.id, payment.id, finance.userId, randomUUID()],
   )
+}
+
+const seedHolding = async (growthPaise: string | null = null, invested = INVESTED): Promise<Holding> => {
+  const user = await stack.seedUser()
+  const holding = { userId: user.id, fundId, email: user.email }
+  if (invested === 0) return holding
+  await addContribution(holding, invested)
   if (growthPaise !== null) await growBy(holding, growthPaise)
   return holding
 }
@@ -435,7 +439,7 @@ describe("SIP early exit", () => {
     expect(await sums(holding)).toEqual({ principal: "0", value: "0" })
   })
 
-  test("refuses a closed schedule, an empty holding, a maturity being settled or due and a changed value, writing nothing", async () => {
+  test("refuses a closed schedule, an empty holding, a maturity being settled or due, a principal below zero, a second exit and a changed value, writing nothing", async () => {
     const closed = await seedHolding()
     const closedSip = await seedActiveSip(closed)
     await stack.pool.query("update admin_sip_schedules set state = 'closed', closed_at = now(), version = 2 where id = $1", [closedSip])
@@ -466,6 +470,22 @@ describe("SIP early exit", () => {
     const dueSip = await seedActiveSip(due)
     await setMaturityDate(due, PAST_MATURITY)
 
+    const belowZero = await seedHolding()
+    const belowZeroSip = await seedActiveSip(belowZero)
+    await stack.pool.query(
+      "insert into client_value_entries (user_id, fund_id, entry_type, principal_delta_paise, value_delta_paise, effective_date, " +
+        "reason_code, actor_type, created_by_user_id, request_id) " +
+        "values ($1, $2, 'maturity_reinvestment', -150000, 0, '2025-01-16', 'correction', 'admin', $3, $4)",
+      [belowZero.userId, fundId, finance.userId, randomUUID()],
+    )
+
+    const reopened = await seedHolding()
+    const reopenedSip = await seedActiveSip(reopened)
+    const firstExit = await exitEarly(reopened, reopenedSip, { expectedVersion: 1, expectedValuePaise: "100000" })
+    expect(firstExit.statusCode, firstExit.body).toBe(201)
+    await stack.pool.query("update admin_sip_schedules set state = 'active', closed_at = null, version = version + 1 where id = $1", [reopenedSip])
+    await addContribution(reopened, INVESTED)
+
     const changed = await seedHolding()
     const changedSip = await seedActiveSip(changed)
 
@@ -475,6 +495,8 @@ describe("SIP early exit", () => {
       { holding: marked, sipId: markedSip, version: 1, value: "100000", message: "being settled" },
       { holding: chosen, sipId: chosenSip, version: 1, value: "100000", message: "being settled" },
       { holding: due, sipId: dueSip, version: 1, value: "100000", message: "maturity date has arrived" },
+      { holding: belowZero, sipId: belowZeroSip, version: 1, value: "100000", message: "invested amount is below zero" },
+      { holding: reopened, sipId: reopenedSip, version: 3, value: "100000", message: "closed early before" },
       { holding: changed, sipId: changedSip, version: 1, value: "99999", message: "value changed" },
       { holding: changed, sipId: changedSip, version: 2, value: "100000", message: "changed this SIP schedule" },
     ]
@@ -485,7 +507,7 @@ describe("SIP early exit", () => {
       expect(envelopeOf(response).error.message).toContain(refused.message)
       expect(await holdingState(refused.holding)).toEqual(before)
     }
-    for (const refused of cases.slice(0, 5)) {
+    for (const refused of cases.slice(0, 7)) {
       const preview = await readAs(finance, exitUrl(refused.holding, refused.sipId))
       expect(preview.statusCode, preview.body).toBe(200)
       expect(envelopeOf<{ refusal: unknown }>(preview).data.refusal).not.toBeNull()

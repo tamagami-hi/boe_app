@@ -42133,7 +42133,9 @@
                               "type": "string",
                               "enum": [
                                 "schedule_closed",
+                                "already_closed_early",
                                 "no_value",
+                                "principal_below_zero",
                                 "maturity_settling",
                                 "maturity_due",
                                 "later_entry"

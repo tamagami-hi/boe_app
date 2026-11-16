@@ -48,7 +48,7 @@ const openMaturityOf = async (
 export const readSipEarlyExitHolding = async (
   tx: Transaction,
   deps: SipEarlyExitDeps,
-  schedule: Pick<LockedSipSchedule, "userId" | "fundId" | "state">,
+  schedule: Pick<LockedSipSchedule, "id" | "userId" | "fundId" | "state">,
 ): Promise<SipEarlyExitHolding> => {
   const basis = await deps.clientGrowthRepository.findPositionBasis(tx, schedule.userId, schedule.fundId)
   const position = {
@@ -63,6 +63,8 @@ export const readSipEarlyExitHolding = async (
     maturity,
     facts: {
       scheduleState: schedule.state,
+      wasClosedEarly: await deps.sipScheduleRepository.wasClosedEarly(tx, schedule.id),
+      principalPaise: position.principalPaise,
       currentValuePaise: position.currentValuePaise,
       hasMarkedMaturity: marked !== null,
       openMaturity:
