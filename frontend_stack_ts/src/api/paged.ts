@@ -1,6 +1,6 @@
-import { useInfiniteQuery } from "@tanstack/react-query"
+import { hashKey, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import type { QueryState } from "@tanstack/react-query"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react"
 
 import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, nextPageParam } from "~/api/cursor"
 import type { Cursor, PageMeta } from "~/api/cursor"
@@ -49,17 +49,51 @@ export type PagedQueryInput<TData extends ItemsPage> = Readonly<{
 
 type StoredPage<TData> = Readonly<{ data: TData; page: PageMeta | null }>
 
-type PageFetchState = Readonly<{ state: Pick<QueryState, "status" | "fetchMeta"> }>
+type HeldQuery = Readonly<{ state: Pick<QueryState, "status" | "fetchStatus" | "fetchMeta" | "error"> }>
 
-const isAwaitingPageRetry = ({ state }: PageFetchState): boolean =>
-  state.status === "error" && state.fetchMeta?.fetchMore?.direction === "forward"
+type PageHold = Readonly<{ error: unknown }>
 
-const refetchUnlessAwaitingPageRetry = (query: PageFetchState): boolean => !isAwaitingPageRetry(query)
+const pageHolds = new WeakMap<HeldQuery, PageHold>()
+const pageHoldListeners = new Set<() => void>()
+
+const subscribePageHolds = (listener: () => void): (() => void) => {
+  pageHoldListeners.add(listener)
+  return () => {
+    pageHoldListeners.delete(listener)
+  }
+}
+
+const notifyPageHolds = (): void => {
+  for (const listener of pageHoldListeners) listener()
+}
+
+const holdPage = (query: HeldQuery, error: unknown): void => {
+  if (pageHolds.get(query)?.error === error) return
+  pageHolds.set(query, { error })
+  notifyPageHolds()
+}
+
+const releasePage = (query: HeldQuery | undefined): void => {
+  if (query === undefined || !pageHolds.delete(query)) return
+  notifyPageHolds()
+}
+
+const holdOf = (query: HeldQuery | undefined): PageHold | undefined =>
+  query === undefined ? undefined : pageHolds.get(query)
+
+const settleNextPage = (query: HeldQuery): void => {
+  const { state } = query
+  if (state.fetchStatus !== "idle") return
+  if (state.status === "success") releasePage(query)
+  else if (state.fetchMeta?.fetchMore?.direction === "forward") holdPage(query, state.error)
+}
+
+const refetchUnlessHeld = (query: HeldQuery): boolean => !pageHolds.has(query)
 
 const HELD_WALK_REFETCH = {
-  refetchOnMount: refetchUnlessAwaitingPageRetry,
-  refetchOnWindowFocus: refetchUnlessAwaitingPageRetry,
-  refetchOnReconnect: refetchUnlessAwaitingPageRetry,
+  refetchOnMount: refetchUnlessHeld,
+  refetchOnWindowFocus: refetchUnlessHeld,
+  refetchOnReconnect: refetchUnlessHeld,
 } as const
 
 export const clampPageLimit = (limit: number): number =>
@@ -88,8 +122,10 @@ export const usePagedQuery = <TData extends ItemsPage>({
   retry,
   loadAll = false,
 }: PagedQueryInput<TData>): PagedQuery<TData> => {
+  const client = useQueryClient()
+  const pagedKey = [...queryKey, "paged", clampPageLimit(limit)]
   const query = useInfiniteQuery({
-    queryKey: [...queryKey, "paged", clampPageLimit(limit)],
+    queryKey: pagedKey,
     initialPageParam: undefined as Cursor | undefined,
     getNextPageParam: (lastPage: StoredPage<TData>) => nextPageParam(lastPage.page),
     ...(staleTime === undefined ? {} : { staleTime }),
@@ -102,20 +138,28 @@ export const usePagedQuery = <TData extends ItemsPage>({
     },
   })
 
-  const { error, fetchNextPage, hasNextPage, isFetchingNextPage, isError, isFetchNextPageError } = query
-  const isWalkStopped = loadAll && hasNextPage && isError
+  const queryHash = hashKey(pagedKey)
+  const hold = useSyncExternalStore(subscribePageHolds, () =>
+    holdOf(client.getQueryCache().get(queryHash)),
+  )
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isError, isFetchNextPageError } = query
+  const isHeld = hold !== undefined
+  const isWalkStopped = loadAll && hasNextPage && (isError || isHeld)
   const isPageFailure = isFetchNextPageError && !isFetchingNextPage
-  const [failedPageError, setFailedPageError] = useState<unknown>(null)
-  const loadMoreError = error !== null && (isPageFailure || error === failedPageError) ? error : null
+  const loadMoreError = isPageFailure ? query.error : (hold?.error ?? null)
+  const error = query.error ?? (isWalkStopped ? (hold?.error ?? null) : null)
+
+  const readNextPage = useCallback((): void => {
+    const target = client.getQueryCache().get(queryHash)
+    void fetchNextPage().then(() => {
+      if (target !== undefined) settleNextPage(target)
+    })
+  }, [client, queryHash, fetchNextPage])
 
   useEffect(() => {
-    if (isPageFailure) setFailedPageError(error)
-  }, [isPageFailure, error])
-
-  useEffect(() => {
-    if (!loadAll || !hasNextPage || isFetchingNextPage || isError) return
-    void fetchNextPage()
-  }, [loadAll, hasNextPage, isFetchingNextPage, isError, fetchNextPage])
+    if (!loadAll || !hasNextPage || isFetchingNextPage || isError || isHeld) return
+    readNextPage()
+  }, [loadAll, hasNextPage, isFetchingNextPage, isError, isHeld, readNextPage])
 
   const data = useMemo(
     () => (query.data === undefined || isWalkStopped ? undefined : mergePages(query.data.pages)),
@@ -128,14 +172,13 @@ export const usePagedQuery = <TData extends ItemsPage>({
     isFetching: query.isFetching,
     error,
     refetch: () => {
+      releasePage(client.getQueryCache().get(queryHash))
       void query.refetch()
     },
     hasMore: hasNextPage,
     isLoadingMore: isFetchingNextPage,
     loadedCount: data?.items.length ?? 0,
     loadMoreError,
-    loadMore: () => {
-      void fetchNextPage()
-    },
+    loadMore: readNextPage,
   }
 }

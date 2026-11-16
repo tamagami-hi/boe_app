@@ -69,7 +69,7 @@ const StaleNotice = ({ variant, isRetrying, onRetry }: StaleNoticeProps): React.
 }
 
 const isStaleRefresh = (error: unknown, loadMoreError: unknown): boolean =>
-  error != null && loadMoreError == null && !isSessionEnded(error)
+  error != null && error !== loadMoreError && !isSessionEnded(error)
 
 export const AsyncBoundary = <TData,>({
   query,

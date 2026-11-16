@@ -215,6 +215,54 @@ describe("usePagedQuery", () => {
     client.clear()
   })
 
+  it("does not re-request a failed page after another hook sharing the query refreshes it", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const failure = new Error("page two failed")
+    let isPageTwoFailing = true
+    const fetchPage = (cursor: Cursor | undefined): Promise<FetchedPage<ListData>> => {
+      requested.push({ filter: "shared", cursor })
+      if (cursor === undefined || !isPageTwoFailing) return Promise.resolve(pageFor("shared", cursor))
+      return Promise.reject(failure)
+    }
+    const shared = { queryKey: ["probe", "shared"], limit: 1, staleTime: 0, fetchPage } as const
+    const useCatalogue = () => usePagedQuery<ListData>({ ...shared, loadAll: true })
+    const useList = () => usePagedQuery<ListData>(shared)
+    const sharedRequests = (isNextPage: boolean) =>
+      requested.filter((entry) => entry.filter === "shared" && (entry.cursor !== undefined) === isNextPage)
+
+    const catalogue = renderHook(useCatalogue, { wrapper: wrapper(client) })
+    await waitFor(() => {
+      expect(catalogue.result.current.error).toBe(failure)
+    })
+    catalogue.unmount()
+
+    const list = renderHook(useList, { wrapper: wrapper(client) })
+    await waitFor(() => {
+      expect(list.result.current.error).toBeNull()
+    })
+    const listLoadMoreError = list.result.current.loadMoreError
+    list.unmount()
+    expect(sharedRequests(false)).toHaveLength(2)
+
+    const returned = renderHook(useCatalogue, { wrapper: wrapper(client) })
+    await act(() => new Promise((resolve) => setTimeout(resolve, SETTLE_MS)))
+
+    expect(sharedRequests(true)).toHaveLength(1)
+    expect(returned.result.current.data).toBeUndefined()
+    expect(returned.result.current.error).toBe(failure)
+    expect(listLoadMoreError).toBe(failure)
+
+    isPageTwoFailing = false
+    act(() => {
+      returned.result.current.refetch()
+    })
+    await waitFor(() => {
+      expect(returned.result.current.data?.items).toEqual([{ id: "shared-1" }, { id: "shared-2" }])
+    })
+    expect(sharedRequests(true)).toHaveLength(2)
+    client.clear()
+  })
+
   it("keeps a page's sibling fields from the first page while concatenating items", () => {
     const merged = mergePages<ListData>([
       { data: { items: [{ id: "1" }], unreadCount: 7 }, page: null },
