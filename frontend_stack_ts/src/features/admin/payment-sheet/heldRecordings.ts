@@ -1,5 +1,5 @@
 import { isIdempotencyKey } from "~/api/idempotency"
-import { clearHeldKeys } from "~/features/admin/shared/heldWriteStore"
+import { clearHeldKeys, dropOtherAdminsKeys } from "~/features/admin/shared/heldWriteStore"
 
 import { MONTHLY_REASON } from "./recordingSheet"
 import type { RecordingBody } from "./recordingSheet"
@@ -48,10 +48,10 @@ const sessionStore = (): Storage | null => {
   }
 }
 
-export const loadHeldRecordings = (month: string): ReadonlyMap<string, HeldRecording> => {
+export const loadHeldRecordings = (month: string, adminId: string): ReadonlyMap<string, HeldRecording> => {
   const store = sessionStore()
-  if (store === null) return new Map()
   const prefix = `${PREFIX}:${month}:`
+  if (store === null || !dropOtherAdminsKeys(prefix, adminId)) return new Map()
   try {
     const keys = Array.from({ length: store.length }, (_, index) => store.key(index) ?? "")
     return new Map(
@@ -69,12 +69,12 @@ export const loadHeldRecordings = (month: string): ReadonlyMap<string, HeldRecor
   }
 }
 
-export const keepHeldRecording = (held: HeldRecording): boolean => {
+export const keepHeldRecording = (adminId: string, held: HeldRecording): boolean => {
   const { scheduleId, month } = held.body.sipScheduleLink
   const store = sessionStore()
   if (store === null) return false
   try {
-    store.setItem(storageKey(scheduleId, month), JSON.stringify(held))
+    store.setItem(storageKey(scheduleId, month), JSON.stringify({ adminId, ...held }))
     return true
   } catch {
     return false
@@ -93,3 +93,5 @@ export const releaseHeldRecording = (scheduleId: string, month: string): boolean
 }
 
 export const clearHeldRecordings = (): boolean => clearHeldKeys(`${PREFIX}:`)
+
+export const dropOtherAdminsRecordings = (adminId: string): boolean => dropOtherAdminsKeys(`${PREFIX}:`, adminId)

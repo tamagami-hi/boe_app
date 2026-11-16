@@ -2,8 +2,10 @@ import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@t
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ApiError, TransportError } from "~/api/errors"
+import { mintIdempotencyKey } from "~/api/idempotency"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 
+import { keepHeldRecording } from "./heldRecordings"
 import type { HeldRecording } from "./heldRecordings"
 import PaymentSheetScreen from "./PaymentSheetScreen"
 import { recordingBodyOf } from "./recordingSheet"
@@ -12,6 +14,13 @@ import type { RecordedContribution } from "./recordingSheetQueries"
 import { useRecordingSheetRecorder } from "./useRecordingSheetRecorder"
 
 type Reply = RecordedContribution
+
+const ADMIN_ID = "a0a0a0a0-0000-4000-8000-000000000001"
+const OTHER_ADMIN_ID = "b0b0b0b0-0000-4000-8000-000000000002"
+
+vi.mock("~/app/providers/SessionProvider", () => ({
+  useSession: () => ({ principal: { userId: ADMIN_ID } }),
+}))
 
 const replyFor = (held: HeldRecording): Reply => ({
   entryId: "e0e0e0e0-0000-4000-8000-000000000001",
@@ -245,6 +254,26 @@ describe("recording a month of payments row by row", () => {
       expect(result.current.entries.get(asha.scheduleId)?.kind).toBe("recorded")
     })
     expect(sent).toHaveLength(1)
+  })
+
+  it("restores only the rows the signed-in admin left held, and drops another admin's", () => {
+    const holdRow = (adminId: string, schedule: SheetSchedule): void => {
+      keepHeldRecording(adminId, {
+        idempotencyKey: mintIdempotencyKey(),
+        userId: schedule.userId,
+        body: recordingBodyOf(schedule, "2026-11", { amountPaise: "500000", effectiveDate: "2026-11-02" }),
+      })
+    }
+    const [asha, bala] = [row(1, "Asha Rao"), row(2, "Bala Iyer")]
+    holdRow(OTHER_ADMIN_ID, asha)
+    holdRow(ADMIN_ID, bala)
+
+    const { result } = renderHook(() => useRecordingSheetRecorder("2026-11", sendRecording, () => Promise.resolve()))
+
+    expect([...result.current.held.keys()]).toEqual([bala.scheduleId])
+    expect(result.current.entries.get(asha.scheduleId)).toBeUndefined()
+    expect(window.sessionStorage.length).toBe(1)
+    expect(sent).toHaveLength(0)
   })
 
   it("releases the key of a row the server refused, so the next Record mints a new one", async () => {

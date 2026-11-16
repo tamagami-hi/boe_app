@@ -34,22 +34,32 @@ const parseHold = <TBody>(raw: string, parseBody: (value: unknown) => TBody | nu
   return body === null ? null : { idempotencyKey, body }
 }
 
-export const loadHold = <TBody>(slot: string, parseBody: (value: unknown) => TBody | null): StoredHold<TBody> | null => {
+const isHeldBy = (raw: string | null, adminId: string): boolean =>
+  raw !== null && asRecord(parseJson(raw))?.adminId === adminId
+
+export const loadHold = <TBody>(
+  slot: string,
+  adminId: string,
+  parseBody: (value: unknown) => TBody | null,
+): StoredHold<TBody> | null => {
   const store = sessionStore()
   if (store === null) return null
   try {
     const raw = store.getItem(storageKey(slot))
-    return raw === null ? null : parseHold(raw, parseBody)
+    if (raw === null) return null
+    if (isHeldBy(raw, adminId)) return parseHold(raw, parseBody)
+    store.removeItem(storageKey(slot))
+    return null
   } catch {
     return null
   }
 }
 
-export const keepHold = (slot: string, hold: StoredHold<unknown>): boolean => {
+export const keepHold = (slot: string, adminId: string, hold: StoredHold<unknown>): boolean => {
   const store = sessionStore()
   if (store === null) return false
   try {
-    store.setItem(storageKey(slot), JSON.stringify(hold))
+    store.setItem(storageKey(slot), JSON.stringify({ adminId, ...hold }))
     return true
   } catch {
     return false
@@ -67,16 +77,25 @@ export const releaseHold = (slot: string): boolean => {
   }
 }
 
-export const clearHeldKeys = (prefix: string): boolean => {
+const removeHeldKeys = (prefix: string, isStale: (raw: string | null) => boolean): boolean => {
   const store = sessionStore()
   if (store === null) return false
   try {
     const keys = Array.from({ length: store.length }, (_, index) => store.key(index) ?? "")
-    for (const key of keys.filter((candidate) => candidate.startsWith(prefix))) store.removeItem(key)
+    for (const key of keys.filter((candidate) => candidate.startsWith(prefix))) {
+      if (isStale(store.getItem(key))) store.removeItem(key)
+    }
     return true
   } catch {
     return false
   }
 }
 
+export const clearHeldKeys = (prefix: string): boolean => removeHeldKeys(prefix, () => true)
+
+export const dropOtherAdminsKeys = (prefix: string, adminId: string): boolean =>
+  removeHeldKeys(prefix, (raw) => !isHeldBy(raw, adminId))
+
 export const clearHolds = (): boolean => clearHeldKeys(`${PREFIX}:`)
+
+export const dropOtherAdminsHolds = (adminId: string): boolean => dropOtherAdminsKeys(`${PREFIX}:`, adminId)

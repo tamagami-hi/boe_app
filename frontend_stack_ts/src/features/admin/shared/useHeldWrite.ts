@@ -1,8 +1,9 @@
 import type { UseMutationResult } from "@tanstack/react-query"
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 import { isApiError, isUnknownWriteOutcome, type FieldErrors } from "~/api/errors"
 import { mintIdempotencyKey } from "~/api/idempotency"
+import { useSession } from "~/app/providers/SessionProvider"
 
 import { keepHold, loadHold, releaseHold } from "./heldWriteStore"
 
@@ -29,80 +30,94 @@ export type HeldWritePersistence<TBody> = Readonly<{
   parseBody: (value: unknown) => TBody | null
 }>
 
+type HoldPlace = Readonly<{ slot: string; adminId: string }>
+
+type Hold<TBody> = Readonly<{ body: TBody; idempotencyKey: string; place: HoldPlace | null }>
+
 const IDLE: HeldWriteOutcome<never> = { kind: "idle" }
 const UNKNOWN: HeldWriteOutcome<never> = { kind: "unknown" }
 const NO_FIELDS: FieldErrors = {}
 
-const restoreHold = <TBody extends object>(persist: HeldWritePersistence<TBody> | undefined): (TBody & Keyed) | null => {
-  if (persist === undefined) return null
-  const hold = loadHold(persist.slot, persist.parseBody)
-  return hold === null ? null : { ...hold.body, idempotencyKey: hold.idempotencyKey }
+const placeOf = (persist: HeldWritePersistence<unknown> | undefined, adminId: string | null): HoldPlace | null =>
+  persist === undefined || adminId === null ? null : { slot: persist.slot, adminId }
+
+const restoreHold = <TBody>(persist: HeldWritePersistence<TBody> | undefined, adminId: string | null): Hold<TBody> | null => {
+  const place = placeOf(persist, adminId)
+  if (persist === undefined || place === null) return null
+  const stored = loadHold(place.slot, place.adminId, persist.parseBody)
+  return stored === null ? null : { body: stored.body, idempotencyKey: stored.idempotencyKey, place }
 }
 
-const persistence = <TBody extends object>(persist: HeldWritePersistence<TBody> | undefined) => ({
-  keep: (attempt: TBody & Keyed): boolean => {
-    if (persist === undefined) return false
-    const { idempotencyKey, ...body } = attempt
-    return keepHold(persist.slot, { idempotencyKey, body })
-  },
-  release: (): void => {
-    if (persist !== undefined) releaseHold(persist.slot)
-  },
-})
+const keep = ({ body, idempotencyKey, place }: Hold<unknown>): boolean =>
+  place !== null && keepHold(place.slot, place.adminId, { idempotencyKey, body })
+
+const release = ({ place }: Hold<unknown>): void => {
+  if (place !== null) releaseHold(place.slot)
+}
 
 export const useHeldWrite = <TBody extends object, TResult>(
   mutation: UseMutationResult<TResult, Error, TBody & Keyed>,
   unsentMessage: string,
   persist?: HeldWritePersistence<TBody>,
 ): HeldWrite<TBody, TResult> => {
-  const [held, setHeld] = useState<(TBody & Keyed) | null>(() => restoreHold(persist))
-  const [persisted, setPersisted] = useState(() => held !== null)
-  const [outcome, setOutcome] = useState<HeldWriteOutcome<TResult>>(() => (held === null ? IDLE : UNKNOWN))
-  const { keep, release } = persistence(persist)
+  const adminId = useSession().principal?.userId ?? null
+  const [hold, setHold] = useState<Hold<TBody> | null>(() => restoreHold(persist, adminId))
+  const current = useRef(hold)
+  const [persisted, setPersisted] = useState(() => hold !== null)
+  const [outcome, setOutcome] = useState<HeldWriteOutcome<TResult>>(() => (hold === null ? IDLE : UNKNOWN))
 
-  const drop = (): void => {
-    release()
-    setHeld(null)
+  const holdOn = (next: Hold<TBody> | null): void => {
+    current.current = next
+    setHold(next)
+  }
+
+  const drop = (sent: Hold<TBody>): void => {
+    release(sent)
+    holdOn(null)
     setPersisted(false)
   }
 
-  const send = (attempt: TBody & Keyed): void => {
-    setHeld(attempt)
-    setPersisted(keep(attempt))
+  const send = (next: Hold<TBody>): void => {
+    holdOn(next)
+    setPersisted(keep(next))
     setOutcome(IDLE)
-    mutation.mutate(attempt, {
-      onSuccess: (result) => {
-        drop()
-        setOutcome({ kind: "done", result })
+    mutation.mutate(
+      { ...next.body, idempotencyKey: next.idempotencyKey },
+      {
+        onSuccess: (result) => {
+          drop(next)
+          setOutcome({ kind: "done", result })
+        },
+        onError: (error) => {
+          if (isUnknownWriteOutcome(error)) {
+            setOutcome(UNKNOWN)
+            return
+          }
+          drop(next)
+          setOutcome(
+            isApiError(error)
+              ? { kind: "rejected", message: error.message, fields: error.fields ?? NO_FIELDS, code: error.code }
+              : { kind: "rejected", message: unsentMessage, fields: NO_FIELDS, code: null },
+          )
+        },
       },
-      onError: (error) => {
-        if (isUnknownWriteOutcome(error)) {
-          setOutcome({ kind: "unknown" })
-          return
-        }
-        drop()
-        setOutcome(
-          isApiError(error)
-            ? { kind: "rejected", message: error.message, fields: error.fields ?? NO_FIELDS, code: error.code }
-            : { kind: "rejected", message: unsentMessage, fields: NO_FIELDS, code: null },
-        )
-      },
-    })
+    )
   }
 
   return {
     outcome,
     pending: mutation.isPending,
-    held,
+    held: hold === null ? null : hold.body,
     persisted,
     submit: (body) => {
-      send({ ...body, idempotencyKey: mintIdempotencyKey() })
+      if (current.current !== null) return
+      send({ body, idempotencyKey: mintIdempotencyKey(), place: placeOf(persist, adminId) })
     },
     checkAgain: () => {
-      if (held !== null) send(held)
+      if (current.current !== null) send(current.current)
     },
     reset: () => {
-      drop()
+      if (current.current !== null) drop(current.current)
       setOutcome(IDLE)
       mutation.reset()
     },

@@ -22,8 +22,8 @@ import type { TokenStore } from "~/api/session/tokenStore"
 import type { Principal } from "~/app/providers/SessionProvider"
 import { isPermissionCode } from "~/domain/permissions"
 import type { PermissionCode, RoleCode } from "~/domain/permissions"
-import { clearHeldRecordings } from "~/features/admin/payment-sheet/heldRecordings"
-import { clearHolds } from "~/features/admin/shared/heldWriteStore"
+import { clearHeldRecordings, dropOtherAdminsRecordings } from "~/features/admin/payment-sheet/heldRecordings"
+import { clearHolds, dropOtherAdminsHolds } from "~/features/admin/shared/heldWriteStore"
 import { isNative } from "~/platform/capacitor"
 import { buildAdminDevice, NATIVE_COMPATIBILITY_HEADERS } from "~/platform/nativeDevice"
 import { createSecureStoragePersistence } from "~/platform/secureStorage"
@@ -67,6 +67,12 @@ const principalFrom = (
 const clearHeldWrites = (): void => {
   clearHolds()
   clearHeldRecordings()
+}
+
+const keepOwnHeldWrites = (principal: Principal): Principal => {
+  dropOtherAdminsHolds(principal.userId)
+  dropOtherAdminsRecordings(principal.userId)
+  return principal
 }
 
 const clearingHeldWrites = (store: TokenStore): TokenStore => ({
@@ -308,13 +314,19 @@ export const createAdminRuntime = (): AdminRuntime => {
     }
   }
 
+  const signIn = native ? nativeSignIn : cookieSignIn
+  const restoreSession = native ? nativeRestore : cookieRestore
+
   return {
     tokenStore,
     refreshCoordinator,
     http,
-    login: native ? nativeSignIn : cookieSignIn,
+    login: async (input) => keepOwnHeldWrites(await signIn(input)),
     logout: native ? nativeSignOut : cookieSignOut,
-    restore: native ? nativeRestore : cookieRestore,
+    restore: async () => {
+      const principal = await restoreSession()
+      return principal === null ? null : keepOwnHeldWrites(principal)
+    },
     probeReachability,
     setOutcomeReporter: (report) => {
       reportOutcome = report

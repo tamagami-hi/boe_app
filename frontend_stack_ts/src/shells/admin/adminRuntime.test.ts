@@ -183,13 +183,17 @@ describe("admin credential persistence", () => {
 
 const HOLD_SLOT = "create-client"
 const HOLD_MONTH = "2026-11"
+const OWN_SCHEDULE = "00000000-0000-4000-8000-000000000006"
+const OTHER_ADMIN_ID = "00000000-0000-4000-8000-0000000000b2"
+const OTHER_SLOT = "record:other"
+const OTHER_SCHEDULE = "00000000-0000-4000-8000-000000000007"
 
-const holdClientWrites = (): void => {
-  keepHold(HOLD_SLOT, {
+const holdWritesOf = (adminId: string, slot: string, scheduleId: string): void => {
+  keepHold(slot, adminId, {
     idempotencyKey: mintIdempotencyKey(),
     body: { fullName: "Asha Rao", email: "asha@example.com", phone: "+919800000000" },
   })
-  keepHeldRecording({
+  keepHeldRecording(adminId, {
     idempotencyKey: mintIdempotencyKey(),
     userId: "00000000-0000-4000-8000-000000000003",
     body: {
@@ -197,13 +201,18 @@ const holdClientWrites = (): void => {
       amountPaise: "500000",
       effectiveDate: "2026-11-05",
       reasonCode: MONTHLY_REASON,
-      sipScheduleLink: { scheduleId: "00000000-0000-4000-8000-000000000006", month: HOLD_MONTH },
+      sipScheduleLink: { scheduleId, month: HOLD_MONTH },
     },
   })
 }
 
+const holdClientWrites = (): void => {
+  holdWritesOf(OPERATOR.userId, HOLD_SLOT, OWN_SCHEDULE)
+}
+
 const heldWritesInTab = (): number =>
-  (loadHold(HOLD_SLOT, (value) => value) === null ? 0 : 1) + loadHeldRecordings(HOLD_MONTH).size
+  (loadHold(HOLD_SLOT, OPERATOR.userId, (value) => value) === null ? 0 : 1) +
+  loadHeldRecordings(HOLD_MONTH, OPERATOR.userId).size
 
 const failure = (code: string): unknown => ({
   ok: false,
@@ -246,5 +255,46 @@ describe("admin session end", () => {
 
     expect(heldWritesInTab()).toBe(0)
     expect(sessionStorage.length).toBe(0)
+  })
+})
+
+const SESSION_RESPONSE = { ok: true, data: OPERATOR, error: null, meta: META }
+
+const CREDENTIALS = { email: "ops@example.com", password: "Password123!" }
+
+const restoreNativeSession = (runtime: AdminRuntime): Promise<unknown> => {
+  runtime.tokenStore.update("admin", { accessToken: "a".repeat(120), principal: JSON.stringify(OPERATOR) })
+  return runtime.restore()
+}
+
+describe("admin session start", () => {
+  const originalFetch = globalThis.fetch
+
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    delete window.__BOE_API_BASE__
+    sessionStorage.clear()
+  })
+
+  it.each([
+    { way: "a browser signs in", native: false, body: COOKIE_LOGIN_RESPONSE, start: (runtime: AdminRuntime) => runtime.login(CREDENTIALS) },
+    { way: "the admin APK signs in", native: true, body: NATIVE_LOGIN_RESPONSE, start: (runtime: AdminRuntime) => runtime.login(CREDENTIALS) },
+    { way: "the admin APK restores its session", native: true, body: SESSION_RESPONSE, start: restoreNativeSession },
+  ])("keeps the admin's own held writes and drops another admin's when $way", async ({ native, body, start }) => {
+    if (native) asNative()
+    holdWritesOf(OPERATOR.userId, HOLD_SLOT, OWN_SCHEDULE)
+    holdWritesOf(OTHER_ADMIN_ID, OTHER_SLOT, OTHER_SCHEDULE)
+    expect(sessionStorage.length).toBe(4)
+    stubFetch(200, body)
+
+    await start(createAdminRuntime())
+
+    expect(sessionStorage.length).toBe(2)
+    expect(loadHold(HOLD_SLOT, OPERATOR.userId, (value) => value)).not.toBeNull()
+    expect([...loadHeldRecordings(HOLD_MONTH, OPERATOR.userId).keys()]).toEqual([OWN_SCHEDULE])
   })
 })

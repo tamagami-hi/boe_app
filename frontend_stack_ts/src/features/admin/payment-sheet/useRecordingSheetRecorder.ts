@@ -2,6 +2,7 @@ import { useRef, useState } from "react"
 
 import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { mintIdempotencyKey } from "~/api/idempotency"
+import { useSession } from "~/app/providers/SessionProvider"
 
 import { keepHeldRecording, loadHeldRecordings, releaseHeldRecording } from "./heldRecordings"
 import type { HeldRecording } from "./heldRecordings"
@@ -60,7 +61,10 @@ export const useRecordingSheetRecorder = (
   send: SendRecording,
   refresh: RefreshAfterRecording,
 ): SheetRecorder => {
-  const [held, setHeld] = useState<ReadonlyMap<string, HeldRecording>>(() => loadHeldRecordings(month))
+  const adminId = useSession().principal?.userId ?? null
+  const [held, setHeld] = useState<ReadonlyMap<string, HeldRecording>>(() =>
+    adminId === null ? new Map() : loadHeldRecordings(month, adminId),
+  )
   const [entries, setEntries] = useState<ReadonlyMap<string, RowEntry>>(
     () => new Map([...held.keys()].map((scheduleId) => [scheduleId, UNKNOWN])),
   )
@@ -132,7 +136,7 @@ export const useRecordingSheetRecorder = (
       const minted = jobs
         .filter((job) => isFree(job.body.sipScheduleLink.scheduleId))
         .map((job): HeldRecording => ({ idempotencyKey: mintIdempotencyKey(), userId: job.userId, body: job.body }))
-      for (const job of minted) keepHeldRecording(job)
+      if (adminId !== null) for (const job of minted) keepHeldRecording(adminId, job)
       setHeld((current) => new Map([...current, ...minted.map((job) => [idOf(job), job] as const)]))
       enqueue(minted)
     },
