@@ -12,8 +12,8 @@ Counts: 24 findings: 1 high, 9 medium, 14 low.
 
 - **Commit audited:** `a842496` on `track/u-audits`; Phase I screens are not on this branch and are left out (DEC-47).
 - **Widths:** 768×1024 (tablet, touch on), 1280×800 and 1440×900 (desktop, mouse), Chromium 1248 through Playwright 1.59.1, device scale 1, `en-IN`, `Asia/Kolkata`, reduced motion on so the reveal animation does not hide content in screenshots.
-- **Stack and data:** the same local stack and data as U1 (`plans/ui-overhaul/audit-client-mobile.md`, Method): migrations 001 to 071, seeds, the backend and the client dev server in the Node 22 container, payments unconfigured, app config unpublished (as production until G11), plus a browser-only pass with `onlinePayments=false`.
-- **Per route and width:** viewport and full-page screenshots and the same in-page probe as U1. Screenshots and JSON are in the track's scratch folder `.temp/u-audits/` (not committed); paths below are relative to it.
+- **Stack and data:** the same local stack and data as U1 ([audit-client-mobile.md](audit-client-mobile.md), Method): migrations 001 to 071, seeds, the backend and the client dev server in the Node 22 container, payments unconfigured, app config unpublished (as production until G11), plus a browser-only pass with `onlinePayments=false`.
+- **Per route and width:** viewport and full-page screenshots and the same in-page probe as U1. Screenshots and JSON are in the closed track's scratch folder `.temp/closed/u-audits/` (not committed); paths below are relative to it.
 - **States:** failed (500) and slow (7 s) reads on 13 money and account screens at 1280×800.
 - **Keyboard:** tab order and focus indicator on sign-in and Home at 1280 px.
 - **Not checked:** browsers other than Chromium; browser zoom at 200% and 400% (WCAG reflow); a real screen reader; print output; Phase I screens; contrast over gradients (about 60% of text nodes sit on a gradient and were skipped by the probe).

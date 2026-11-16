@@ -12,8 +12,8 @@ Counts: 29 findings: 1 high, 11 medium, 17 low.
 
 - **Commit audited:** `a842496` on `track/u-audits`; Phase I screens are not on this branch and are left out (DEC-47).
 - **Widths:** 1280×800, 1440×900 and 1920×1080 CSS px, Chromium 1248 through Playwright 1.59.1, mouse, device scale 1, `en-IN`, `Asia/Kolkata`, reduced motion on.
-- **Stack and data:** as U3 (`plans/ui-overhaul/audit-admin-mobile.md`, Method): local throwaway stack, migrations 001 to 071, seeds, superadmin sign-in, three funds, five clients with recordings, an admin SIP schedule, value updates, maturities (one with options sent), support requests, reviews, FAQs and an admin template; payments unconfigured.
-- **Per route and width:** viewport and full-page screenshots and the in-page probe of U1. Detail routes without a local record were opened with an unknown id. Screenshots and JSON are in the track's scratch folder `.temp/u-audits/` (not committed); paths below are relative to it.
+- **Stack and data:** as U3 ([audit-admin-mobile.md](audit-admin-mobile.md), Method): local throwaway stack, migrations 001 to 071, seeds, superadmin sign-in, three funds, five clients with recordings, an admin SIP schedule, value updates, maturities (one with options sent), support requests, reviews, FAQs and an admin template; payments unconfigured.
+- **Per route and width:** viewport and full-page screenshots and the in-page probe of U1. Detail routes without a local record were opened with an unknown id. Screenshots and JSON are in the closed track's scratch folder `.temp/closed/u-audits/` (not committed); paths below are relative to it.
 - **States:** failed (500) and slow (7 s) reads on 16 admin screens at 1440×900.
 - **Keyboard:** tab order and the focus indicator on sign-in and Overview, and the path from a client's page to the recording form, at 1440 px.
 - **Not checked:** browsers other than Chromium; browser zoom at 200% and 400%; roles other than superadmin (DEC-36 views); a real screen reader; the Phase I screens; contrast over gradients.
