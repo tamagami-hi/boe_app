@@ -1,7 +1,8 @@
 import type { ReactNode } from "react"
 
 import { ApiError, isApiError, isSessionEnded, isTransportError } from "~/api/errors"
-import { Spinner } from "~/ui/primitives/Feedback"
+import { Button } from "~/ui/primitives/Button"
+import { Alert, Spinner } from "~/ui/primitives/Feedback"
 import { ErrorState } from "~/ui/patterns/ErrorState"
 import type { ErrorStateVariant } from "~/ui/patterns/ErrorState"
 
@@ -12,6 +13,7 @@ export type AsyncQuery<TData> = Readonly<{
   isPending: boolean
   isFetching?: boolean
   error: unknown
+  loadMoreError?: unknown
   refetch?: () => void
 }>
 
@@ -38,6 +40,37 @@ export const errorVariantOf = (error: unknown, notConfigured: boolean): ErrorSta
   return error.status >= 500 ? "server" : "unknown"
 }
 
+const STALE_NOTICE = "The last refresh failed, so this may be out of date."
+
+type StaleNoticeProps = Readonly<{
+  variant: ErrorStateVariant
+  isRetrying: boolean
+  onRetry: (() => void) | undefined
+}>
+
+const StaleNotice = ({ variant, isRetrying, onRetry }: StaleNoticeProps): React.ReactElement => {
+  const retry = variant === "forbidden" || variant === "notConfigured" ? undefined : onRetry
+  return (
+    <Alert
+      tone="warning"
+      {...(retry === undefined
+        ? {}
+        : {
+            action: (
+              <Button tone="secondary" size="sm" loading={isRetrying} onClick={retry}>
+                Try again
+              </Button>
+            ),
+          })}
+    >
+      {STALE_NOTICE}
+    </Alert>
+  )
+}
+
+const isStaleRefresh = (error: unknown, loadMoreError: unknown): boolean =>
+  error != null && loadMoreError == null && !isSessionEnded(error)
+
 export const AsyncBoundary = <TData,>({
   query,
   skeleton,
@@ -47,7 +80,7 @@ export const AsyncBoundary = <TData,>({
   fallback,
   children,
 }: AsyncBoundaryProps<TData>): React.ReactElement | null => {
-  const { data, error, isPending, isFetching, refetch } = query
+  const { data, error, loadMoreError, isPending, isFetching, refetch } = query
 
   if (error !== null && error !== undefined && data === undefined) {
     if (isSessionEnded(error)) return null
@@ -83,6 +116,13 @@ export const AsyncBoundary = <TData,>({
           </span>
         ) : null}
       </span>
+      {isStaleRefresh(error, loadMoreError) ? (
+        <StaleNotice
+          variant={errorVariantOf(error, notConfigured)}
+          isRetrying={isFetching === true}
+          onRetry={refetch}
+        />
+      ) : null}
       {emptyRendering ?? children(data)}
     </div>
   )

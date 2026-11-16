@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClient, QueryClientProvider, focusManager, onlineManager } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { createElement } from "react"
 import type { ReactNode } from "react"
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { toCursor } from "~/api/cursor"
 import type { Cursor } from "~/api/cursor"
@@ -64,6 +64,11 @@ const renderPaged = () => {
 
 beforeEach(() => {
   requested.length = 0
+})
+
+afterEach(() => {
+  focusManager.setFocused(undefined)
+  onlineManager.setOnline(true)
 })
 
 describe("usePagedQuery", () => {
@@ -162,6 +167,52 @@ describe("usePagedQuery", () => {
     })
     expect(result.current.error).toBeNull()
     expect(requested).toHaveLength(4)
+  })
+
+  it("does not re-request a failed page on focus, reconnect or another screen opening it", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const failure = new Error("page two failed")
+    let isPageTwoFailing = true
+    const useWalk = () =>
+      usePagedQuery<ListData>({
+        queryKey: ["probe", "held"],
+        limit: 1,
+        loadAll: true,
+        fetchPage: (cursor) => {
+          requested.push({ filter: "held", cursor })
+          if (cursor === undefined || !isPageTwoFailing) return Promise.resolve(pageFor("held", cursor))
+          return Promise.reject(failure)
+        },
+      })
+    const { result } = renderHook(useWalk, { wrapper: wrapper(client) })
+    await waitFor(() => {
+      expect(result.current.error).toBe(failure)
+    })
+
+    act(() => {
+      focusManager.setFocused(false)
+      focusManager.setFocused(true)
+      onlineManager.setOnline(false)
+      onlineManager.setOnline(true)
+    })
+    renderHook(useWalk, { wrapper: wrapper(client) })
+    await act(() => new Promise((resolve) => setTimeout(resolve, SETTLE_MS)))
+
+    expect(requested.filter((entry) => entry.filter === "held")).toEqual([
+      { filter: "held", cursor: undefined },
+      { filter: "held", cursor: CURSOR },
+    ])
+    expect(result.current.data).toBeUndefined()
+    expect(result.current.error).toBe(failure)
+
+    isPageTwoFailing = false
+    act(() => {
+      result.current.refetch()
+    })
+    await waitFor(() => {
+      expect(result.current.data?.items).toEqual([{ id: "held-1" }, { id: "held-2" }])
+    })
+    client.clear()
   })
 
   it("keeps a page's sibling fields from the first page while concatenating items", () => {

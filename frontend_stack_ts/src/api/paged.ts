@@ -1,5 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query"
-import { useEffect, useMemo } from "react"
+import type { QueryState } from "@tanstack/react-query"
+import { useEffect, useMemo, useState } from "react"
 
 import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, nextPageParam } from "~/api/cursor"
 import type { Cursor, PageMeta } from "~/api/cursor"
@@ -13,6 +14,7 @@ export type PagedListState = Readonly<{
   hasMore: boolean
   isLoadingMore: boolean
   loadedCount: number
+  loadMoreError: unknown
   loadMore: () => void
 }>
 
@@ -47,6 +49,19 @@ export type PagedQueryInput<TData extends ItemsPage> = Readonly<{
 
 type StoredPage<TData> = Readonly<{ data: TData; page: PageMeta | null }>
 
+type PageFetchState = Readonly<{ state: Pick<QueryState, "status" | "fetchMeta"> }>
+
+const isAwaitingPageRetry = ({ state }: PageFetchState): boolean =>
+  state.status === "error" && state.fetchMeta?.fetchMore?.direction === "forward"
+
+const refetchUnlessAwaitingPageRetry = (query: PageFetchState): boolean => !isAwaitingPageRetry(query)
+
+const HELD_WALK_REFETCH = {
+  refetchOnMount: refetchUnlessAwaitingPageRetry,
+  refetchOnWindowFocus: refetchUnlessAwaitingPageRetry,
+  refetchOnReconnect: refetchUnlessAwaitingPageRetry,
+} as const
+
 export const clampPageLimit = (limit: number): number =>
   Math.min(Math.max(Math.trunc(limit), 1), MAX_PAGE_LIMIT)
 
@@ -80,14 +95,22 @@ export const usePagedQuery = <TData extends ItemsPage>({
     ...(staleTime === undefined ? {} : { staleTime }),
     ...(enabled === undefined ? {} : { enabled }),
     ...(retry === undefined ? {} : { retry }),
+    ...(loadAll ? HELD_WALK_REFETCH : {}),
     queryFn: async ({ pageParam }): Promise<StoredPage<TData>> => {
       const result = await fetchPage(pageParam)
       return { data: result.data, page: result.meta.page }
     },
   })
 
-  const { fetchNextPage, hasNextPage, isFetchingNextPage, isError } = query
+  const { error, fetchNextPage, hasNextPage, isFetchingNextPage, isError, isFetchNextPageError } = query
   const isWalkStopped = loadAll && hasNextPage && isError
+  const isPageFailure = isFetchNextPageError && !isFetchingNextPage
+  const [failedPageError, setFailedPageError] = useState<unknown>(null)
+  const loadMoreError = error !== null && (isPageFailure || error === failedPageError) ? error : null
+
+  useEffect(() => {
+    if (isPageFailure) setFailedPageError(error)
+  }, [isPageFailure, error])
 
   useEffect(() => {
     if (!loadAll || !hasNextPage || isFetchingNextPage || isError) return
@@ -103,13 +126,14 @@ export const usePagedQuery = <TData extends ItemsPage>({
     data,
     isPending: query.isPending,
     isFetching: query.isFetching,
-    error: query.error,
+    error,
     refetch: () => {
       void query.refetch()
     },
     hasMore: hasNextPage,
     isLoadingMore: isFetchingNextPage,
     loadedCount: data?.items.length ?? 0,
+    loadMoreError,
     loadMore: () => {
       void fetchNextPage()
     },
