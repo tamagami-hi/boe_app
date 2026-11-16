@@ -1,9 +1,9 @@
 import { useState } from "react"
 
 import { Modal } from "~/app/overlays/Modal"
-import { indiaToday } from "~/features/admin/client-values/indiaToday"
-import { HeldWriteNotice } from "~/features/admin/users/HeldWriteNotice"
-import { useHeldWrite } from "~/features/admin/users/useHeldWrite"
+import { indiaToday } from "~/domain/dates"
+import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { Button } from "~/ui/primitives/Button"
 import { Alert } from "~/ui/primitives/Feedback"
 import { Switch } from "~/ui/primitives/Toggle"

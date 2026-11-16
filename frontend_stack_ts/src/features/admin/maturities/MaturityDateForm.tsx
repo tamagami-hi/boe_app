@@ -1,7 +1,7 @@
 import { useState } from "react"
 
-import { HeldWriteNotice } from "~/features/admin/users/HeldWriteNotice"
-import { useHeldWrite } from "~/features/admin/users/useHeldWrite"
+import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"

@@ -10,6 +10,8 @@ import {
   type AdminSipScheduleItem,
 } from "~/features/admin/client-values/sipScheduleQueries"
 import { parseMonthCount } from "~/features/admin/client-values/sipScheduleMonths"
+import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { AmountInput } from "~/ui/primitives/AmountInput"
@@ -19,9 +21,6 @@ import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { ADMIN_FORM_GRID } from "~/ui/recipes/admin"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
-
-import { HeldWriteNotice } from "./HeldWriteNotice"
-import { useHeldWrite } from "./useHeldWrite"
 
 const UNSENT = "The change could not be sent. Reload the schedules and try again."
 

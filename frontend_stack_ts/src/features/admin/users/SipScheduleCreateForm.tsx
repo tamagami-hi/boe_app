@@ -1,10 +1,12 @@
 import { useState } from "react"
 
-import { formatYearMonth } from "~/domain/dates"
+import { formatYearMonth, indiaToday } from "~/domain/dates"
 import { CatalogueFundPicker } from "~/features/admin/client-values/CatalogueFundPicker"
-import { indiaToday } from "~/features/admin/client-values/indiaToday"
 import { parsePositiveRupees } from "~/features/admin/client-values/rupeeAmount"
+import { SIP_MONTH_PATTERN, parseMonthCount } from "~/features/admin/client-values/sipScheduleMonths"
 import { useCreateSipSchedule } from "~/features/admin/client-values/sipScheduleQueries"
+import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
@@ -12,10 +14,6 @@ import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { ADMIN_FORM_GRID } from "~/ui/recipes/admin"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
-
-import { HeldWriteNotice } from "./HeldWriteNotice"
-import { SIP_MONTH_PATTERN, parseMonthCount } from "~/features/admin/client-values/sipScheduleMonths"
-import { useHeldWrite } from "./useHeldWrite"
 
 export type SipScheduleCreateFormProps = Readonly<{
   userId: string

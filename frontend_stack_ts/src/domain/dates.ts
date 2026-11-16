@@ -10,6 +10,7 @@ export class DateFormatError extends Error {
 const LOCALE = "en-IN"
 const TIME_ZONE = "Asia/Kolkata"
 const MS_PER_DAY = 86_400_000
+const INDIA_UTC_OFFSET_MS = 330 * 60 * 1000
 
 export const parseIsoDateTime = (value: string): Date => {
   const parsed = new Date(value)
@@ -57,6 +58,9 @@ export const indiaCalendarDate = (moment: Date): string => {
     parts.find((entry) => entry.type === type)?.value ?? ""
   return `${part("year")}-${part("month")}-${part("day")}`
 }
+
+export const indiaToday = (now: Date = new Date()): string =>
+  new Date(now.getTime() + INDIA_UTC_OFFSET_MS).toISOString().slice(0, 10)
 
 export const formatDateTime = (value: string): string =>
   dateTimeFormatter.format(parseIsoDateTime(value))

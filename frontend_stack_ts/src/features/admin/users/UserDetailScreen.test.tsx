@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TransportError } from "~/api/errors"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
-import { indiaToday } from "~/features/admin/client-values/indiaToday"
+import { indiaToday } from "~/domain/dates"
 import type { RecordedContributionInput } from "~/features/admin/client-values/recordingQueries"
 import type { AdminSipScheduleItem } from "~/features/admin/client-values/sipScheduleQueries"
 

@@ -4,7 +4,7 @@ import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { useIdempotencyKey } from "~/api/idempotency"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
-import { formatDate } from "~/domain/dates"
+import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
@@ -19,7 +19,6 @@ import { ADMIN_FORM_GRID } from "~/ui/recipes/admin"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
 import { CatalogueFundPicker } from "./CatalogueFundPicker"
-import { indiaToday } from "./indiaToday"
 import {
   DEFAULT_RECORDING_REASON,
   RECORDING_CATEGORIES,
