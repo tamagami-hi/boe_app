@@ -8,7 +8,11 @@ export type NomineeProblems = Readonly<Partial<Record<NomineeField, string>>>
 
 export type NomineeInput = Readonly<{ name: string; relation: string }> | Readonly<{ name: null; relation: null }>
 
+export type RequestedNominee = Readonly<{ name: string; relation: string }>
+
 export const NOMINEE_MAX_LENGTH = 120
+
+export const DECLINE_REASON_MAX_LENGTH = 500
 
 const FIELDS: readonly NomineeField[] = ["name", "relation"]
 const MIN_LENGTH = 2
@@ -17,7 +21,7 @@ const INVISIBLE_CHARACTERS = /(?!\u200C|\u200D)[\p{Cf}\p{Zl}\p{Zp}]/u
 const EDGE_JOINER = /^(?:\u200C|\u200D)|(?:\u200C|\u200D)$/u
 const LETTER_OR_NUMBER = /[\p{L}\p{N}]/u
 
-const LENGTH_COPY = `Use between ${String(MIN_LENGTH)} and ${String(NOMINEE_MAX_LENGTH)} characters.`
+const lengthCopy = (min: number, max: number): string => `Use between ${String(min)} and ${String(max)} characters.`
 
 const CONTROL_COPY = "Remove tabs, line breaks and other control characters."
 
@@ -39,9 +43,9 @@ const REFUSED_COPY: Readonly<Record<NomineeField, string>> = {
 
 const trimmed = (draft: NomineeDraft): NomineeDraft => ({ name: draft.name.trim(), relation: draft.relation.trim() })
 
-const textProblem = (value: string): string | null => {
+const textProblem = (value: string, min = MIN_LENGTH, max = NOMINEE_MAX_LENGTH): string | null => {
   const length = Array.from(value).length
-  if (length < MIN_LENGTH || length > NOMINEE_MAX_LENGTH) return LENGTH_COPY
+  if (length < min || length > max) return lengthCopy(min, max)
   if (CONTROL_CHARACTERS.test(value)) return CONTROL_COPY
   if (INVISIBLE_CHARACTERS.test(value)) return INVISIBLE_COPY
   if (EDGE_JOINER.test(value)) return EDGE_JOINER_COPY
@@ -86,3 +90,13 @@ export const sameNominee = (
   current === null
     ? input.name === null
     : input.name === current.name && input.relation === current.relation
+
+export const requestedNomineeOf = (draft: NomineeDraft): RequestedNominee | null => {
+  const { name, relation } = trimmed(draft)
+  return name === "" || relation === "" ? null : { name, relation }
+}
+
+export const declineReasonProblem = (value: string): string | null => {
+  const trimmedValue = value.trim()
+  return trimmedValue === "" ? null : textProblem(trimmedValue, 1, DECLINE_REASON_MAX_LENGTH)
+}

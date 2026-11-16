@@ -41,6 +41,7 @@ const TEMPLATES = [
   { value: "app_update_notice", label: "App update notice" },
   { value: "investment_recorded", label: "Investment added" },
   { value: "maturity_options", label: "Maturity options" },
+  { value: "nominee_request_decided", label: "Nominee request decided" },
 ] as const
 
 const EmailDeliveriesScreen = (): React.ReactElement => {

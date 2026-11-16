@@ -10,7 +10,7 @@ import { useSealedMutation } from "~/api/sealedMutation"
 import type { SealedMutationResult } from "~/api/sealedMutation"
 import { ApiProvider } from "~/app/providers/ApiProvider"
 import { createQueryClient } from "~/app/providers/QueryProvider"
-import { useChangeClientNominee } from "~/features/profile/nomineeQueries"
+import { useSendNomineeRequest } from "~/features/profile/nomineeQueries"
 import { useChangeClientPhone, useConfirmEmailChange, useRequestEmailChange } from "~/features/profile/profileQueries"
 import { useChangePassword, useRedeemPasswordReset, useVerifyEmail } from "~/features/shared/queries"
 
@@ -115,9 +115,9 @@ const credentialCase = <TData, TInput>(
 
 const CASES = [
   credentialCase(
-    "the nominee change",
-    useChangeClientNominee,
-    { input: { name: "Meera Krishnan", relation: "Spouse" }, currentPassword: PASSWORD },
+    "the nominee request",
+    useSendNomineeRequest,
+    { name: "Meera Krishnan", relation: "Spouse", currentPassword: PASSWORD, idempotencyKey: "nominee-request-key-1" },
     [PASSWORD],
   ),
   credentialCase("the phone change", useChangeClientPhone, { phone: "+919800000001", currentPassword: PASSWORD }, [

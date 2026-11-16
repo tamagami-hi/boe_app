@@ -24,7 +24,8 @@ export type FailureContext =
   | "resetPassword"
   | "changePassword"
   | "changePhone"
-  | "changeNominee"
+  | "sendNomineeRequest"
+  | "withdrawNomineeRequest"
   | "requestEmailChange"
   | "confirmEmailChange"
   | "sendSupportRequest"
@@ -291,16 +292,25 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     fallback: { message: "We couldn't change your phone number. Please try again." },
   },
 
-  changeNominee: {
-    title: "Nominee not saved",
+  sendNomineeRequest: {
+    title: "Request not sent",
     codes: {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
       RATE_LIMITED: { message: "Too many attempts with your password. Wait 15 minutes, then try again." },
-      VALIDATION_FAILED: { message: "Enter both the nominee's name and their relation to you, or clear both." },
-      ACCOUNT_NOT_ACTIVE: { message: "This account is not active, so its nominee cannot be changed. Contact support." },
-      STATE_CONFLICT: { message: "Your account changed while saving. Reload and try again." },
+      VALIDATION_FAILED: { message: "Check the nominee's name and their relation to you, then try again." },
+      ACCOUNT_NOT_ACTIVE: { message: "This account is not active, so it cannot send a nominee request. Contact support." },
+      STATE_CONFLICT: { message: "A nominee request is already waiting for the BeOnEdge team. Reload to see it." },
     },
-    fallback: { message: "We couldn't save your nominee. Please try again." },
+    fallback: { message: "We couldn't send your request. Please try again." },
+  },
+
+  withdrawNomineeRequest: {
+    title: "Request not withdrawn",
+    codes: {
+      STATE_CONFLICT: { message: "This request has already been decided or changed. Reload to see where it stands." },
+      RESOURCE_NOT_FOUND: { message: "We couldn't find this request. Reload to see your nominee requests." },
+    },
+    fallback: { message: "We couldn't withdraw your request. Please try again." },
   },
 
   requestEmailChange: {

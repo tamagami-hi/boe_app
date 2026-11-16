@@ -5,6 +5,7 @@ import { ContentGrid } from "~/app/layouts/ContentGrid"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, formatDateTime } from "~/domain/dates"
+import { NomineeRequestsTile } from "~/features/admin/nominee-requests/NomineeRequestsTile"
 import { OpenTicketsTile } from "~/features/admin/support/OpenTicketsTile"
 import { DataList, DetailRow, Stat } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
@@ -160,6 +161,8 @@ export const DailyTiles = ({ reachablePaths }: Props): React.ReactElement => {
         </DailyTile>
 
         <OpenTicketsTile canOpen={reachablePaths.has("/support")} />
+
+        <NomineeRequestsTile canOpen={reachablePaths.has("/nominee-requests")} />
       </ContentGrid>
     </Section>
   )

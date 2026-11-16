@@ -64,6 +64,17 @@ export const ADMIN_ROUTES: RouteManifest = [
     back: { kind: "parent", path: ADMIN_HOME_PATH },
   },
   {
+    id: "nominee-requests",
+    path: "/nominee-requests",
+    title: "Nominee requests",
+    access: "session",
+    role: "admin",
+    permissions: ["users.read"],
+    element: () => import("~/features/admin/nominee-requests/NomineeRequestQueueScreen"),
+    nav: { domain: "users", order: 3.5, label: "Nominee requests" },
+    back: { kind: "parent", path: ADMIN_HOME_PATH },
+  },
+  {
     id: "client-create",
     path: "/users/create",
     title: "Create a client",
@@ -500,9 +511,21 @@ export const ADMIN_NAV_DOMAINS: Readonly<Record<string, string>> = {
 }
 
 export const ADMIN_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
-  overview: ["applications", "users", "funds", "receipts", "payments", "audit", "emails", "client-values", "support"],
+  overview: [
+    "applications",
+    "users",
+    "nominee-requests",
+    "funds",
+    "receipts",
+    "payments",
+    "audit",
+    "emails",
+    "client-values",
+    "support",
+  ],
   applications: ["application-detail"],
   users: ["user-detail", "client-create"],
+  "nominee-requests": ["user-detail"],
   "client-create": ["user-detail"],
   "user-detail": [
     "user-login-events",

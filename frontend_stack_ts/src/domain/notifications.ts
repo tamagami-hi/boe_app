@@ -12,6 +12,7 @@ const CATEGORIES: Readonly<Record<string, NotificationCategory>> = {
   sip_installment_due: { label: "SIP", tone: "info" },
   support_request_updated: { label: "Support", tone: "info" },
   maturity_options_sent: { label: "Maturity", tone: "info" },
+  nominee_request_decided: { label: "Nominee", tone: "info" },
   app_update_available: { label: "App", tone: "neutral" },
 }
 

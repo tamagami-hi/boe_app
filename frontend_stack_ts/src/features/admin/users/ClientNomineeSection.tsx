@@ -15,6 +15,7 @@ import {
   type NomineeInput,
   type NomineeProblems,
 } from "~/domain/nominee"
+import { ClientNomineeRequestPanel } from "~/features/admin/nominee-requests/ClientNomineeRequestPanel"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
@@ -220,7 +221,7 @@ export const ClientNomineeSection = ({ userId, accountState }: SectionProps): Re
   return (
     <Section
       title="Nominee"
-      description="The person this client nominates and their relation to the client. The client can change it from their profile; every change is audited."
+      description="The person this client nominates and their relation to the client. The client asks for a change from their profile and you accept or decline it here; you can also set it directly. Every change is audited."
     >
       <Card>
         {saved === null ? null : (
@@ -242,6 +243,7 @@ export const ClientNomineeSection = ({ userId, accountState }: SectionProps): Re
                   <DetailRow label="Relation">{data.nominee.relation}</DetailRow>
                 </DataList>
               )}
+              <ClientNomineeRequestPanel userId={userId} nomineeVersion={data.version} accountState={accountState} />
               {canEdit ? (
                 <AdminNomineeForm
                   key={String(data.version)}
