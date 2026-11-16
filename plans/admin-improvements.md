@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on `main`. Phase D and E3 wait for the maintainer. Phases F, G and H are complete on local `main` (section 8), and releases v0.16.0 to v0.16.2 were cut from `main` on 2026-11-15. Phase I (DEC-42: nominee by request and SIP early exit) is in progress; the UI overhaul (DEC-40) follows it.** Questions Q-038 to Q-044 are open with conservative defaults (section 0a). What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
+Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on `main`. Phase D and E3 wait for the maintainer. Phases F, G and H are complete on local `main` (section 8), and releases v0.16.0 to v0.16.2 were cut from `main` on 2026-11-15. Phase I (DEC-42: nominee by request and SIP early exit) is in progress, beside the UI overhaul's audits (DEC-47) and the Node 24 lane (DEC-48, held until DEC-57).** No question is open. What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -8,17 +8,11 @@ Governing process: root [RULES.md](../RULES.md). The application is in productio
 
 ## 0a. Open questions and conservative defaults
 
-IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Q-036 and Q-037 were answered on 2026-11-14 (DEC-36, DEC-37). Tally question rows 1 to 23 are marked answered, each citing its decision ID. Q-038 to Q-044 are open: Phase I builds their conservative defaults, and the maintainer can change any of them.
+IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Q-036 and Q-037 were answered on 2026-11-14 (DEC-36, DEC-37). Tally question rows 1 to 23 are marked answered, each citing its decision ID. Q-038 to Q-044 were answered on 2026-11-16 as recommended (DEC-49 to DEC-55). No question is open.
 
 | ID | Open decision | Conservative behavior meanwhile |
 | --- | --- | --- |
-| Q-038 | Does a client re-enter their password to send a nominee request? | Yes, as the direct change does today. A wrong password refuses the request and counts against the existing password-recheck limit. |
-| Q-039 | How is the admin told about a new nominee request? | A request queue in the admin app with a count on the overview, as support and reviews have. No email to admins. |
-| Q-040 | Does a declined nominee request carry a reason? | The admin may add an optional reason, which the client sees with the decline. |
-| Q-041 | How many open nominee requests can a client have, and can they withdraw one? | One pending request at a time. The client can withdraw it while it is pending. |
-| Q-042 | What happens to the client's direct nominee change (`POST /v1/client/profile/nominee`)? | Reading the nominee stays. The direct change refuses with an existing error code that released apps already show as a refusal. Any v0.16.x APK that has the old form shows that refusal instead of saving. |
-| Q-043 | Can an early exit be undone? | No. The schedule stays closed, and a mistake is put right with the existing correction recordings. |
-| Q-044 | How does an early exit show in statements and the investor record? | The withdrawal row is labelled "Early exit", and the closed schedule shows "Closed early" with the date. Totals do not change. |
+| — | No open questions. | — |
 
 ### Decision record
 
@@ -75,7 +69,17 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-45 | 2026-11-16 | The UI overhaul keeps today's BeOnEdge identity and design system and refines it per surface; it does not set a new visual direction. | In force for DEC-40. |
 | DEC-46 | 2026-11-16 | Use the extra capacity, as more worktrees and the `claude-pro` account, on independent work: the carried LOW findings (`M13-carried:carried-lows`), the UI overhaul audits, and the Node 24 upgrade (E3). "If it can conflict, then wait for these to complete then proceed with further work." | In force. The carried findings touch screens the Phase I lanes change, so they start after Phase I lands. |
 | DEC-47 | 2026-11-16 | The UI overhaul's read-only audits (U1 to U4) start now, in parallel with Phase I. This replaces DEC-42's "after Phase I" for the audits only. Local dev servers and a local browser are allowed for screenshots. The phone surfaces are checked at phone width in a browser, not an emulator. | In force. The Phase I screens are audited when they land. Fixes still wait for the per-surface plan (U5) and its approval. |
-| DEC-48 | 2026-11-16 | Build the Node 24 upgrade (E3) now. | Being built in lane `e-node24`. Landing it puts Node 24 into the next release cut, so it is held on its branch until the maintainer says to land it. The deploy timing is the maintainer's. |
+| DEC-48 | 2026-11-16 | Build the Node 24 upgrade (E3) now. | Being built in lane `e-node24`. Landing it puts Node 24 into the next release cut, so it is held on its branch (DEC-57 says when it lands). The deploy timing is the maintainer's. |
+| DEC-49 | 2026-11-16 | Q-038: the client re-enters their password to send a nominee request. A wrong password refuses it and counts against the existing password-recheck limit. | Built into lane `i-nominee-requests`. |
+| DEC-50 | 2026-11-16 | Q-039: admins see nominee requests in a queue in the admin app, with a count on the overview, as support tickets and reviews have. No email to admins; one can be added later if requests sit unseen. | Built into lane `i-nominee-requests`. |
+| DEC-51 | 2026-11-16 | Q-040: a decline may carry an optional reason, which the client sees in the app and in the email. | Built into lane `i-nominee-requests`. |
+| DEC-52 | 2026-11-16 | Q-041: one pending nominee request per client, which the client can withdraw while it is pending. | Built into lane `i-nominee-requests`. |
+| DEC-53 | 2026-11-16 | Q-042: reading the nominee stays. The client's direct nominee change refuses with an existing error code that released apps show as a refusal; a v0.16.x APK with the old form shows that refusal. Raising `minimumSupportedVersion` at the Phase I release is the maintainer's call, worth it only if many clients run v0.16 and use the form. | Built into lane `i-nominee-requests`. |
+| DEC-54 | 2026-11-16 | Q-043: an early exit cannot be undone. A mistake is put right with a correction recording, and both rows stay on record. | Built into lane `i-sip-early-exit`. |
+| DEC-55 | 2026-11-16 | Q-044: the payout row is labelled "Early exit" in the client's activity, statements and the admin investor record; the SIP shows "Closed early" with the date; totals do not change. | Built into lane `i-sip-early-exit`. |
+| DEC-56 | 2026-11-16 | UI overhaul reference widths: client phone 360 and 390 px, client web 768, 1280 and 1440, admin phone 390, admin web 1280, 1440 and 1920. Fixes go surface by surface: client phone first, then client web, admin web and admin phone. | In force for DEC-40 (the U1 to U4 audits use these widths; U5 orders the plan this way). |
+| DEC-57 | 2026-11-16 | Node 24 (E3) lands on `main` after Phase I is released, and ships as its own release with no features, deployed to dev for about a day before production, so a problem is clearly the runtime's and an images-only rollback stays clean. | In force; lane `e-node24` waits on its branch until then. |
+| DEC-58 | 2026-11-16 | Publish `featureFlags.onlinePayments=false` (G11) right after the next production deploy. The earlier lane defaults are kept as built: the 10-minute single-use statement link, nginx's site-wide `Referrer-Policy` on the statement page, the SIP schedule rules (one active per client and fund, up to 600 months, months in any order, the recorded amount may differ), one review per client per IST month with no editing, and admin nominee edits under `clients.create`. | In force. G11 stays the maintainer's action. |
 
 #### Replaced
 
@@ -627,9 +631,9 @@ The maintainer asked on 2026-11-15 for a complete UI overhaul: check, fix and ne
   - released APKs keep working, under rule 11;
   - payment, AutoPay and gateway screens stay parked under DEC-14;
   - no bank details or payment instructions anywhere.
-- **To settle at the start** (the visual direction is settled by DEC-45):
-  - which phones and browser widths are the reference;
-  - which surface goes first.
+- **Settled:**
+  - the visual direction (DEC-45);
+  - the reference widths, and the order of the fixes, client phone first (DEC-56).
 - **Earlier client UI briefs:** `release_manager/docs/` holds three client UI-UX briefs from September 2026. They are inputs to the client audits, not decisions.
 
 ## 7. Plan changes and approval gate
