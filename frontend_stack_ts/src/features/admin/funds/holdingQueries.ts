@@ -12,6 +12,16 @@ export type StockBody = z.input<typeof addAdminFundStock.request.body>
 export type StockWriteInput = Readonly<{ stockId: string | null; stock: StockBody }>
 export type StockExitInput = Readonly<{ stockId: string; stockName: string }>
 
+export const holdingSlot = (fundId: string): string => `fund-stock:${fundId}`
+
+export const parseStockWrite = (value: unknown): StockWriteInput | null => {
+  if (typeof value !== "object" || value === null) return null
+  const { stockId, stock } = value as Readonly<Record<string, unknown>>
+  if (stockId !== null && typeof stockId !== "string") return null
+  const parsed = addAdminFundStock.request.body.safeParse(stock)
+  return parsed.success ? { stockId, stock: parsed.data } : null
+}
+
 const refreshFund = async (queryClient: QueryClient, fundId: string): Promise<void> => {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) }),

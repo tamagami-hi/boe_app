@@ -4,6 +4,7 @@ import { Section } from "~/app/layouts/Section"
 import { useToast } from "~/app/providers/ToastProvider"
 import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
 import type { HeldWrite } from "~/features/admin/shared/useHeldWrite"
+import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
 
@@ -15,6 +16,10 @@ import type { FundTerms } from "./FundTermsForm"
 import type { LatestTerms } from "./latestTerms"
 import { useHeldDone } from "./useHeldDone"
 
+type StartingTerms = Exclude<LatestTerms, Readonly<{ kind: "unreadable" }>>
+
+type Check = "idle" | "checking" | "failed" | "refused"
+
 const rejectionText = (code: string | null, message: string): string => {
   if (code === "STATE_CONFLICT") {
     return "This fund changed after the page loaded, so nothing was published. Reload the fund, check the terms and publish again."
@@ -23,38 +28,76 @@ const rejectionText = (code: string | null, message: string): string => {
   return message
 }
 
-type StartingTerms = Exclude<LatestTerms, Readonly<{ kind: "unreadable" }>>
-
-const baseOf = (latest: StartingTerms): string => (latest.kind === "found" ? latest.versionId : "none")
+const baseOf = (latest: LatestTerms): string => (latest.kind === "found" ? latest.versionId : latest.kind)
 
 const startOf = (latest: StartingTerms): FundTerms => (latest.kind === "found" ? latest.terms : EMPTY_TERMS)
+
+const versionText = (latest: StartingTerms): string =>
+  latest.kind === "found" ? `version ${String(latest.version)}` : "an empty form"
 
 export type PublishTermsSectionProps = Readonly<{
   latest: LatestTerms
   publish: HeldWrite<TermsInput, void>
   isLocked: boolean
   onReload: () => void
+  onReread: () => Promise<LatestTerms | null>
 }>
 
-const PublishTermsForm = ({
-  latest,
-  publish,
-  isLocked,
-  onReload,
-}: PublishTermsSectionProps & Readonly<{ latest: StartingTerms }>): React.ReactElement => {
-  const { show } = useToast()
-  const [base, setBase] = useState(() => baseOf(latest))
-  const [terms, setTerms] = useState<FundTerms>(() => startOf(latest))
-  const { outcome } = publish
+type PublishTermsFormProps = PublishTermsSectionProps & Readonly<{ latest: StartingTerms }>
 
-  if (base !== baseOf(latest) && publish.held === null) {
-    setBase(baseOf(latest))
-    setTerms(startOf(latest))
+const PublishTermsForm = ({ latest, publish, isLocked, onReload, onReread }: PublishTermsFormProps): React.ReactElement => {
+  const { show } = useToast()
+  const [start, setStart] = useState<StartingTerms>(latest)
+  const [terms, setTerms] = useState<FundTerms>(() => startOf(latest))
+  const [isEdited, setIsEdited] = useState(false)
+  const [isAttempted, setIsAttempted] = useState(false)
+  const [check, setCheck] = useState<Check>("idle")
+  const { outcome } = publish
+  const isBehind = baseOf(latest) !== baseOf(start) && publish.held === null
+  const hasEdits = isEdited || outcome.kind === "rejected"
+  const isFrozen = isLocked || check === "checking"
+
+  const startFrom = (next: StartingTerms): void => {
+    setStart(next)
+    setTerms(startOf(next))
+    setIsEdited(false)
+    setIsAttempted(false)
   }
+
+  if (isBehind && !hasEdits) startFrom(latest)
 
   useHeldDone(outcome, () => {
     show("New version published.")
   })
+
+  const edit = (next: FundTerms): void => {
+    setTerms(next)
+    setIsEdited(true)
+    setCheck((current) => (current === "checking" ? current : "idle"))
+  }
+
+  const submit = async (): Promise<void> => {
+    setIsAttempted(true)
+    const body = termsBodyOf(terms)
+    if (body === null || isFrozen) return
+    if (isBehind) {
+      setCheck("refused")
+      return
+    }
+    setCheck("checking")
+    const current = await onReread()
+    if (current === null) {
+      setCheck("failed")
+      return
+    }
+    if (baseOf(current) !== baseOf(start)) {
+      setCheck("refused")
+      return
+    }
+    setCheck("idle")
+    setIsEdited(false)
+    publish.submit(body)
+  }
 
   const fields = outcome.kind === "rejected" ? outcome.fields : null
 
@@ -62,9 +105,7 @@ const PublishTermsForm = ({
     <form
       onSubmit={(event) => {
         event.preventDefault()
-        const body = termsBodyOf(terms)
-        if (body === null || isLocked) return
-        publish.submit(body)
+        void submit()
       }}
       noValidate
       className={STACK_LG}
@@ -77,19 +118,50 @@ const PublishTermsForm = ({
           {rejectionText(outcome.code, outcome.message)}
         </Alert>
       ) : null}
+      {isBehind ? (
+        <Alert
+          tone="warning"
+          title="A newer version was published"
+          action={
+            <Button
+              size="sm"
+              tone="secondary"
+              disabled={isLocked}
+              onClick={() => {
+                setCheck("idle")
+                startFrom(latest)
+              }}
+            >
+              {`Start again from ${versionText(latest)}`}
+            </Button>
+          }
+        >
+          {`${check === "refused" ? "Nothing was published. " : ""}This form started from ${versionText(start)}, and ${versionText(latest)} was published since. Your edits are kept here, but publishing them could undo the newer changes. Start again from ${versionText(latest)} to see them.`}
+        </Alert>
+      ) : null}
+      {!isBehind && check === "refused" ? (
+        <Alert tone="warning" title="Nothing was published">
+          {`A newer version was published after this page loaded. The form now starts from ${versionText(start)}; check it and publish again.`}
+        </Alert>
+      ) : null}
+      {check === "failed" ? (
+        <Alert tone="error" title="Nothing was published">
+          The fund&apos;s versions could not be read again before publishing, so nothing was sent. Try again.
+        </Alert>
+      ) : null}
       <Card>
         <Section
           title="Publish new terms"
           description={
-            latest.kind === "found"
-              ? `Starts from version ${String(latest.version)} and its disclosure. Publishing writes a new immutable version; earlier versions are kept.`
+            start.kind === "found"
+              ? `Starts from version ${String(start.version)} and its disclosure. Publishing writes a new immutable version; earlier versions are kept.`
               : "This fund has no terms yet, so the form starts empty. Publishing writes version 1 with its disclosure."
           }
         >
-          <FundTermsFields terms={terms} fields={fields} setTerms={setTerms} disabled={isLocked} />
+          <FundTermsFields terms={terms} fields={fields} setTerms={edit} disabled={isFrozen} isAttempted={isAttempted} />
         </Section>
       </Card>
-      <SubmitRow label="Publish version" pending={publish.pending} disabled={isLocked} />
+      <SubmitRow label="Publish version" pending={publish.pending || check === "checking"} disabled={isFrozen} />
     </form>
   )
 }

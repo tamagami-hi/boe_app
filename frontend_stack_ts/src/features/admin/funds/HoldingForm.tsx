@@ -1,5 +1,6 @@
 import type { SyntheticEvent } from "react"
 
+import { indiaToday } from "~/domain/dates"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { FormField, Input } from "~/ui/primitives/FormField"
@@ -20,10 +21,10 @@ const MONTHS_PER_YEAR = 12
 const QUARTER_PATTERN = /^Q[1-4] FY[0-9]{2}$/u
 
 export const emptyDraft = (): StockDraft => {
-  const now = new Date()
-  const month = now.getMonth()
+  const today = indiaToday()
+  const month = Number(today.slice(5, 7)) - 1
   const quarter = Math.floor(((month - FISCAL_YEAR_START_MONTH + MONTHS_PER_YEAR) % MONTHS_PER_YEAR) / MONTHS_PER_QUARTER) + 1
-  const year = now.getFullYear() + (month >= FISCAL_YEAR_START_MONTH ? 1 : 0)
+  const year = Number(today.slice(0, 4)) + (month >= FISCAL_YEAR_START_MONTH ? 1 : 0)
   return { stockName: "", quarterLabel: `Q${String(quarter)} FY${String(year).slice(-2)}`, weightPercent: "", sortOrder: 0 }
 }
 

@@ -8,6 +8,7 @@ import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
 import { applicationState, emailDeliveryState } from "~/domain/status"
+import { isUnknownRecord } from "~/features/admin/funds/FundNotFound"
 import { useHeldDone } from "~/features/admin/funds/useHeldDone"
 import { useAdminApplication } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
@@ -53,26 +54,36 @@ const ApplicationDetailScreen = (): React.ReactElement => {
     decide.submit({ outcome: decision })
   }
 
+  const header = (
+    <PageHeader
+      title="Application"
+      description="Everything the applicant submitted, the consents they accepted, and every email we sent them."
+    />
+  )
+
+  if (isUnknownRecord(query.data, query.error)) {
+    return (
+      <Page width="wide">
+        {header}
+        <EmptyState
+          title="This application was not found"
+          description="No application has this address. It may have been mistyped, or the link may be out of date."
+          action={
+            <ButtonLink to="/applications" tone="secondary" size="sm">
+              Back to applications
+            </ButtonLink>
+          }
+        />
+      </Page>
+    )
+  }
+
   return (
     <Page width="wide">
-      <PageHeader
-        title="Application"
-        description="Everything the applicant submitted, the consents they accepted, and every email we sent them."
-      />
+      {header}
 
       <AsyncBoundary
         query={query}
-        fallback={
-          <EmptyState
-            title="This application was not found"
-            description="No application has this address. It may have been mistyped, or the link may be out of date."
-            action={
-              <ButtonLink to="/applications" tone="secondary" size="sm">
-                Back to applications
-              </ButtonLink>
-            }
-          />
-        }
         skeleton={
           <Card>
             <Skeleton height="1.2rem" width="45%" />

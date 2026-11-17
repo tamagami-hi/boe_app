@@ -30,6 +30,25 @@ import { META_TEXT } from "~/ui/recipes/text"
 import { useArchiveFaq, useCreateFaq, useEditFaq, useSetFaqStatus } from "./faqQueries"
 import type { FaqFields } from "./faqQueries"
 
+type StatusChange = Readonly<{ faqId: string; question: string; status: "published" | "draft" }>
+
+const STATUS_CONFIRM = {
+  published: {
+    title: "Publish this answer?",
+    description:
+      "Investors see it in the app's support screen as soon as it is published. If another version of this answer is published, that one is archived.",
+    confirmLabel: "Publish it",
+    tone: "primary",
+  },
+  draft: {
+    title: "Unpublish this answer?",
+    description:
+      "It is removed from the investor app at once and goes back to draft. Nothing is deleted, and you can publish it again later.",
+    confirmLabel: "Unpublish it",
+    tone: "danger",
+  },
+} as const
+
 const STATUS_TONE = {
   draft: "warning",
   published: "positive",
@@ -60,6 +79,7 @@ const FaqListScreen = (): React.ReactElement => {
   const [draft, setDraft] = useState<FaqFields>(EMPTY)
   const [editing, setEditing] = useState<string | null>(null)
   const [archiving, setArchiving] = useState<string | null>(null)
+  const [statusChange, setStatusChange] = useState<StatusChange | null>(null)
 
   const canPublish = hasAnyPermission(["content.publish"])
   const incomplete = draft.question.trim() === "" || draft.answer.trim() === ""
@@ -100,9 +120,7 @@ const FaqListScreen = (): React.ReactElement => {
     edit.submit({ faqId: editing, ...payload })
   }
 
-  const changeStatus = (faqId: string, status: "published" | "draft"): void => {
-    setStatus.submit({ faqId, status })
-  }
+  const statusConfirm = statusChange === null ? null : STATUS_CONFIRM[statusChange.status]
 
   return (
     <Page width="wide">
@@ -283,7 +301,7 @@ const FaqListScreen = (): React.ReactElement => {
                             size="sm"
                             disabled={isLocked}
                             onClick={() => {
-                              changeStatus(row.id, "published")
+                              setStatusChange({ faqId: row.id, question: row.question, status: "published" })
                             }}
                           >
                             Publish
@@ -295,7 +313,7 @@ const FaqListScreen = (): React.ReactElement => {
                             size="sm"
                             disabled={isLocked}
                             onClick={() => {
-                              changeStatus(row.id, "draft")
+                              setStatusChange({ faqId: row.id, question: row.question, status: "draft" })
                             }}
                           >
                             Unpublish
@@ -342,6 +360,25 @@ const FaqListScreen = (): React.ReactElement => {
         </AsyncBoundary>
         <LoadMore list={query} noun="FAQs" />
       </Section>
+
+      <ConfirmDialog
+        open={statusChange !== null && statusConfirm !== null}
+        title={statusConfirm?.title ?? ""}
+        {...(statusConfirm === null ? {} : { description: statusConfirm.description })}
+        confirmLabel={statusConfirm?.confirmLabel ?? ""}
+        confirmTone={statusConfirm?.tone ?? "primary"}
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          if (statusChange === null) return
+          setStatusChange(null)
+          setStatus.submit({ faqId: statusChange.faqId, status: statusChange.status })
+        }}
+        onCancel={() => {
+          setStatusChange(null)
+        }}
+      >
+        {statusChange === null ? null : <p className={PROSE_SM}>{statusChange.question}</p>}
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={archiving !== null}

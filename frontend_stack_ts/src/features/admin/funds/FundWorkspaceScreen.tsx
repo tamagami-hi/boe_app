@@ -11,10 +11,11 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
-import { FundNotFound } from "./FundNotFound"
+import { FundNotFound, isUnknownRecord } from "./FundNotFound"
 import { usePublishFundVersion, useTransitionFundLifecycle } from "./fundQueries"
 import { FundStateCard } from "./FundStateCard"
 import { latestTermsOf } from "./latestTerms"
+import type { LatestTerms } from "./latestTerms"
 import { PublishTermsSection } from "./PublishTermsSection"
 
 const UNSENT = "The change could not be sent. Reload the page and try again."
@@ -30,15 +31,22 @@ const FundWorkspaceScreen = (): React.ReactElement => {
   const reload = (): void => {
     void query.refetch()
   }
+  const reread = async (): Promise<LatestTerms | null> => {
+    const result = await query.refetch()
+    return result.isError || result.data === undefined ? null : latestTermsOf(result.data)
+  }
+
+  if (isUnknownRecord(query.data, query.error)) {
+    return (
+      <Page width="wide">
+        <FundNotFound />
+      </Page>
+    )
+  }
 
   return (
     <AsyncBoundary
       query={query}
-      fallback={
-        <Page width="wide">
-          <FundNotFound />
-        </Page>
-      }
       skeleton={
         <Page width="wide">
           <Card>
@@ -70,6 +78,7 @@ const FundWorkspaceScreen = (): React.ReactElement => {
               publish={publish}
               isLocked={isLocked}
               onReload={reload}
+              onReread={reread}
             />
           ) : (
             <Alert tone="info" title="Read only">

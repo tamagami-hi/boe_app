@@ -24,12 +24,14 @@ import { ADMIN_FIGURE } from "~/ui/recipes/admin"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { META_TEXT } from "~/ui/recipes/text"
 
-import { FundNotFound } from "./FundNotFound"
+import { FundNotFound, isUnknownRecord } from "./FundNotFound"
+import { HeldNotKept } from "./HeldNotKept"
 import { HoldingForm, emptyDraft, isDraftIncomplete } from "./HoldingForm"
 import type { StockDraft } from "./HoldingForm"
-import { useStockExit, useStockWrite } from "./holdingQueries"
+import { holdingSlot, parseStockWrite, useStockExit, useStockWrite } from "./holdingQueries"
 import type { StockBody, StockExitInput } from "./holdingQueries"
 import { useHeldDone } from "./useHeldDone"
+import { withoutRejection } from "./withoutRejection"
 
 const UNSENT = "The holding could not be sent. Reload the page and try again."
 
@@ -47,16 +49,23 @@ const rejectionText = (code: string | null, message: string, fields: Readonly<Re
   return details === "" ? message : details
 }
 
-const FundHoldingsScreen = (): React.ReactElement => {
-  const { fundId = "" } = useParams()
+const draftOf = (stock: StockBody): StockDraft => ({
+  stockName: stock.stockName,
+  quarterLabel: stock.quarterLabel,
+  weightPercent: stock.weightPercent == null ? "" : String(stock.weightPercent),
+  sortOrder: stock.sortOrder ?? 0,
+})
+
+const FundHoldings = ({ fundId }: Readonly<{ fundId: string }>): React.ReactElement => {
   const fund = useAdminFund(fundId)
   const stocks = useAdminFundStocks(fundId)
-  const write = useHeldWrite(useStockWrite(fundId), UNSENT)
+  const write = useHeldWrite(useStockWrite(fundId), UNSENT, { slot: holdingSlot(fundId), parseBody: parseStockWrite })
   const exit = useHeldWrite(useStockExit(fundId), UNSENT)
   const { hasAnyPermission } = useSession()
+  const restored = write.held
 
-  const [draft, setDraft] = useState<StockDraft>(emptyDraft)
-  const [editing, setEditing] = useState<string | null>(null)
+  const [draft, setDraft] = useState<StockDraft>(() => (restored === null ? emptyDraft() : draftOf(restored.stock)))
+  const [editing, setEditing] = useState<string | null>(() => restored?.stockId ?? null)
   const [exiting, setExiting] = useState<StockExitInput | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
   const [hasSubmitted, setHasSubmitted] = useState(false)
@@ -84,6 +93,15 @@ const FundHoldingsScreen = (): React.ReactElement => {
     write.submit({ stockId: editing, stock: stockOf(draft) })
   }
 
+  if (isUnknownRecord(fund.data, fund.error)) {
+    return (
+      <Page width="wide">
+        <PageHeader title="Holdings" />
+        <FundNotFound />
+      </Page>
+    )
+  }
+
   return (
     <Page width="wide">
       <PageHeader
@@ -94,7 +112,6 @@ const FundHoldingsScreen = (): React.ReactElement => {
 
       <AsyncBoundary
         query={fund}
-        fallback={<FundNotFound />}
         skeleton={
           <Card>
             <Skeleton height="1rem" width="45%" />
@@ -106,9 +123,13 @@ const FundHoldingsScreen = (): React.ReactElement => {
           const isArchived = data.fund.status === "archived"
           return (
             <>
-              {write.outcome.kind === "unknown" ? (
-                <HeldWriteNotice write={write} subject="the holding was saved" onReload={reload} reloadLabel="Reload the holdings" />
-              ) : null}
+              <HeldWriteNotice
+                write={withoutRejection(write)}
+                subject="the holding was saved"
+                onReload={reload}
+                reloadLabel="Reload the holdings"
+              />
+              {write.outcome.kind === "unknown" && !write.persisted ? <HeldNotKept /> : null}
               {exit.outcome.kind === "unknown" ? (
                 <HeldWriteNotice write={exit} subject="the holding was marked exited" onReload={reload} reloadLabel="Reload the holdings" />
               ) : null}
@@ -274,6 +295,11 @@ const FundHoldingsScreen = (): React.ReactElement => {
       />
     </Page>
   )
+}
+
+const FundHoldingsScreen = (): React.ReactElement => {
+  const { fundId = "" } = useParams()
+  return <FundHoldings key={holdingSlot(fundId)} fundId={fundId} />
 }
 
 export default FundHoldingsScreen

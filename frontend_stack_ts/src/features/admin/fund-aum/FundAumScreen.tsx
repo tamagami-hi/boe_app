@@ -8,7 +8,7 @@ import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import { FundNotFound } from "~/features/admin/funds/FundNotFound"
+import { FundNotFound, isUnknownRecord } from "~/features/admin/funds/FundNotFound"
 import { useAdminAumHistory, useAdminFund } from "~/features/admin/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { LoadMore } from "~/ui/patterns/LoadMore"
@@ -55,6 +55,15 @@ const FundAumScreen = (): React.ReactElement => {
     history.refetch()
   }
 
+  if (isUnknownRecord(fund.data, fund.error)) {
+    return (
+      <Page width="wide">
+        <PageHeader title="Fund AUM" />
+        <FundNotFound />
+      </Page>
+    )
+  }
+
   return (
     <Page width="wide">
       <PageHeader
@@ -65,7 +74,6 @@ const FundAumScreen = (): React.ReactElement => {
 
       <AsyncBoundary
         query={fund}
-        fallback={<FundNotFound />}
         skeleton={
           <Card elevated>
             <Skeleton height="1rem" width="30%" />

@@ -9,6 +9,7 @@ import { toPaise } from "~/domain/money"
 import { paiseToRupeeText, parseNonZeroSignedRupees, parseRupees } from "~/features/admin/client-values/rupeeAmount"
 import { HeldNotKept } from "~/features/admin/funds/HeldNotKept"
 import { useHeldDone } from "~/features/admin/funds/useHeldDone"
+import { withoutRejection } from "~/features/admin/funds/withoutRejection"
 import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
@@ -154,9 +155,12 @@ export const FundSizeAdjustmentForm = ({
   return (
     <>
       {validationError === null ? null : <Alert tone="error" title="Check the fund size change">{validationError}</Alert>}
-      {outcome.kind === "unknown" ? (
-        <HeldWriteNotice write={write} subject="the fund size was updated" onReload={onReload} reloadLabel="Reload the fund" />
-      ) : null}
+      <HeldWriteNotice
+        write={withoutRejection(write)}
+        subject="the fund size was updated"
+        onReload={onReload}
+        reloadLabel="Reload the fund"
+      />
       {outcome.kind === "unknown" && !write.persisted ? <HeldNotKept /> : null}
       {outcome.kind === "rejected" ? (
         <Alert tone="error" title="Fund size not updated">

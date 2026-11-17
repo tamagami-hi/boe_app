@@ -1,5 +1,6 @@
 import { useState } from "react"
 
+import { ApiError } from "~/api/errors"
 import { initializeAdminFundAum } from "~/api/generated/operations"
 import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
@@ -9,6 +10,7 @@ import { toPaise } from "~/domain/money"
 import { paiseToRupeeText, parseRupees } from "~/features/admin/client-values/rupeeAmount"
 import { HeldNotKept } from "~/features/admin/funds/HeldNotKept"
 import { useHeldDone } from "~/features/admin/funds/useHeldDone"
+import { withoutRejection } from "~/features/admin/funds/withoutRejection"
 import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
@@ -34,11 +36,18 @@ const parseOpeningBody = (value: unknown): AumInitializeInput | null => {
 
 export const openingAumSlot = (fundId: string): string => `fund-aum-opening:${fundId}`
 
-const rejectionText = (code: string | null, message: string): string => {
+const rateLimitText = (error: unknown): string => {
+  const seconds = error instanceof ApiError ? error.retryAfterSeconds : null
+  return seconds === null
+    ? "Too many AUM writes just now. Wait, then record it again."
+    : `Too many AUM writes just now. Record it again in ${String(seconds)}s.`
+}
+
+const rejectionText = (code: string | null, message: string, error: unknown): string => {
   if (code === "STATE_CONFLICT") {
     return "This fund already has an AUM, or it changed after the page loaded, so nothing was recorded. Reload the fund."
   }
-  if (code === "RATE_LIMITED") return "Too many AUM writes just now. Wait, then record it again."
+  if (code === "RATE_LIMITED") return rateLimitText(error)
   if (code === "AUTHORIZATION_DENIED") return "Recording AUM needs the aum.write permission."
   return message
 }
@@ -50,7 +59,8 @@ export type OpeningAumFormProps = Readonly<{
 }>
 
 export const OpeningAumForm = ({ fundId, fundName, onReload }: OpeningAumFormProps): React.ReactElement => {
-  const write = useHeldWrite(useInitializeAum(fundId), UNSENT, {
+  const initialize = useInitializeAum(fundId)
+  const write = useHeldWrite(initialize, UNSENT, {
     slot: openingAumSlot(fundId),
     parseBody: parseOpeningBody,
   })
@@ -84,13 +94,16 @@ export const OpeningAumForm = ({ fundId, fundName, onReload }: OpeningAumFormPro
       noValidate
       className={STACK_LG}
     >
-      {outcome.kind === "unknown" ? (
-        <HeldWriteNotice write={write} subject="the opening AUM was recorded" onReload={onReload} reloadLabel="Reload the fund" />
-      ) : null}
+      <HeldWriteNotice
+        write={withoutRejection(write)}
+        subject="the opening AUM was recorded"
+        onReload={onReload}
+        reloadLabel="Reload the fund"
+      />
       {outcome.kind === "unknown" && !write.persisted ? <HeldNotKept /> : null}
       {outcome.kind === "rejected" ? (
         <Alert tone="error" title="Opening AUM not recorded">
-          {rejectionText(outcome.code, outcome.message)}
+          {rejectionText(outcome.code, outcome.message, initialize.error)}
         </Alert>
       ) : null}
       <Card>

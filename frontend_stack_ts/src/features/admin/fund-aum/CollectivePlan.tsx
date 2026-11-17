@@ -87,12 +87,12 @@ export const CollectiveFundChoices = ({ funds, selected, isLocked, onToggle }: C
 
 export type CollectivePlanProps = Readonly<{
   plan: CollectivePreview
-  basisPoints: string
+  rate: number
   asOfDate: string
   nameFor: (fundId: string) => string
 }>
 
-export const CollectivePlan = ({ plan, basisPoints, asOfDate, nameFor }: CollectivePlanProps): React.ReactElement => (
+export const CollectivePlan = ({ plan, rate, asOfDate, nameFor }: CollectivePlanProps): React.ReactElement => (
   <>
     <Section title="What this would do">
       <Card>
@@ -101,7 +101,7 @@ export const CollectivePlan = ({ plan, basisPoints, asOfDate, nameFor }: Collect
             <span className={ADMIN_FIGURE}>{String(plan.items.length)}</span>
           </Stat>
           <Stat label="Rate">
-            <span className={ADMIN_FIGURE}>{`${basisPoints} bps`}</span>
+            <span className={ADMIN_FIGURE}>{`${String(rate)} bps`}</span>
           </Stat>
           <Stat label="As of">
             <span>{asOfDate}</span>

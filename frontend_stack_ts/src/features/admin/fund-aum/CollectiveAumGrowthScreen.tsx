@@ -10,6 +10,7 @@ import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { HeldNotKept } from "~/features/admin/funds/HeldNotKept"
 import { useHeldDone } from "~/features/admin/funds/useHeldDone"
+import { withoutRejection } from "~/features/admin/funds/withoutRejection"
 import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
@@ -93,6 +94,7 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
   })
 
   const clearPreview = (): void => {
+    if (isLocked) return
     preview.reset()
     setPreviewFailure(null)
     commit.reset()
@@ -130,14 +132,12 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
         description="Apply one rate to several funds at once. Preview first; the commit carries the preview's basis so a fund that moved in between blocks the write instead of taking the wrong number."
       />
 
-      {outcome.kind === "unknown" ? (
-        <HeldWriteNotice
-          write={commit}
-          subject="these fund sizes were updated"
-          onReload={funds.refetch}
-          reloadLabel="Reload the funds"
-        />
-      ) : null}
+      <HeldWriteNotice
+        write={withoutRejection(commit)}
+        subject="these fund sizes were updated"
+        onReload={funds.refetch}
+        reloadLabel="Reload the funds"
+      />
       {outcome.kind === "unknown" && !commit.persisted ? <HeldNotKept /> : null}
       {restored === null || plan !== null ? null : (
         <Card>
@@ -235,7 +235,7 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
 
       {plan === null ? null : (
         <>
-          <CollectivePlan plan={plan} basisPoints={basisPoints} asOfDate={asOfDate} nameFor={nameFor} />
+          <CollectivePlan plan={plan} rate={rate} asOfDate={asOfDate} nameFor={nameFor} />
           <Section title="Commit the batch">
             <Card>
               <div className={STACK_LG}>
@@ -285,7 +285,7 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
         {plan === null ? null : (
           <DataList>
             <DetailRow label="Funds">{plan.items.map((item) => nameFor(item.fundId)).join(", ")}</DetailRow>
-            <DetailRow label="Rate">{`${basisPoints} bps`}</DetailRow>
+            <DetailRow label="Rate">{`${String(rate)} bps`}</DetailRow>
             <DetailRow label="Total change" emphasis="lead">
               <MoneyValue
                 amount={toPaise(totalChangeOf(plan.items.map((item) => item.deltaPaise)))}

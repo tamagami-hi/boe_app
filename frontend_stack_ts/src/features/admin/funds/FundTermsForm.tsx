@@ -17,7 +17,7 @@ export type FundTerms = Readonly<{
   name: string
   category: string
   objective: string
-  riskLevel: (typeof RISK_LEVELS)[number]
+  riskLevel: (typeof RISK_LEVELS)[number] | null
   returnTier: (typeof RETURN_TIERS)[number] | null
   minimumSipRupees: string
   minimumPurchaseRupees: string
@@ -30,7 +30,7 @@ export type FundTermsBody = Readonly<{
   name: string
   category: string
   objective: string
-  riskLevel: FundTerms["riskLevel"]
+  riskLevel: NonNullable<FundTerms["riskLevel"]>
   returnTier: FundTerms["returnTier"]
   minimumSipPaise: number
   minimumPurchasePaise: number
@@ -43,8 +43,8 @@ export const EMPTY_TERMS: FundTerms = {
   name: "",
   category: "",
   objective: "",
-  riskLevel: "moderate",
-  returnTier: "moderate",
+  riskLevel: null,
+  returnTier: null,
   minimumSipRupees: "",
   minimumPurchaseRupees: "",
   minimumDurationMonths: null,
@@ -68,7 +68,7 @@ const minimumErrorOf = (rupees: string, serverError: string | undefined): string
 export const termsBodyOf = (terms: FundTerms): FundTermsBody | null => {
   const minimumSipPaise = minimumPaiseOf(terms.minimumSipRupees)
   const minimumPurchasePaise = minimumPaiseOf(terms.minimumPurchaseRupees)
-  if (minimumSipPaise === null || minimumPurchasePaise === null) return null
+  if (minimumSipPaise === null || minimumPurchasePaise === null || terms.riskLevel === null) return null
   return {
     name: terms.name,
     category: terms.category,
@@ -101,6 +101,7 @@ export type FundTermsFieldsProps = Readonly<{
   fields: FieldErrors | null
   setTerms: (next: FundTerms) => void
   disabled?: boolean
+  isAttempted?: boolean
 }>
 
 export const FundTermsFields = ({
@@ -108,6 +109,7 @@ export const FundTermsFields = ({
   fields,
   setTerms,
   disabled = false,
+  isAttempted = false,
 }: FundTermsFieldsProps): React.ReactElement => (
   <>
     <div className={ADMIN_FORM_GRID}>
@@ -148,17 +150,29 @@ export const FundTermsFields = ({
         )}
       </FormField>
 
-      <FormField label="Risk level" required>
-        {({ id }) => (
+      <FormField
+        label="Risk level"
+        required
+        error={isAttempted && terms.riskLevel === null ? "Choose a risk level." : undefined}
+      >
+        {({ id, describedBy, invalid }) => (
           <select
             id={id}
             disabled={disabled}
             className={SELECT_BASE}
-            value={terms.riskLevel}
+            aria-invalid={invalid}
+            {...(describedBy === undefined ? {} : { "aria-describedby": describedBy })}
+            value={terms.riskLevel ?? ""}
             onChange={(event) => {
-              setTerms({ ...terms, riskLevel: event.target.value as FundTerms["riskLevel"] })
+              setTerms({
+                ...terms,
+                riskLevel: event.target.value === "" ? null : (event.target.value as NonNullable<FundTerms["riskLevel"]>),
+              })
             }}
           >
+            <option value="" disabled>
+              Choose a risk level
+            </option>
             {RISK_LEVELS.map((level) => (
               <option key={level} value={level}>
                 {level.replace("_", " ")}
@@ -168,7 +182,7 @@ export const FundTermsFields = ({
         )}
       </FormField>
 
-      <FormField label="Return tier" required>
+      <FormField label="Return tier" hint="Optional. Not set leaves the fund without a return tier.">
         {({ id }) => (
           <select
             id={id}

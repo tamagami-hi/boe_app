@@ -28,6 +28,7 @@ import { EMPTY_TERMS, FundTermsFields, SubmitRow, termsBodyOf, termsOfBody } fro
 import type { FundTerms } from "./FundTermsForm"
 import { HeldNotKept } from "./HeldNotKept"
 import { useHeldDone } from "./useHeldDone"
+import { withoutRejection } from "./withoutRejection"
 
 const UNSENT = "The fund could not be sent. Reload the page and try again."
 
@@ -97,16 +98,14 @@ const FundCreateScreen = (): React.ReactElement => {
         description="One step: this creates the fund, publishes version 1 of its terms, and records the opening AUM. Later changes are new versions and growth entries."
       />
 
-      {outcome.kind === "unknown" ? (
-        <HeldWriteNotice
-          write={create}
-          subject="the fund was created"
-          onReload={() => {
-            void navigate("/funds")
-          }}
-          reloadLabel="Check the fund list"
-        />
-      ) : null}
+      <HeldWriteNotice
+        write={withoutRejection(create)}
+        subject="the fund was created"
+        onReload={() => {
+          void navigate("/funds")
+        }}
+        reloadLabel="Check the fund list"
+      />
       {outcome.kind === "unknown" && !create.persisted ? <HeldNotKept /> : null}
       {outcome.kind === "rejected" ? (
         <Alert tone="error" title="Not created">
@@ -115,8 +114,8 @@ const FundCreateScreen = (): React.ReactElement => {
       ) : null}
 
       {isAttempted && (aumPaise === null || termsBody === null) ? (
-        <Alert tone="error" title="Check the amounts">
-          Nothing was sent. Every amount is in rupees with at most two decimal places.
+        <Alert tone="error" title="Check the form">
+          Nothing was sent. Choose a risk level, and enter every amount in rupees with at most two decimal places.
         </Alert>
       ) : null}
 
@@ -149,7 +148,7 @@ const FundCreateScreen = (): React.ReactElement => {
 
         <Card>
           <Section title="Terms">
-            <FundTermsFields terms={terms} fields={fields} setTerms={setTerms} disabled={isLocked} />
+            <FundTermsFields terms={terms} fields={fields} setTerms={setTerms} disabled={isLocked} isAttempted={isAttempted} />
           </Section>
         </Card>
 

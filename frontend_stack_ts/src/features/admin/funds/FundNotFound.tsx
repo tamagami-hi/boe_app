@@ -1,5 +1,9 @@
+import { hasCode } from "~/api/errors"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
+
+export const isUnknownRecord = (data: unknown, error: unknown): boolean =>
+  data === undefined && hasCode(error, "RESOURCE_NOT_FOUND", "VALIDATION_FAILED")
 
 export const FundNotFound = (): React.ReactElement => (
   <EmptyState

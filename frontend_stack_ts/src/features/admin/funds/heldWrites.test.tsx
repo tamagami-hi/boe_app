@@ -35,6 +35,7 @@ const ADMIN_ID = "00000000-0000-4000-8000-0000000000a1"
 const FUND_ID = "11111111-1111-4111-8111-111111111111"
 const VERSION_1 = "22222222-2222-4222-8222-222222222221"
 const VERSION_2 = "22222222-2222-4222-8222-222222222222"
+const VERSION_3 = "22222222-2222-4222-8222-222222222223"
 const DISCLOSURE_1 = "33333333-3333-4333-8333-333333333331"
 const DISCLOSURE_2 = "33333333-3333-4333-8333-333333333332"
 const STOCK_ID = "44444444-4444-4444-8444-444444444444"
@@ -298,6 +299,7 @@ const ROWS: readonly Row[] = [
       type(/^Slug/u, "steady-income")
       type(/^Name/u, "Steady Income")
       type(/^Category/u, "Debt")
+      type(/^Risk level/u, "low")
       type(/^Disclosure title/u, "Risk disclosure")
       type(/^Disclosure body/u, "Read the scheme documents.")
       press("Review the new fund")
@@ -403,7 +405,7 @@ const ROWS: readonly Row[] = [
     path: "/faqs",
     act: async () => {
       press("Publish")
-      await Promise.resolve()
+      await confirmIn("Publish it")
     },
     locked: () => screen.getByLabelText(/^Question/u),
   },
@@ -487,6 +489,54 @@ describe("publishing new terms", () => {
       recommendedHoldingMonths: 36,
       disclosure: { title: "Risk disclosure", body: "Read the scheme documents." },
     })
+  })
+})
+
+describe("publishing new terms over a newer version", () => {
+  it("re-reads the fund before sending and sends nothing when a newer version was published meanwhile", async () => {
+    writeReplies = [accepted]
+    open(`/funds/${FUND_ID}`)
+    await screen.findByRole("button", { name: "Publish version" })
+    type(/^Name/u, "Balanced Growth Plus")
+
+    const current = detailWith(SIZED)
+    fundDetail = {
+      ...current,
+      fund: { ...current.fund, currentVersion: 3, currentVersionId: VERSION_3 },
+      versions: [
+        ...current.versions,
+        { ...current.versions[1]!, id: VERSION_3, version: 3, minimumDurationMonths: 48, disclosureVersionId: DISCLOSURE_2 },
+      ],
+    }
+    press("Publish version")
+
+    await screen.findByText("A newer version was published")
+    expect(sent).toHaveLength(0)
+    expect(screen.getByLabelText(/^Name/u)).toHaveValue("Balanced Growth Plus")
+    expect(screen.getByRole("button", { name: "Start again from version 3" })).toBeEnabled()
+  })
+})
+
+describe("adding a holding when the reply is lost", () => {
+  it("keeps the hold across leaving the page, and Check again resends the same key", async () => {
+    open(`/funds/${FUND_ID}/holdings`)
+    await screen.findByRole("button", { name: /Add the holding/u })
+    type(/^Stock name/u, "HDFC Bank")
+    press(/Add the holding/u)
+    await screen.findByText("Not confirmed")
+    cleanup()
+
+    open(`/funds/${FUND_ID}/holdings`)
+    await screen.findByText("Not confirmed")
+    expect(screen.getByLabelText(/^Stock name/u)).toHaveValue("HDFC Bank")
+    expect(screen.getByLabelText(/^Stock name/u)).toBeDisabled()
+
+    press("Check again")
+    await waitFor(() => {
+      expect(sent).toHaveLength(2)
+    })
+    expect(keyOf(sent[1])).toBe(keyOf(sent[0]))
+    expect(sent[1]?.options).toEqual(sent[0]?.options)
   })
 })
 
