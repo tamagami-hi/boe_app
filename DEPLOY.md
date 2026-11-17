@@ -147,13 +147,22 @@ record is lost:
   worker, which has no `sip_early_exit` template (the same case as `finding-26`), and is not
   re-sent after the roll-forward. The in-app notice is not affected.
 
-Migration 074 (optional payout transfer reference, DEC-61 UQ-2) is expand-only and not a
-boundary: it relaxes the `withdrawal_operations` paid-row check so a paid payout may carry
-no reference, which every existing row already satisfies. The previous release runs against
-it unchanged, still asks for a reference, and returns `transferReference: null` for a
-payout paid without one, which every released admin app parses. Admin builds up to v0.18.0 show
+Migration 074 (payout transfer reference no longer asked for, DEC-61 UQ-2 and DEC-69) is
+expand-only and not a boundary: it relaxes the `withdrawal_operations` paid-row check so a
+paid payout may carry no reference, which every existing row already satisfies. The server
+still stores a reference a released admin app sends. The previous release runs against it
+unchanged, still asks for a reference, and returns `transferReference: null` for a payout
+paid without one, which every released admin app parses. Admin builds up to v0.18.0 show
 "Awaiting transfer confirmation" under the `paid` state for such a payout; they hide the
-outcome form once a payout is not pending, so nothing can be recorded twice.
+outcome form once a payout is not pending, so nothing can be recorded twice. During an
+images-only rollback to a backend from before 074 (for example v0.17.0 or v0.18.0):
+
+- The new admin APK never sends a reference, so that backend refuses every Paid with
+  `400 VALIDATION_FAILED` and writes nothing. Mark payouts paid from the rolled-back admin
+  web or an older admin APK until the roll-forward.
+- A held payout outcome saved by the new admin web carries no reference, so a rolled-back
+  v0.18.0 admin web shows "Held request not readable" for it (v0.17.0 keeps no held writes
+  and ignores it). Check the payout list before starting a new attempt.
 
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.

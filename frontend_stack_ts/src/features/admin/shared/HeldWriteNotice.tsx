@@ -14,7 +14,6 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
   maturedOn: "Maturity date",
   effectiveDate: "Settlement date",
   amountPaise: "Amount",
-  transferReference: "Bank transfer reference",
   failureCode: "Failure code",
   "sip.monthlyAmountPaise": "SIP monthly amount",
   "sip.startMonth": "First SIP month",

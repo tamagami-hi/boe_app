@@ -82,6 +82,8 @@ const PAYOUT = {
   createdAt: "2026-10-02T05:00:00.000Z",
 }
 
+const PAID_PAYOUT = { ...PAYOUT, state: "paid" as const, transferReference: "BANK-OLD-1", version: "2" }
+
 let maturities: readonly unknown[] = []
 
 const READS: Readonly<Record<string, () => unknown>> = {
@@ -269,12 +271,11 @@ const CASES: readonly HeldWriteCase[] = [
       />
     ),
     fill: () => {
-      type(/^Bank transfer reference/u, "TRANSFER-1")
       fireEvent.click(screen.getByRole("button", { name: "Record transfer outcome" }))
       fireEvent.click(lastButton("Mark paid"))
       return Promise.resolve()
     },
-    locked: () => screen.getByLabelText(/^Bank transfer reference/u),
+    locked: () => screen.getByLabelText(/^Transfer outcome/u),
   },
   {
     name: "commit a whole-fund growth batch",
@@ -336,7 +337,6 @@ const UNREADABLE_CASES: readonly UnreadableCase[] = [
     loaded: () => Promise.resolve(),
     controls: () => [
       screen.getByLabelText(/^Transfer outcome/u),
-      screen.getByLabelText(/^Bank transfer reference/u),
       screen.getByRole("button", { name: "Record transfer outcome" }),
     ],
   },
@@ -474,4 +474,50 @@ describe("a money or ledger write whose stored hold cannot be read", () => {
       expect(sent[0]?.idempotencyKey).not.toBe(STORED_KEY)
     },
   )
+})
+
+describe("a payout outcome without a bank transfer reference", () => {
+  const payoutPanel = (payout: typeof PAYOUT | typeof PAID_PAYOUT): ReactNode => (
+    <WithdrawalPayoutPanel payout={payout} investorLabel="Asha Verma" fundName="Balanced Fund" canWrite onReload={() => undefined} />
+  )
+
+  it("marks a payout paid without asking for or sending a reference, and never shows a stored one", async () => {
+    const close = renderWith(payoutPanel(PAYOUT))
+    expect(screen.queryByLabelText(/reference/iu)).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Record transfer outcome" }))
+    expect(screen.getByText("This records that the transfer has completed.")).toBeTruthy()
+    expect(screen.queryByText(/transfer reference/iu)).toBeNull()
+    fireEvent.click(lastButton("Mark paid"))
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]?.body).toEqual({ state: "paid", expectedVersion: 1 })
+    expect(sent[0]?.body).not.toHaveProperty("transferReference")
+    close()
+    window.sessionStorage.clear()
+
+    renderWith(payoutPanel(PAID_PAYOUT))
+    expect(screen.getByText(/· paid$/u)).toBeTruthy()
+    expect(screen.queryByText(/BANK-OLD-1/u)).toBeNull()
+    expect(screen.queryByText(/reference/iu)).toBeNull()
+  })
+
+  it("reads a paid hold saved by the previous build with a reference and resends it unchanged", async () => {
+    const held = { state: "paid", expectedVersion: 1, transferReference: "TRANSFER-1" }
+    window.sessionStorage.setItem(
+      `beo.admin.held-write.v1:payout:${PAYOUT_ID}`,
+      JSON.stringify({ adminId: ADMIN_ID, idempotencyKey: STORED_KEY, body: { payoutId: PAYOUT_ID, body: held }, heldAt: Date.now() }),
+    )
+    renderWith(payoutPanel(PAYOUT))
+
+    expect(await screen.findAllByText("Not confirmed")).not.toHaveLength(0)
+    expect(screen.queryByText("Held request not readable")).toBeNull()
+    expect(screen.queryByText(/TRANSFER-1/u)).toBeNull()
+    fireEvent.click(lastButton("Check again"))
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]?.idempotencyKey).toBe(STORED_KEY)
+    expect(sent[0]?.body).toEqual(held)
+  })
 })

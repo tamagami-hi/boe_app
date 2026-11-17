@@ -31,21 +31,14 @@ type Props = Readonly<{
 type Outcome = "paid" | "failed"
 
 const FAILURE_CODE_PATTERN = /^[A-Za-z0-9_.:-]{1,80}$/u
-const NOT_RECORDED = "Not recorded"
+const PAID_CONFIRM = "This records that the transfer has completed."
+const FAILED_CONFIRM =
+  "This records a failed transfer. The withdrawal stays in the investor's record and needs separate reconciliation."
 
-const payoutDetail = ({ state, transferReference, failureCode }: Props["payout"]): string => {
+const payoutDetail = ({ state, failureCode }: Props["payout"]): string | null => {
   if (state === "pending") return "Awaiting transfer confirmation"
-  if (state === "failed") return `Failure code: ${failureCode ?? NOT_RECORDED}`
-  return `Bank transfer reference: ${transferReference ?? NOT_RECORDED}`
-}
-
-const confirmDescription = (state: Outcome, reference: string): string => {
-  if (state === "failed") {
-    return "This records a failed transfer. The withdrawal stays in the investor's record and needs separate reconciliation."
-  }
-  return reference === ""
-    ? "Confirm that the transfer has completed."
-    : "Confirm that the transfer has completed and the bank transfer reference is correct."
+  if (state === "failed") return `Failure code: ${failureCode ?? "Not recorded"}`
+  return null
 }
 
 export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrite, onReload }: Props): React.ReactElement => {
@@ -55,13 +48,12 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
   })
   const held = write.held?.body ?? null
   const [state, setState] = useState<Outcome>(() => held?.state ?? "paid")
-  const [reference, setReference] = useState(() =>
-    held === null ? "" : held.state === "paid" ? (held.transferReference ?? "") : held.failureCode,
-  )
+  const [failureCode, setFailureCode] = useState(() => (held?.state === "failed" ? held.failureCode : ""))
   const [isConfirming, setIsConfirming] = useState(false)
   const locked = write.held !== null || write.pending || write.unreadable
   useUnloadGuard(isUnsavedHold(write))
-  const trimmed = reference.trim()
+  const trimmed = failureCode.trim()
+  const detail = payoutDetail(payout)
   const isValid = state === "paid" || FAILURE_CODE_PATTERN.test(trimmed)
 
   const submit = (): void => {
@@ -69,10 +61,7 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
     const expectedVersion = Number(payout.version)
     write.submit({
       payoutId: payout.id,
-      body:
-        state === "paid"
-          ? { state, expectedVersion, ...(trimmed === "" ? {} : { transferReference: trimmed }) }
-          : { state, expectedVersion, failureCode: trimmed },
+      body: state === "paid" ? { state, expectedVersion } : { state, expectedVersion, failureCode: trimmed },
     })
   }
 
@@ -83,7 +72,7 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
           {fundName} · {formatDate(payout.effectiveDate)} · {payout.state}
         </p>
         <MoneyValue amount={toPaise(payout.amountPaise)} size="sm" showDecimals />
-        <p>{payoutDetail(payout)}</p>
+        {detail === null ? null : <p>{detail}</p>}
         {payout.state === "failed" ? (
           <Alert tone="info" title="Transfer failed">
             The withdrawal remains recorded. Reconcile the transfer separately; this status does not restore the
@@ -112,27 +101,26 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
                     ]}
                     onChange={(event) => {
                       setState(event.target.value === "failed" ? "failed" : "paid")
-                      setReference("")
+                      setFailureCode("")
                     }}
                   />
                 )}
               </FormField>
-              <FormField
-                label={state === "paid" ? "Bank transfer reference (optional)" : "Failure code"}
-                required={state === "failed"}
-              >
-                {({ id }) => (
-                  <Input
-                    id={id}
-                    value={reference}
-                    maxLength={state === "paid" ? 200 : 80}
-                    disabled={locked}
-                    onChange={(event) => {
-                      setReference(event.target.value)
-                    }}
-                  />
-                )}
-              </FormField>
+              {state === "failed" ? (
+                <FormField label="Failure code" required>
+                  {({ id }) => (
+                    <Input
+                      id={id}
+                      value={failureCode}
+                      maxLength={80}
+                      disabled={locked}
+                      onChange={(event) => {
+                        setFailureCode(event.target.value)
+                      }}
+                    />
+                  )}
+                </FormField>
+              ) : null}
             </div>
             <Button
               disabled={locked || !isValid}
@@ -149,7 +137,7 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
       <ConfirmDialog
         open={isConfirming}
         title={`Mark payout ${state}?`}
-        description={confirmDescription(state, trimmed)}
+        description={state === "paid" ? PAID_CONFIRM : FAILED_CONFIRM}
         confirmLabel={state === "paid" ? "Mark paid" : "Mark failed"}
         cancelLabel="Cancel"
         onConfirm={submit}
@@ -165,11 +153,7 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
           </DetailRow>
           <DetailRow label="Withdrawal date">{formatDate(payout.effectiveDate)}</DetailRow>
           <DetailRow label="Outcome">{state === "paid" ? "Paid" : "Failed"}</DetailRow>
-          {state === "paid" ? (
-            <DetailRow label="Bank transfer reference">{trimmed === "" ? NOT_RECORDED : trimmed}</DetailRow>
-          ) : (
-            <DetailRow label="Failure code">{trimmed}</DetailRow>
-          )}
+          {state === "failed" ? <DetailRow label="Failure code">{trimmed}</DetailRow> : null}
         </DataList>
       </ConfirmDialog>
     </Card>
