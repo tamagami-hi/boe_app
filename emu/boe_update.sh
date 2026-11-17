@@ -563,6 +563,12 @@ build_variant() {
     fi
 }
 
+section "CONTRACTS" "packages/contracts/dist"
+step "building @beonedge/contracts (vite resolves it from dist)"
+( cd "$PROJECT_ROOT/packages/contracts" && npm run build --silent ) \
+    || { err "contracts build failed"; exit 1; }
+ok "contracts built"
+
 FAILED=()
 for v in "${VARIANTS[@]}"; do
     build_variant "$v" || FAILED+=("$v")
