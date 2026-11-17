@@ -328,10 +328,18 @@ const routeFetch = (routes: Readonly<Record<string, readonly Reply[]>>): Sent[] 
     const index = answered.get(route) ?? 0
     answered.set(route, index + 1)
     const [status, body] = replies[Math.min(index, replies.length - 1)] ?? [404, failure("RESOURCE_NOT_FOUND")]
-    return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }))
+    return Promise.resolve(replyWith(status, body))
   }
   return sent
 }
+
+const replyWith = (status: number, body: unknown): Response =>
+  typeof body === "string"
+    ? new Response(body, { status, headers: { "content-type": "text/html" } })
+    : new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
+
+const PROXY_502_PAGE =
+  "<html><head><title>502 Bad Gateway</title></head><body><center><h1>502 Bad Gateway</h1></center><hr><center>nginx</center></body></html>"
 
 const whileSending = (route: string, act: () => void): void => {
   const send = globalThis.fetch
@@ -579,6 +587,8 @@ describe("admin browser restore", () => {
     { way: "meets an outage on the CSRF recovery", routes: { [CSRF]: [[500, failure("INTERNAL_ERROR")]] }, settles: "resolves", holds: OTHER_ADMIN_ID, heldWrites: 2, expectation: "keeps the held writes" },
     { way: "is refused the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[403, failure("AUTHORIZATION_DENIED")]] }, settles: "rejects", holds: null, heldWrites: 0, expectation: "holds no user and no held write" },
     { way: "meets an outage on the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[500, failure("INTERNAL_ERROR")]] }, settles: "rejects", holds: OPERATOR.userId, heldWrites: 2, expectation: "keeps the admin and the held writes to restore again" },
+    { way: "meets a proxy's 502 page on the CSRF recovery", routes: { [CSRF]: [[502, PROXY_502_PAGE]] }, settles: "resolves", holds: OTHER_ADMIN_ID, heldWrites: 2, expectation: "keeps the stored admin and the held writes" },
+    { way: "meets a proxy's 502 page on the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[502, PROXY_502_PAGE]] }, settles: "rejects", holds: OPERATOR.userId, heldWrites: 2, expectation: "keeps the admin and the held writes to restore again" },
   ] as const)("$expectation when a restore over a stored principal $way", async ({ routes, settles, holds, heldWrites }) => {
     holdClientWrites()
     routeFetch(routes)

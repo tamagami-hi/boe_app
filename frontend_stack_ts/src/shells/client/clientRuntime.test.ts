@@ -154,6 +154,19 @@ describe("browser session recovery after a document load", () => {
 
     expect(runtime.tokenStore.read("client", "principal")).toBeNull()
   })
+
+  it("keeps the stored principal to restore again when the CSRF recovery meets a proxy's 502 page", async () => {
+    routeFetch({ [CSRF]: [[502, PROXY_502_PAGE]] })
+    const storedText = JSON.stringify(INVESTOR)
+    localStorage.setItem(PRINCIPAL_KEY, storedText)
+    const runtime = createClientRuntime()
+    await runtime.tokenStore.hydrate()
+
+    await expect(runtime.restore()).resolves.toBeNull()
+
+    expect(heldUserId(runtime.tokenStore, "client")).toBe(INVESTOR.userId)
+    expect(localStorage.getItem(PRINCIPAL_KEY)).toBe(storedText)
+  })
 })
 
 
@@ -289,10 +302,18 @@ const routeFetch = (routes: Readonly<Record<string, readonly Reply[]>>): Sent[] 
     const index = answered.get(route) ?? 0
     answered.set(route, index + 1)
     const [status, body] = replies[Math.min(index, replies.length - 1)] ?? NOT_FOUND
-    return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }))
+    return Promise.resolve(replyWith(status, body))
   }
   return sent
 }
+
+const replyWith = (status: number, body: unknown): Response =>
+  typeof body === "string"
+    ? new Response(body, { status, headers: { "content-type": "text/html" } })
+    : new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
+
+const PROXY_502_PAGE =
+  "<html><head><title>502 Bad Gateway</title></head><body><center><h1>502 Bad Gateway</h1></center><hr><center>nginx</center></body></html>"
 
 const listenForSessionEnd = (): (() => readonly unknown[]) => {
   const seen: unknown[] = []

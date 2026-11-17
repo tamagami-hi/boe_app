@@ -208,6 +208,7 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
     try {
       return JSON.parse(raw) as unknown
     } catch {
+      if (response.status >= 500) return null
       throw new TransportError("malformed", "The server returned a body that is not valid JSON.")
     }
   }

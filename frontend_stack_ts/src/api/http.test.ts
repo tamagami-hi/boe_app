@@ -5,7 +5,14 @@ import { createSuccessEnvelopeSchema } from "@beonedge/contracts"
 
 import { createHttpClient, READ_RETRY_DELAYS_MS } from "~/api/http"
 import type { AnyOperation } from "~/api/http"
-import { ApiError, ConfigurationMismatchError, TransportError } from "~/api/errors"
+import {
+  ApiError,
+  ConfigurationMismatchError,
+  TransportError,
+  isOutage,
+  isUnknownRetryOutcome,
+  isUnknownWriteOutcome,
+} from "~/api/errors"
 import { requestPasswordReset } from "~/api/generated/operations"
 import { createRefreshCoordinator, heldUserId } from "~/api/session/refresh"
 import type { RefreshOutcome } from "~/api/session/refresh"
@@ -61,6 +68,12 @@ const jsonResponse = (body: unknown, status: number, headers: Record<string, str
     status,
     headers: { "content-type": "application/json", ...headers },
   })
+
+const PROXY_502_PAGE =
+  "<html><head><title>502 Bad Gateway</title></head><body><center><h1>502 Bad Gateway</h1></center><hr><center>nginx</center></body></html>"
+
+const proxyPage = (status: number): Response =>
+  new Response(PROXY_502_PAGE, { status, headers: { "content-type": "text/html" } })
 
 const SENDER = "00000000-0000-4000-8000-0000000000a1"
 const OTHER_USER = "00000000-0000-4000-8000-0000000000b2"
@@ -436,6 +449,38 @@ describe("response handling", () => {
 
     expect(failure).toBeInstanceOf(TransportError)
     expect((failure as TransportError).kind).toBe("malformed")
+  })
+
+  it("counts a proxy's 502 page, which is not JSON, as an outage that carries the reply's status", async () => {
+    const { fetchImpl, client } = harness()
+    fetchImpl.mockImplementation(() => Promise.resolve(proxyPage(502)))
+
+    const failure = await client
+      .request(readOperation, { params: { probeId: "p1" } })
+      .catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(ApiError)
+    expect(failure).toMatchObject({ status: 502 })
+    expect(isOutage(failure)).toBe(true)
+  })
+
+  it("keeps a keyed write that meets a proxy's 502 page unknown, on the first send and on Check again with the same key", async () => {
+    const { fetchImpl, client } = harness()
+    fetchImpl.mockImplementation(() => Promise.resolve(proxyPage(502)))
+    const send = (): Promise<unknown> =>
+      client
+        .request(writeOperation, { body: { amountPaise: "200" }, idempotencyKey: "abcdefgh1234" })
+        .catch((error: unknown) => error)
+
+    const first = await send()
+    const again = await send()
+
+    expect(isUnknownWriteOutcome(first)).toBe(true)
+    expect(isUnknownRetryOutcome(again)).toBe(true)
+    const keys = fetchImpl.mock.calls.map(
+      ([, init]) => ((init as RequestInit).headers as Headers).get("idempotency-key"),
+    )
+    expect(keys).toEqual(["abcdefgh1234", "abcdefgh1234"])
   })
 })
 
