@@ -7,10 +7,8 @@ import { useToast } from "~/app/providers/ToastProvider"
 import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { paiseToRupeeText, parseNonZeroSignedRupees, parseRupees } from "~/features/admin/client-values/rupeeAmount"
-import { HeldNotKept } from "~/features/admin/funds/HeldNotKept"
-import { useHeldDone } from "~/features/admin/funds/useHeldDone"
-import { withoutRejection } from "~/features/admin/funds/withoutRejection"
-import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldDone } from "~/features/admin/shared/useHeldDone"
+import { PersistedHoldNotices, isHeldOrUnreadable } from "~/features/admin/shared/PersistedHoldNotices"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -104,7 +102,11 @@ export const FundSizeAdjustmentForm = ({
   currentAsOfDate,
   onReload,
 }: FundSizeAdjustmentFormProps): React.ReactElement => {
-  const write = useHeldWrite(useAppendAumGrowth(fundId), UNSENT, { slot: fundSizeSlot(fundId), parseBody: parseGrowthBody })
+  const write = useHeldWrite(useAppendAumGrowth(fundId), UNSENT, {
+    slot: fundSizeSlot(fundId),
+    parseBody: parseGrowthBody,
+    retention: "durable",
+  })
   const { show } = useToast()
   const restored = write.held
   const [mode, setMode] = useState<AdjustmentMode>(() => modeOf(restored))
@@ -119,7 +121,7 @@ export const FundSizeAdjustmentForm = ({
   const [validationError, setValidationError] = useState<string | null>(null)
   const [review, setReview] = useState<AumGrowthInput | null>(null)
   const { outcome } = write
-  const isLocked = write.held !== null
+  const isLocked = isHeldOrUnreadable(write)
 
   useHeldDone(outcome, () => {
     setValue("")
@@ -155,13 +157,13 @@ export const FundSizeAdjustmentForm = ({
   return (
     <>
       {validationError === null ? null : <Alert tone="error" title="Check the fund size change">{validationError}</Alert>}
-      <HeldWriteNotice
-        write={withoutRejection(write)}
+      <PersistedHoldNotices
+        write={write}
         subject="the fund size was updated"
         onReload={onReload}
         reloadLabel="Reload the fund"
+        restartWarning="Check this fund's AUM history first. If this change is listed, it was recorded, and a new attempt would apply it a second time. A new attempt cannot be matched to the unconfirmed one."
       />
-      {outcome.kind === "unknown" && !write.persisted ? <HeldNotKept /> : null}
       {outcome.kind === "rejected" ? (
         <Alert tone="error" title="Fund size not updated">
           {rejectionText(outcome.code, outcome.message, outcome.fields)}

@@ -8,7 +8,8 @@ import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import { FundNotFound, isUnknownRecord } from "~/features/admin/funds/FundNotFound"
+import { FundNotFound } from "~/features/admin/funds/FundNotFound"
+import { isUnknownRecord } from "~/features/admin/shared/unknownRecord"
 import { useAdminAumHistory, useAdminFund } from "~/features/admin/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { LoadMore } from "~/ui/patterns/LoadMore"
@@ -91,17 +92,26 @@ const FundAumScreen = (): React.ReactElement => {
                 <Alert tone="info" title="Read only">
                   Recording AUM needs the aum.write permission.
                 </Alert>
-              ) : current === null ? (
-                <OpeningAumForm key={openingAumSlot(fundId)} fundId={fundId} fundName={fundName} onReload={reload} />
               ) : (
-                <FundSizeAdjustmentForm
-                  key={fundSizeSlot(fundId)}
-                  fundId={fundId}
-                  fundName={fundName}
-                  currentAumPaise={current.aumPaise}
-                  currentAsOfDate={current.asOfDate}
-                  onReload={reload}
-                />
+                <>
+                  <OpeningAumForm
+                    key={openingAumSlot(fundId)}
+                    fundId={fundId}
+                    fundName={fundName}
+                    hasAum={current !== null}
+                    onReload={reload}
+                  />
+                  {current === null ? null : (
+                    <FundSizeAdjustmentForm
+                      key={fundSizeSlot(fundId)}
+                      fundId={fundId}
+                      fundName={fundName}
+                      currentAumPaise={current.aumPaise}
+                      currentAsOfDate={current.asOfDate}
+                      onReload={reload}
+                    />
+                  )}
+                </>
               )}
             </>
           )

@@ -7,9 +7,12 @@ import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
+import { isUnknownRecord } from "~/features/admin/shared/unknownRecord"
+import { useHeldDone } from "~/features/admin/shared/useHeldDone"
 import { useAdminFundStocks } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { PersistedHoldNotices, isHeldOrUnreadable } from "~/features/admin/shared/PersistedHoldNotices"
 import { useAdminFund } from "~/features/admin/shared/queries"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { FundStockAllocation } from "~/features/funds/FundStockAllocation"
@@ -24,14 +27,11 @@ import { ADMIN_FIGURE } from "~/ui/recipes/admin"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { META_TEXT } from "~/ui/recipes/text"
 
-import { FundNotFound, isUnknownRecord } from "./FundNotFound"
-import { HeldNotKept } from "./HeldNotKept"
+import { FundNotFound } from "./FundNotFound"
 import { HoldingForm, emptyDraft, isDraftIncomplete } from "./HoldingForm"
 import type { StockDraft } from "./HoldingForm"
 import { holdingSlot, parseStockWrite, useStockExit, useStockWrite } from "./holdingQueries"
 import type { StockBody, StockExitInput } from "./holdingQueries"
-import { useHeldDone } from "./useHeldDone"
-import { withoutRejection } from "./withoutRejection"
 
 const UNSENT = "The holding could not be sent. Reload the page and try again."
 
@@ -59,7 +59,11 @@ const draftOf = (stock: StockBody): StockDraft => ({
 const FundHoldings = ({ fundId }: Readonly<{ fundId: string }>): React.ReactElement => {
   const fund = useAdminFund(fundId)
   const stocks = useAdminFundStocks(fundId)
-  const write = useHeldWrite(useStockWrite(fundId), UNSENT, { slot: holdingSlot(fundId), parseBody: parseStockWrite })
+  const write = useHeldWrite(useStockWrite(fundId), UNSENT, {
+    slot: holdingSlot(fundId),
+    parseBody: parseStockWrite,
+    retention: "ordinary",
+  })
   const exit = useHeldWrite(useStockExit(fundId), UNSENT)
   const { hasAnyPermission } = useSession()
   const restored = write.held
@@ -71,7 +75,7 @@ const FundHoldings = ({ fundId }: Readonly<{ fundId: string }>): React.ReactElem
   const [hasSubmitted, setHasSubmitted] = useState(false)
 
   const canWrite = hasAnyPermission(["funds.write"])
-  const isLocked = write.held !== null || exit.held !== null
+  const isLocked = isHeldOrUnreadable(write) || exit.held !== null
 
   const reload = (): void => {
     void fund.refetch()
@@ -123,13 +127,13 @@ const FundHoldings = ({ fundId }: Readonly<{ fundId: string }>): React.ReactElem
           const isArchived = data.fund.status === "archived"
           return (
             <>
-              <HeldWriteNotice
-                write={withoutRejection(write)}
+              <PersistedHoldNotices
+                write={write}
                 subject="the holding was saved"
                 onReload={reload}
                 reloadLabel="Reload the holdings"
+                restartWarning="Check the holdings list first. If this holding is listed, it was saved, and a new attempt would add it a second time. A new attempt cannot be matched to the unconfirmed one."
               />
-              {write.outcome.kind === "unknown" && !write.persisted ? <HeldNotKept /> : null}
               {exit.outcome.kind === "unknown" ? (
                 <HeldWriteNotice write={exit} subject="the holding was marked exited" onReload={reload} reloadLabel="Reload the holdings" />
               ) : null}

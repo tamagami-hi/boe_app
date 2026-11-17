@@ -6,6 +6,7 @@ import { useToast } from "~/app/providers/ToastProvider"
 import { formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { fundState } from "~/domain/status"
+import { useHeldDone } from "~/features/admin/shared/useHeldDone"
 import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
 import { useRouteAccess } from "~/features/admin/shared/routeAccess"
 import type { HeldWrite } from "~/features/admin/shared/useHeldWrite"
@@ -21,7 +22,6 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 
 import type { LifecycleInput, LifecycleStatus } from "./fundQueries"
 import type { FundDetail } from "./latestTerms"
-import { useHeldDone } from "./useHeldDone"
 
 const ALLOWED_TRANSITIONS = {
   draft: ["published", "archived"],

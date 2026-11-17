@@ -8,10 +8,8 @@ import { useToast } from "~/app/providers/ToastProvider"
 import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { paiseToRupeeText, parseRupees } from "~/features/admin/client-values/rupeeAmount"
-import { HeldNotKept } from "~/features/admin/funds/HeldNotKept"
-import { useHeldDone } from "~/features/admin/funds/useHeldDone"
-import { withoutRejection } from "~/features/admin/funds/withoutRejection"
-import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldDone } from "~/features/admin/shared/useHeldDone"
+import { PersistedHoldNotices, isHeldOrUnreadable } from "~/features/admin/shared/PersistedHoldNotices"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -55,14 +53,16 @@ const rejectionText = (code: string | null, message: string, error: unknown): st
 export type OpeningAumFormProps = Readonly<{
   fundId: string
   fundName: string
+  hasAum: boolean
   onReload: () => void
 }>
 
-export const OpeningAumForm = ({ fundId, fundName, onReload }: OpeningAumFormProps): React.ReactElement => {
+export const OpeningAumForm = ({ fundId, fundName, hasAum, onReload }: OpeningAumFormProps): React.ReactElement | null => {
   const initialize = useInitializeAum(fundId)
   const write = useHeldWrite(initialize, UNSENT, {
     slot: openingAumSlot(fundId),
     parseBody: parseOpeningBody,
+    retention: "ordinary",
   })
   const { show } = useToast()
   const restored = write.held
@@ -72,7 +72,7 @@ export const OpeningAumForm = ({ fundId, fundName, onReload }: OpeningAumFormPro
   const [isAttempted, setAttempted] = useState(false)
   const [review, setReview] = useState<AumInitializeInput | null>(null)
   const { outcome } = write
-  const isLocked = write.held !== null
+  const isLocked = isHeldOrUnreadable(write)
   const aumPaise = parseRupees(rupees)
   const aumError =
     aumPaise === null && (isAttempted || rupees !== "")
@@ -82,6 +82,46 @@ export const OpeningAumForm = ({ fundId, fundName, onReload }: OpeningAumFormPro
   useHeldDone(outcome, () => {
     show("Opening AUM recorded.")
   })
+
+  const notices = (
+    <>
+      <PersistedHoldNotices
+        write={write}
+        subject="the opening AUM was recorded"
+        onReload={onReload}
+        reloadLabel="Reload the fund"
+        restartWarning="Check this fund's AUM history first. If an opening AUM is listed, it was recorded, and a new attempt will be refused. A new attempt cannot be matched to the unconfirmed one."
+      />
+      {outcome.kind === "rejected" ? (
+        <Alert tone="error" title="Opening AUM not recorded">
+          {rejectionText(outcome.code, outcome.message, initialize.error)}
+        </Alert>
+      ) : null}
+    </>
+  )
+
+  if (hasAum) {
+    if (!isLocked && outcome.kind !== "rejected") return null
+    return (
+      <Card>
+        <Section
+          title="Unconfirmed opening AUM"
+          description="This fund now has an AUM, but an opening AUM sent from this tab was never confirmed. Settle it here before relying on the fund size."
+        >
+          {restored === null ? null : (
+            <DataList>
+              <DetailRow label="Opening AUM">
+                <MoneyValue amount={toPaise(restored.aumPaise)} size="sm" showDecimals />
+              </DetailRow>
+              <DetailRow label="As of">{formatDate(`${restored.asOfDate}T00:00:00Z`)}</DetailRow>
+              <DetailRow label="Reason code">{restored.reasonCode}</DetailRow>
+            </DataList>
+          )}
+          {notices}
+        </Section>
+      </Card>
+    )
+  }
 
   return (
     <form
@@ -94,18 +134,7 @@ export const OpeningAumForm = ({ fundId, fundName, onReload }: OpeningAumFormPro
       noValidate
       className={STACK_LG}
     >
-      <HeldWriteNotice
-        write={withoutRejection(write)}
-        subject="the opening AUM was recorded"
-        onReload={onReload}
-        reloadLabel="Reload the fund"
-      />
-      {outcome.kind === "unknown" && !write.persisted ? <HeldNotKept /> : null}
-      {outcome.kind === "rejected" ? (
-        <Alert tone="error" title="Opening AUM not recorded">
-          {rejectionText(outcome.code, outcome.message, initialize.error)}
-        </Alert>
-      ) : null}
+      {notices}
       <Card>
         <Section
           title="Set opening AUM"

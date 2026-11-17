@@ -540,6 +540,73 @@ describe("adding a holding when the reply is lost", () => {
   })
 })
 
+describe("a fund size change held past a day", () => {
+  it("still offers Check again with the same key, because the growth receipt is kept", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true })
+    vi.setSystemTime(new Date("2026-11-16T10:00:00.000Z"))
+    open(`/funds/${FUND_ID}/aum`)
+    await screen.findByLabelText(/^New fund size/u)
+    type(/^New fund size/u, "1500000")
+    press("Review fund size change")
+    await confirmIn("Update fund size")
+    await screen.findByText("Not confirmed")
+
+    vi.setSystemTime(new Date("2026-11-17T11:00:00.000Z"))
+    press("Check again")
+    await waitFor(() => {
+      expect(sent).toHaveLength(2)
+    })
+
+    expect(keyOf(sent[1])).toBe(keyOf(sent[0]))
+    expect(screen.queryByText("No longer checkable")).toBeNull()
+  })
+})
+
+describe("an unreadable held fund size", () => {
+  it("locks the form and offers only a confirmed new attempt", async () => {
+    window.sessionStorage.setItem(
+      `beo.admin.held-write.v1:fund-aum-growth:${FUND_ID}`,
+      JSON.stringify({ adminId: ADMIN_ID, idempotencyKey: "held-key-0001", body: { asOfDate: "not a date" }, heldAt: Date.now() }),
+    )
+    open(`/funds/${FUND_ID}/aum`)
+    await screen.findByText("Held request not readable")
+
+    expect(screen.getByLabelText(/^New fund size/u)).toBeDisabled()
+    expect(screen.queryByRole("button", { name: "I have checked the record" })).toBeNull()
+
+    press("Start a new attempt")
+    await confirmIn("Start a new attempt")
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^New fund size/u)).toBeEnabled()
+    })
+    expect(sent).toHaveLength(0)
+  })
+})
+
+describe("a held opening AUM once the fund has an AUM", () => {
+  it("stays on the page with Check again instead of being left unseen in the tab", async () => {
+    fundDetail = detailWith(null)
+    open(`/funds/${FUND_ID}/aum`)
+    await screen.findByLabelText(/^Opening AUM/u)
+    type(/^Opening AUM/u, "250000")
+    press("Review the opening AUM")
+    await confirmIn("Record opening AUM")
+    await screen.findByText("Not confirmed")
+    cleanup()
+
+    fundDetail = detailWith(SIZED)
+    open(`/funds/${FUND_ID}/aum`)
+    await screen.findByText("Unconfirmed opening AUM")
+    press("Check again")
+    await waitFor(() => {
+      expect(sent).toHaveLength(2)
+    })
+
+    expect(sent.map(({ operationId }) => operationId)).toEqual(["initializeAdminFundAum", "initializeAdminFundAum"])
+    expect(keyOf(sent[1])).toBe(keyOf(sent[0]))
+  })
+})
+
 describe("default effective dates", () => {
   it.each([
     { form: "new fund", path: "/funds/new", aum: SIZED, label: /^As of date/u },

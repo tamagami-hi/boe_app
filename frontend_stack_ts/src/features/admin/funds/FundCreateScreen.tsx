@@ -10,7 +10,8 @@ import { useToast } from "~/app/providers/ToastProvider"
 import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { paiseToRupeeText, parseRupees } from "~/features/admin/client-values/rupeeAmount"
-import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldDone } from "~/features/admin/shared/useHeldDone"
+import { PersistedHoldNotices, isHeldOrUnreadable } from "~/features/admin/shared/PersistedHoldNotices"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -26,9 +27,6 @@ import { useCreateAdminFund } from "./fundQueries"
 import type { CreateFundInput } from "./fundQueries"
 import { EMPTY_TERMS, FundTermsFields, SubmitRow, termsBodyOf, termsOfBody } from "./FundTermsForm"
 import type { FundTerms } from "./FundTermsForm"
-import { HeldNotKept } from "./HeldNotKept"
-import { useHeldDone } from "./useHeldDone"
-import { withoutRejection } from "./withoutRejection"
 
 const UNSENT = "The fund could not be sent. Reload the page and try again."
 
@@ -37,7 +35,7 @@ const parseCreateBody = (value: unknown): CreateFundInput | null => {
   return parsed.success ? parsed.data : null
 }
 
-const PERSIST = { slot: "fund-create", parseBody: parseCreateBody } as const
+const PERSIST = { slot: "fund-create", parseBody: parseCreateBody, retention: "ordinary" } as const
 
 const rejectionText = (code: string | null, message: string): string => {
   if (code === "STATE_CONFLICT") return "That slug is already in use. Nothing was created."
@@ -61,7 +59,7 @@ const FundCreateScreen = (): React.ReactElement => {
   const [review, setReview] = useState<CreateFundInput | null>(null)
 
   const { outcome } = create
-  const isLocked = create.held !== null
+  const isLocked = isHeldOrUnreadable(create)
   const fields = outcome.kind === "rejected" ? outcome.fields : null
   const aumPaise = parseRupees(aumRupees)
   const termsBody = termsBodyOf(terms)
@@ -98,15 +96,15 @@ const FundCreateScreen = (): React.ReactElement => {
         description="One step: this creates the fund, publishes version 1 of its terms, and records the opening AUM. Later changes are new versions and growth entries."
       />
 
-      <HeldWriteNotice
-        write={withoutRejection(create)}
+      <PersistedHoldNotices
+        write={create}
         subject="the fund was created"
         onReload={() => {
           void navigate("/funds")
         }}
         reloadLabel="Check the fund list"
+        restartWarning="Check the fund list first. If a fund with this slug is listed, it was created, and a new attempt will be refused for that slug. A new attempt cannot be matched to the unconfirmed one."
       />
-      {outcome.kind === "unknown" && !create.persisted ? <HeldNotKept /> : null}
       {outcome.kind === "rejected" ? (
         <Alert tone="error" title="Not created">
           {rejectionText(outcome.code, outcome.message)}

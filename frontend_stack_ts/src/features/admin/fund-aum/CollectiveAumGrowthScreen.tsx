@@ -8,10 +8,8 @@ import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import { HeldNotKept } from "~/features/admin/funds/HeldNotKept"
-import { useHeldDone } from "~/features/admin/funds/useHeldDone"
-import { withoutRejection } from "~/features/admin/funds/withoutRejection"
-import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldDone } from "~/features/admin/shared/useHeldDone"
+import { PersistedHoldNotices, isHeldOrUnreadable } from "~/features/admin/shared/PersistedHoldNotices"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
@@ -38,7 +36,7 @@ const parseCommitBody = (value: unknown): CollectiveCommitInput | null => {
   return parsed.success ? parsed.data : null
 }
 
-const PERSIST = { slot: SLOT, parseBody: parseCommitBody } as const
+const PERSIST = { slot: SLOT, parseBody: parseCommitBody, retention: "ordinary" } as const
 
 const totalChangeOf = (deltas: readonly string[]): string =>
   deltas.reduce((total, delta) => total + BigInt(delta), 0n).toString()
@@ -69,7 +67,7 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
   const [isConfirming, setIsConfirming] = useState(false)
 
   const { outcome } = commit
-  const isLocked = commit.held !== null
+  const isLocked = isHeldOrUnreadable(commit)
   const nameFor = fundNamer(funds)
   const rate = Number(basisPoints)
   const invalidRate = !Number.isInteger(rate) || rate === 0
@@ -132,13 +130,13 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
         description="Apply one rate to several funds at once. Preview first; the commit carries the preview's basis so a fund that moved in between blocks the write instead of taking the wrong number."
       />
 
-      <HeldWriteNotice
-        write={withoutRejection(commit)}
+      <PersistedHoldNotices
+        write={commit}
         subject="these fund sizes were updated"
         onReload={funds.refetch}
         reloadLabel="Reload the funds"
+        restartWarning="Check each fund's AUM history first. If these sizes already grew, the batch was committed, and a new attempt would grow them again. A new attempt cannot be matched to the unconfirmed one."
       />
-      {outcome.kind === "unknown" && !commit.persisted ? <HeldNotKept /> : null}
       {restored === null || plan !== null ? null : (
         <Card>
           <DataList>

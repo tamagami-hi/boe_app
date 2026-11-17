@@ -2,6 +2,7 @@ import { useState } from "react"
 
 import { Section } from "~/app/layouts/Section"
 import { useToast } from "~/app/providers/ToastProvider"
+import { useHeldDone } from "~/features/admin/shared/useHeldDone"
 import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
 import type { HeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { Button } from "~/ui/primitives/Button"
@@ -14,7 +15,6 @@ import type { TermsInput } from "./fundQueries"
 import { EMPTY_TERMS, FundTermsFields, SubmitRow, termsBodyOf } from "./FundTermsForm"
 import type { FundTerms } from "./FundTermsForm"
 import type { LatestTerms } from "./latestTerms"
-import { useHeldDone } from "./useHeldDone"
 
 type StartingTerms = Exclude<LatestTerms, Readonly<{ kind: "unreadable" }>>
 
