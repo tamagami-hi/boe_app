@@ -1,4 +1,5 @@
-import { isTemporaryFailure } from "~/api/errors"
+import { isTemporaryFailure, TransportError } from "~/api/errors"
+import { DEFAULT_TIMEOUT_MS } from "~/api/http"
 import { holdsUser } from "~/api/session/refresh"
 import type { RefreshOutcome } from "~/api/session/refresh"
 import type { SessionScope } from "~/api/session/scope"
@@ -28,14 +29,28 @@ const createInTabQueue = (): RecoveryQueue => {
   }
 }
 
+const lockWaitTimedOut = (): TransportError => new TransportError("timeout", "The request timed out.")
+
 const createCrossTabQueue = (scope: SessionScope, locks: LockManager): RecoveryQueue => {
   const csrfKey = credentialStorageKey(scope, "csrfToken")
   return async (step) => {
     const storedBefore = readStored(csrfKey)
-    const outcome = await locks.request(recoveryLockName(scope), () =>
-      step(() => readStored(csrfKey) !== storedBefore),
-    )
-    return outcome
+    const wait = new AbortController()
+    const timer = setTimeout(() => {
+      wait.abort()
+    }, DEFAULT_TIMEOUT_MS)
+    try {
+      const outcome = await locks.request(recoveryLockName(scope), { signal: wait.signal }, () => {
+        clearTimeout(timer)
+        return step(() => readStored(csrfKey) !== storedBefore)
+      })
+      return outcome
+    } catch (error) {
+      if (wait.signal.aborted) throw lockWaitTimedOut()
+      throw error
+    } finally {
+      clearTimeout(timer)
+    }
   }
 }
 
@@ -44,25 +59,27 @@ export const createRecoveryQueue = (
   locks: LockManager | undefined = webLocks(),
 ): RecoveryQueue => (locks === undefined ? createInTabQueue() : createCrossTabQueue(scope, locks))
 
+export type SessionRead = Readonly<{ userId: string; principal: string }>
+
 export type AnotherTabsRotation = Readonly<{
   tokenStore: TokenStore
   scope: SessionScope
   csrfToken: string
-  readSessionUser: () => Promise<string>
+  readSession: () => Promise<SessionRead>
 }>
 
 export const adoptAnotherTabsRotation = async ({
   tokenStore,
   scope,
   csrfToken,
-  readSessionUser,
+  readSession,
 }: AnotherTabsRotation): Promise<RefreshOutcome | null> => {
-  const sessionUser = await readSessionUser().catch((error: unknown) => {
+  const session = await readSession().catch((error: unknown) => {
     if (isTemporaryFailure(error)) throw error
     return null
   })
-  if (sessionUser === null) return null
-  if (!holdsUser(tokenStore, scope, sessionUser)) return "replaced"
-  tokenStore.set(scope, "csrfToken", csrfToken)
+  if (session === null) return null
+  if (!holdsUser(tokenStore, scope, session.userId)) return "replaced"
+  tokenStore.update(scope, { csrfToken, principal: session.principal })
   return "rotated"
 }

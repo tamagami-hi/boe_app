@@ -15,7 +15,7 @@ import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
 import { adoptAnotherTabsRotation, createRecoveryQueue } from "~/api/session/recoveryQueue"
-import type { StoredTokenChanged } from "~/api/session/recoveryQueue"
+import type { SessionRead, StoredTokenChanged } from "~/api/session/recoveryQueue"
 import { endSession, watchStoredPrincipal } from "~/api/session/sessionEnd"
 import {
   createTokenStore,
@@ -110,8 +110,10 @@ export const createClientRuntime = (): ClientRuntime => {
     }
   }
 
-  const readSessionUser = async (): Promise<string> =>
-    (await bareClient.request(getClientProfile, { unauthenticated: true })).data.userId
+  const readSessionAs = (principal: Principal) => async (): Promise<SessionRead> => ({
+    userId: (await bareClient.request(getClientProfile, { unauthenticated: true })).data.userId,
+    principal: JSON.stringify(principal),
+  })
 
   /**
    * Recover the synchronizer token before rotating.
@@ -130,7 +132,12 @@ export const createClientRuntime = (): ClientRuntime => {
       const recovered = await bareClient.request(getClientWebCsrf, { unauthenticated: true })
       if (!holdsUser(tokenStore, "client", recovered.data.user.userId)) return "replaced"
       const adopted = storedTokenChanged()
-        ? await adoptAnotherTabsRotation({ tokenStore, scope: "client", csrfToken: recovered.data.csrfToken, readSessionUser })
+        ? await adoptAnotherTabsRotation({
+            tokenStore,
+            scope: "client",
+            csrfToken: recovered.data.csrfToken,
+            readSession: readSessionAs(principalFrom(recovered.data.user)),
+          })
         : null
       if (adopted !== null) return adopted
       const { data } = await bareClient.request(clientWebRefresh, {

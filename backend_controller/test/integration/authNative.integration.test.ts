@@ -17,6 +17,7 @@ import { createAuditRepository } from "../../src/repositories/auditRepository.js
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
+import { registerAdminNativeAuthRoutes } from "../../src/routes/adminNativeAuthRoutes.js"
 import { registerNativeAuthRoutes, type NativeAuthRouteDeps } from "../../src/routes/nativeAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
@@ -76,7 +77,13 @@ beforeAll(async () => {
     unitOfWork: createUnitOfWork(database),
   }
 
-  app = createApplication({ logger: false, registerRoutes: (instance) => registerNativeAuthRoutes(instance, deps) })
+  app = createApplication({
+    logger: false,
+    registerRoutes: (instance) => {
+      registerNativeAuthRoutes(instance, deps)
+      registerAdminNativeAuthRoutes(instance, deps)
+    },
+  })
 
   // Seed what an approval now produces: an active user with the signup password
   // already in user_credentials. There is no activation step anymore.
@@ -88,6 +95,20 @@ beforeAll(async () => {
     userRow.rows[0]?.id,
     await hashPassword(PASSWORD),
   ])
+
+  const adminRow = await pool.query<{ id: string }>(
+    "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
+      "values ('support-apk@example.com','+14155550124','Support Admin','active', now()) returning id",
+  )
+  const adminId = adminRow.rows[0]?.id
+  await pool.query("insert into user_credentials (user_id, password_hash) values ($1, $2)", [
+    adminId,
+    await hashPassword(PASSWORD),
+  ])
+  await pool.query(
+    "insert into user_roles (user_id, role_id, granted_by_user_id) select $1, id, $1 from roles where code = 'support'",
+    [adminId],
+  )
 }, 200_000)
 
 afterAll(async () => {
@@ -179,16 +200,20 @@ describe("native authentication (integration)", () => {
     expect(afterRevoke.statusCode).toBe(401)
   })
 
-  test("an upper-case rotationId replays within the grace and does not revoke the family", async () => {
+  test.each([
+    { channel: "native", prefix: "/v1/auth/native", email: "activate@example.com" },
+    { channel: "admin_native", prefix: "/v1/auth/admin/native", email: "support-apk@example.com" },
+  ])("an upper-case $channel rotationId replays within the grace and does not revoke the family", async ({ channel, prefix, email }) => {
     const login = await app.inject({
       method: "POST",
-      url: "/v1/auth/native/login",
-      payload: { email: "activate@example.com", password: PASSWORD, device: DEVICE },
+      url: `${prefix}/login`,
+      payload: { email, password: PASSWORD, device: DEVICE },
     })
+    expect(login.statusCode).toBe(200)
     const original = dataOf<NativeResult>(login)
     const rotationId = randomUUID().toUpperCase()
     const refresh = (refreshToken: string, id: string) =>
-      app.inject({ method: "POST", url: "/v1/auth/native/refresh", payload: { refreshToken, rotationId: id } })
+      app.inject({ method: "POST", url: `${prefix}/refresh`, payload: { refreshToken, rotationId: id } })
 
     const rotated = await refresh(original.refreshToken, rotationId)
     expect(rotated.statusCode).toBe(200)
@@ -198,11 +223,11 @@ describe("native authentication (integration)", () => {
     expect(retried.statusCode).toBe(200)
     expect(dataOf<NativeResult>(retried).refreshToken).toBe(successor.refreshToken)
 
-    const session = await pool.query<{ state: string; revocation_reason: string | null }>(
-      "select state, revocation_reason from auth_sessions where id = $1",
+    const session = await pool.query<{ channel: string; state: string; revocation_reason: string | null }>(
+      "select channel, state, revocation_reason from auth_sessions where id = $1",
       [original.sessionId],
     )
-    expect(session.rows[0]).toEqual({ state: "active", revocation_reason: null })
+    expect(session.rows[0]).toEqual({ channel, state: "active", revocation_reason: null })
 
     const next = await refresh(successor.refreshToken, randomUUID())
     expect(next.statusCode).toBe(200)
