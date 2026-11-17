@@ -1025,7 +1025,13 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-17T17:44:27.623Z"
+      "openedAt": "2026-11-17T17:44:27.623Z",
+      "closedAt": "2026-11-17T20:32:31.552Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T19:32:29.656Z"
     }
   ]
 }

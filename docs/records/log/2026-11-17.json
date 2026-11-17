@@ -4063,6 +4063,14 @@
       "track": "p-docs-0181",
       "agent": "claude-opus-5-5 coordinator (landing)",
       "verb": "session_close"
+    },
+    {
+      "at": "2026-11-17T23:32:38.362Z",
+      "session": "29729b30-6722-4d99-9c27-948d03fb8568",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "session_expire",
+      "target": "idle 240 min"
     }
   ]
 }

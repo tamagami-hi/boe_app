@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 130,
+  "nextNumber": 131,
   "notes": [
     {
       "id": "note-1",
@@ -2121,6 +2121,20 @@
       "kind": "heads-up",
       "text": "track p-whatsnew-entries was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-whatsnew-entries.",
       "at": "2026-11-17T18:43:32.618Z",
+      "replies": []
+    },
+    {
+      "id": "note-130",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-docs-0181 was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-docs-0181.",
+      "at": "2026-11-17T20:32:31.552Z",
       "replies": []
     }
   ]
