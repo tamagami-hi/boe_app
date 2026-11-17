@@ -112,6 +112,13 @@ const createFundSchema = z
 
 const publishVersionSchema = versionTermsSchema
 
+const publishVersionQuerySchema = z
+  .object({ expectedVersion: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional() })
+  .strict()
+
+const STALE_TERMS_MESSAGE =
+  "Newer terms were published for this fund after you opened it. Reload the fund, check its terms, and publish again."
+
 const stockSchema = z
   .object({
     stockName: shortText.min(1),
@@ -184,6 +191,21 @@ const lockWritableFund = async (
     })
   }
   return fund
+}
+
+const requirePublishedFrom = async (
+  deps: AdminCatalogDeps,
+  tx: Parameters<Parameters<UnitOfWork["execute"]>[0]>[0],
+  fundId: string,
+  expectedVersion: number | undefined,
+): Promise<void> => {
+  if (expectedVersion === undefined) return
+  const current = await deps.catalogRepository.findOne(tx, fundId)
+  if (current?.currentVersion === expectedVersion) return
+  throw new AppError("STATE_CONFLICT", {
+    message: STALE_TERMS_MESSAGE,
+    fields: { expectedVersion: ["is not the fund's current terms version"] },
+  })
 }
 
 const listFunds = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -435,6 +457,7 @@ const publishVersion = async (deps: AdminCatalogDeps, request: FastifyRequest, r
   requireAnyPermission(principal, ["funds.write"])
   const fundId = fundIdOf(request)
   const body = parseOrThrow(publishVersionSchema, request.body)
+  const { expectedVersion } = parseOrThrow(publishVersionQuerySchema, request.query)
   const now = deps.clock()
 
   return mutate(
@@ -443,10 +466,11 @@ const publishVersion = async (deps: AdminCatalogDeps, request: FastifyRequest, r
     reply,
     `${FUNDS_ROUTE}/:fundId/versions`,
     "POST",
-    { fundId, ...body },
+    { fundId, ...body, ...(expectedVersion === undefined ? {} : { expectedVersion }) },
     principal.userId,
     async (tx) => {
       const fund = await lockWritableFund(deps, tx, fundId)
+      await requirePublishedFrom(deps, tx, fundId, expectedVersion)
 
       const written = await writeFundVersion(deps, tx, {
         fundId,

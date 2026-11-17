@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { TransportError } from "~/api/errors"
+import { ApiError, TransportError } from "~/api/errors"
 import type {
   getAdminAppConfig,
   getAdminApplication,
@@ -119,6 +119,18 @@ const detailWith = (aum: Fund["aum"]): DataOf<typeof getAdminFund> => ({
 
 const SIZED = { aumPaise: "100000000", asOfDate: "2026-11-01", updatedAt: AT }
 
+const withVersion3 = (): DataOf<typeof getAdminFund> => {
+  const current = detailWith(SIZED)
+  return {
+    ...current,
+    fund: { ...current.fund, currentVersion: 3, currentVersionId: VERSION_3 },
+    versions: [
+      ...current.versions,
+      { ...current.versions[1]!, id: VERSION_3, version: 3, minimumDurationMonths: 48, disclosureVersionId: DISCLOSURE_2 },
+    ],
+  }
+}
+
 const STOCKS: DataOf<typeof listAdminFundStocks> = {
   items: [
     {
@@ -203,6 +215,16 @@ let writeReplies: (() => Promise<unknown>)[] = []
 
 const timedOut = (): Promise<unknown> => Promise.reject(new TransportError("timeout", "The request timed out."))
 const accepted = (): Promise<unknown> => Promise.resolve({ data: undefined, meta: { page: null } })
+const staleTerms = (): Promise<unknown> =>
+  Promise.reject(
+    new ApiError({
+      code: "STATE_CONFLICT",
+      message: "Newer terms were published for this fund after you opened it.",
+      status: 409,
+      retryable: true,
+      fields: { expectedVersion: ["is not the fund's current terms version"] },
+    }),
+  )
 
 const READS: Readonly<Record<string, () => unknown>> = {
   getAdminFund: () => fundDetail,
@@ -492,6 +514,23 @@ describe("publishing new terms", () => {
       recommendedHoldingMonths: 36,
       disclosure: { title: "Risk disclosure", body: "Read the scheme documents." },
     })
+    expect(sent[0]?.options.query).toEqual({ expectedVersion: 2 })
+  })
+
+  it("says newer terms were published when the server refuses the version the form started from, and reloads them", async () => {
+    writeReplies = [staleTerms]
+    open(`/funds/${FUND_ID}`)
+    await screen.findByRole("button", { name: "Publish version" })
+    type(/^Name/u, "Balanced Growth Plus")
+    press("Publish version")
+    await screen.findByText(/Newer terms were published for this fund after this form was opened/u)
+
+    fundDetail = withVersion3()
+    press("Reload the fund")
+
+    expect(await screen.findByRole("button", { name: "Start again from version 3" })).toBeEnabled()
+    expect(screen.getByLabelText(/^Name/u)).toHaveValue("Balanced Growth Plus")
+    expect(sent.map(({ options }) => options.query)).toEqual([{ expectedVersion: 2 }])
   })
 })
 
@@ -502,15 +541,7 @@ describe("publishing new terms over a newer version", () => {
     await screen.findByRole("button", { name: "Publish version" })
     type(/^Name/u, "Balanced Growth Plus")
 
-    const current = detailWith(SIZED)
-    fundDetail = {
-      ...current,
-      fund: { ...current.fund, currentVersion: 3, currentVersionId: VERSION_3 },
-      versions: [
-        ...current.versions,
-        { ...current.versions[1]!, id: VERSION_3, version: 3, minimumDurationMonths: 48, disclosureVersionId: DISCLOSURE_2 },
-      ],
-    }
+    fundDetail = withVersion3()
     press("Publish version")
 
     await screen.findByText("A newer version was published")

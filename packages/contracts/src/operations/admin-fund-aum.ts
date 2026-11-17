@@ -164,6 +164,11 @@ export const AdminFundTermsInput = z
   .meta({ id: "AdminFundTermsInput" })
 export type AdminFundTermsInput = z.infer<typeof AdminFundTermsInput>
 
+export const AdminFundVersionPublishQuery = z.strictObject({
+  expectedVersion: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
+})
+export type AdminFundVersionPublishQuery = z.infer<typeof AdminFundVersionPublishQuery>
+
 export const AdminFundListQuery = z.strictObject({
   after: z.string().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
@@ -505,6 +510,7 @@ export const publishAdminFundVersion = defineOperation({
   request: {
     body: AdminFundTermsInput,
     params: FundIdParams,
+    query: AdminFundVersionPublishQuery,
     headers: OptionalAdminMutationHeaders,
     mediaType: "application/json",
     maxBodyBytes: MAX_JSON_BODY_BYTES,

@@ -11,7 +11,7 @@ import { Alert } from "~/ui/primitives/Feedback"
 
 import { STACK_LG } from "~/ui/recipes/layout"
 
-import type { TermsInput } from "./fundQueries"
+import type { PublishTermsInput } from "./fundQueries"
 import { EMPTY_TERMS, FundTermsFields, SubmitRow, termsBodyOf } from "./FundTermsForm"
 import type { FundTerms } from "./FundTermsForm"
 import type { LatestTerms } from "./latestTerms"
@@ -19,6 +19,11 @@ import type { LatestTerms } from "./latestTerms"
 type StartingTerms = Exclude<LatestTerms, Readonly<{ kind: "unreadable" }>>
 
 type Check = "idle" | "checking" | "failed" | "refused"
+
+type Outcome = HeldWrite<PublishTermsInput, void>["outcome"]
+
+const isStaleRefusal = (outcome: Outcome): boolean =>
+  outcome.kind === "rejected" && outcome.code === "STATE_CONFLICT" && outcome.fields.expectedVersion !== undefined
 
 const rejectionText = (code: string | null, message: string): string => {
   if (code === "STATE_CONFLICT") {
@@ -37,7 +42,7 @@ const versionText = (latest: StartingTerms): string =>
 
 export type PublishTermsSectionProps = Readonly<{
   latest: LatestTerms
-  publish: HeldWrite<TermsInput, void>
+  publish: HeldWrite<PublishTermsInput, void>
   isLocked: boolean
   onReload: () => void
   onReread: () => Promise<LatestTerms | null>
@@ -56,6 +61,7 @@ const PublishTermsForm = ({ latest, publish, isLocked, onReload, onReread }: Pub
   const isBehind = baseOf(latest) !== baseOf(start) && publish.held === null
   const hasEdits = isEdited || outcome.kind === "rejected"
   const isFrozen = isLocked || check === "checking"
+  const isStale = isStaleRefusal(outcome)
 
   const startFrom = (next: StartingTerms): void => {
     setStart(next)
@@ -96,7 +102,7 @@ const PublishTermsForm = ({ latest, publish, isLocked, onReload, onReread }: Pub
     }
     setCheck("idle")
     setIsEdited(false)
-    publish.submit(body)
+    publish.submit(start.kind === "found" ? { ...body, expectedVersion: start.version } : body)
   }
 
   const fields = outcome.kind === "rejected" ? outcome.fields : null
@@ -113,9 +119,23 @@ const PublishTermsForm = ({ latest, publish, isLocked, onReload, onReread }: Pub
       {outcome.kind === "unknown" ? (
         <HeldWriteNotice write={publish} subject="the new terms were published" onReload={onReload} reloadLabel="Reload the fund" />
       ) : null}
-      {outcome.kind === "rejected" ? (
+      {outcome.kind === "rejected" && !isStale ? (
         <Alert tone="error" title="Not published">
           {rejectionText(outcome.code, outcome.message)}
+        </Alert>
+      ) : null}
+      {isStale && !isBehind ? (
+        <Alert
+          tone="warning"
+          title="Not published"
+          action={
+            <Button size="sm" tone="secondary" onClick={onReload}>
+              Reload the fund
+            </Button>
+          }
+        >
+          Newer terms were published for this fund after this form was opened, so nothing was published. Reload the fund
+          to see them; your edits stay in the form.
         </Alert>
       ) : null}
       {isBehind ? (
@@ -129,6 +149,7 @@ const PublishTermsForm = ({ latest, publish, isLocked, onReload, onReread }: Pub
               disabled={isLocked}
               onClick={() => {
                 setCheck("idle")
+                if (isStale) publish.reset()
                 startFrom(latest)
               }}
             >
@@ -136,7 +157,7 @@ const PublishTermsForm = ({ latest, publish, isLocked, onReload, onReread }: Pub
             </Button>
           }
         >
-          {`${check === "refused" ? "Nothing was published. " : ""}This form started from ${versionText(start)}, and ${versionText(latest)} was published since. Your edits are kept here, but publishing them could undo the newer changes. Start again from ${versionText(latest)} to see them.`}
+          {`${check === "refused" || isStale ? "Nothing was published. " : ""}This form started from ${versionText(start)}, and ${versionText(latest)} was published since. Your edits are kept here, but publishing them could undo the newer changes. Start again from ${versionText(latest)} to see them.`}
         </Alert>
       ) : null}
       {!isBehind && check === "refused" ? (

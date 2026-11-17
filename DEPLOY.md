@@ -177,6 +177,12 @@ images-only rollback to a backend from before 074 (for example v0.17.0 or v0.18.
 
 Payout outcome dates (0.18.1) add only the route `GET /v1/admin/clients/{userId}/withdrawal-payout-outcomes`, with no migration: older admin apps never call it and every existing payout response keeps its shape, and a new admin app against a backend without it gets `404`, so its paid or failed payout cards say "Paid date unavailable" or "Failure date unavailable" while the outcome form keeps working.
 
+From 0.18.1 the admin app sends the fund terms version it started from as the
+`expectedVersion` query parameter of `POST /v1/admin/funds/{fundId}/versions`, and the
+backend refuses a stale one with `409 STATE_CONFLICT`. Earlier backends ignore the query
+string, so after an images-only rollback a newer admin APK still publishes terms, checked
+only by its own re-read of the fund before sending, as in 0.18.0.
+
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.
 

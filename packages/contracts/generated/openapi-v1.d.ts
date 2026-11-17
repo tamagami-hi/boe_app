@@ -9695,7 +9695,9 @@ export interface operations {
     };
     publishAdminFundVersion: {
         parameters: {
-            query?: never;
+            query?: {
+                expectedVersion?: number;
+            };
             header: {
                 "idempotency-key"?: string;
                 "x-csrf-token": string;

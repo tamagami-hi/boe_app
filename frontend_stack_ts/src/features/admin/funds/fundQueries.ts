@@ -29,13 +29,14 @@ export const useCreateAdminFund = (): UseMutationResult<CreatedFund, Error, Crea
 }
 
 export type TermsInput = z.input<typeof publishAdminFundVersion.request.body>
+export type PublishTermsInput = TermsInput & Readonly<{ expectedVersion?: number }>
 
-export const usePublishFundVersion = (fundId: string): UseMutationResult<void, Error, TermsInput & Keyed> => {
+export const usePublishFundVersion = (fundId: string): UseMutationResult<void, Error, PublishTermsInput & Keyed> => {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ idempotencyKey, ...body }: TermsInput & Keyed) => {
-      await api.request(publishAdminFundVersion, { params: { fundId }, body, idempotencyKey })
+    mutationFn: async ({ idempotencyKey, expectedVersion, ...body }: PublishTermsInput & Keyed) => {
+      await api.request(publishAdminFundVersion, { params: { fundId }, query: { expectedVersion }, body, idempotencyKey })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) })
