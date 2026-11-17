@@ -27,7 +27,7 @@ State is not kept here. Read it where it lives:
   - no bank details, payment instructions or reference numbers anywhere (DEC-25, DEC-13).
 - **How work runs:**
   - lanes run on tally tracks with worktrees under `.temp/worktrees/`, and land through the tally landing queue;
-  - checks run in `tools/node22-container/run.sh`;
+  - checks run in `tools/node24-container/run.sh` (`tools/node22-container/run.sh` only for a checkout of a Node 22 release);
   - commits are authored as `tamagami-hi` from the global Git config.
 
 ## What this is
@@ -45,7 +45,7 @@ never described publicly.
 
 Three independent units, no single root build:
 
-- `backend_controller/` — Node.js 22 ESM HTTP API. Fastify, Kysely over `pg`, Zod. No payment-provider SDK, and no direct PhonePe egress either: outbound calls go to an out-of-repo payment service through `providers/relay/`, and only the inbound webhook verifier (`providers/phonepe/phonePeCallbackVerifier.ts`) remains PhonePe-specific. Own `package.json` and `.env`.
+- `backend_controller/` — Node.js 24 ESM HTTP API. Fastify, Kysely over `pg`, Zod. No payment-provider SDK, and no direct PhonePe egress either: outbound calls go to an out-of-repo payment service through `providers/relay/`, and only the inbound webhook verifier (`providers/phonepe/phonePeCallbackVerifier.ts`) remains PhonePe-specific. Own `package.json` and `.env`.
 - `frontend_stack_ts/` — the single frontend: Vite 6 + React 19 + TypeScript + Capacitor 8, one source tree serving both surfaces. `VITE_BEO_APP_TARGET` picks `client` or `admin` at build time; there is no runtime switch and no second app. There is no marketing-site package here: `beonedge.in` is a separate application on separate infrastructure (AWS) that posts signups to `POST /newuser`.
 - `packages/contracts/` — `@beonedge/contracts`: Zod operation descriptors, generated OpenAPI, and the frontend's generated operation exports. Backend routes currently declare validation separately, so API changes must coordinate both surfaces.
 - `plans/` — current proposals, decisions, approval gates, and handoffs.
