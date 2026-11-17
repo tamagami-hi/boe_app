@@ -313,9 +313,9 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
       .execute()
   },
 
-  // CSRF-only re-issue for reload recovery (GET .../csrf): rotate the
-  // synchronizer token without touching the refresh chain. The prior CSRF is
-  // overwritten, so it is immediately invalidated. The channel is part of the
+  // CSRF-only replacement for GET .../csrf when the stored token is not the
+  // session's derived one: rotate the synchronizer token without touching the
+  // refresh chain. The prior CSRF is overwritten, so it is immediately invalidated. The channel is part of the
   // predicate, so one audience's recovery can never rotate the other's token
   // even if a session id were confused.
   rotateWebCsrf: async (tx, input) => {

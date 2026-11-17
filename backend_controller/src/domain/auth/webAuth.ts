@@ -2,7 +2,7 @@
  * Cookie (browser) authentication (spec 04 §3.4, §4.3): HttpOnly cookie access
  * + opaque rotating refresh + synchronizer CSRF, with Origin/Referer and
  * Sec-Fetch-Site checks. Refresh + CSRF rotate together with the same 30s grace
- * and family-reuse revocation as native. `webRecoverCsrf` re-issues the
+ * and family-reuse revocation as native. `webRecoverCsrf` returns the session's
  * synchronizer token on reload from the access or refresh cookie with no prior
  * CSRF. The partial-response mixed-pair recovery edge (current refresh +
  * previous CSRF) is a documented later refinement.
@@ -30,7 +30,7 @@ import {
 } from "../../auth/refreshDerivation.js"
 import { bytesEqual } from "../../crypto/primitives.js"
 import type { UnitOfWork } from "../../db/database.js"
-import type { AuthSession, Transaction, UserId } from "../../db/repositories.js"
+import type { AuthSession, CreatedSession, Transaction, UserId } from "../../db/repositories.js"
 import type { ActorType, AuthLoginOutcome, CookieSessionChannel, Database } from "../../db/types.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
@@ -71,6 +71,18 @@ const sessionCsrfToken = (
   generation: number,
   lastRotationId: string | null,
 ): string => deriveCsrfToken(refreshKey, sessionId, generation, lastRotationId ?? SIGN_IN_ROTATION_ID)
+
+const isPreviousRefreshInGrace = (
+  session: Readonly<Pick<AuthSession, "previous_refresh_token_hash" | "previous_refresh_valid_until">>,
+  refreshHash: Buffer,
+  now: Date,
+): boolean => {
+  const previousRefresh = session.previous_refresh_token_hash
+  const graceUntil = session.previous_refresh_valid_until
+  if (previousRefresh === null || graceUntil === null) return false
+  const withinGrace = new Date(graceUntil).getTime() > now.getTime()
+  return withinGrace && bytesEqual(refreshHash, Buffer.from(previousRefresh as unknown as Uint8Array))
+}
 
 export interface WebAuthConfig {
   readonly cookieSecure: boolean
@@ -527,6 +539,7 @@ export const webRefresh = async <TPrincipal>(
   scope: WebAuthScope<TPrincipal>,
   input: WebRefreshInput,
 ): Promise<WebRefreshOutcome<TPrincipal>> => {
+  const rotationId = input.rotationId.toLowerCase()
   const locked = await deps.authSessionRepository.lockByRefreshTokenHash(tx, hashToken(input.refreshCookie))
   if (locked === null) throw new AppError("SESSION_INVALID")
   const { session, refreshToken: presented } = locked
@@ -567,8 +580,8 @@ export const webRefresh = async <TPrincipal>(
     currentCsrf !== null && bytesEqual(hashToken(input.presentedCsrf), Buffer.from(currentCsrf as unknown as Uint8Array))
   if (presented.used_at === null && presented.revoked_at === null && csrfMatches) {
     const successorGeneration = Number(presented.generation) + 1
-    const refreshRaw = deriveRefreshToken(deps.refreshKey, session.id, successorGeneration, input.rotationId)
-    const csrfRaw = deriveCsrfToken(deps.refreshKey, session.id, successorGeneration, input.rotationId)
+    const refreshRaw = deriveRefreshToken(deps.refreshKey, session.id, successorGeneration, rotationId)
+    const csrfRaw = deriveCsrfToken(deps.refreshKey, session.id, successorGeneration, rotationId)
     await deps.authSessionRepository.rotateWebRefresh(tx, {
       sessionId: session.id,
       userId: session.user_id,
@@ -578,7 +591,7 @@ export const webRefresh = async <TPrincipal>(
       successorGeneration,
       successorHash: hashToken(refreshRaw),
       refreshKeyVersion: deps.refreshKeyVersion,
-      rotationId: input.rotationId,
+      rotationId,
       previousValidUntil: new Date(now.getTime() + REFRESH_GRACE_MS),
       refreshExpiresAt: new Date(now.getTime() + REFRESH_IDLE_MS),
       now,
@@ -591,28 +604,21 @@ export const webRefresh = async <TPrincipal>(
     return issue(refreshRaw, csrfRaw)
   }
 
-  // Previous refresh + previous CSRF within grace with the identical rotationId: reproduce.
-  const previousRefresh =
-    session.previous_refresh_token_hash === null
-      ? null
-      : Buffer.from(session.previous_refresh_token_hash as unknown as Uint8Array)
-  const graceUntil = session.previous_refresh_valid_until
-  const withinGrace = graceUntil !== null && new Date(graceUntil).getTime() > now.getTime()
+  // Previous refresh + previous or replayed CSRF within grace with the identical rotationId: reproduce.
   const previousCsrf =
     session.previous_csrf_token_hash === null
       ? null
       : Buffer.from(session.previous_csrf_token_hash as unknown as Uint8Array)
   const presentedCsrfHash = hashToken(input.presentedCsrf)
-  const replayedCsrf = deriveCsrfToken(deps.refreshKey, session.id, Number(session.generation), input.rotationId)
+  const replayedCsrf = deriveCsrfToken(deps.refreshKey, session.id, Number(session.generation), rotationId)
   const previousCsrfMatches = previousCsrf !== null && bytesEqual(presentedCsrfHash, previousCsrf)
   const replayedCsrfMatches = bytesEqual(presentedCsrfHash, hashToken(replayedCsrf))
   if (
-    bytesEqual(hashToken(input.refreshCookie), previousRefresh ?? Buffer.alloc(0)) &&
-    withinGrace &&
+    isPreviousRefreshInGrace(session, hashToken(input.refreshCookie), now) &&
     (previousCsrfMatches || replayedCsrfMatches) &&
-    session.last_rotation_id === input.rotationId
+    session.last_rotation_id === rotationId
   ) {
-    const refreshRaw = deriveRefreshToken(deps.refreshKey, session.id, Number(session.generation), input.rotationId)
+    const refreshRaw = deriveRefreshToken(deps.refreshKey, session.id, Number(session.generation), rotationId)
     return issue(refreshRaw, replayedCsrf)
   }
 
@@ -650,6 +656,43 @@ export interface WebCsrfResult<TPrincipal> {
   }
 }
 
+interface RefreshLookup {
+  readonly locked: CreatedSession
+  readonly refreshHash: Buffer
+}
+
+const isReadableRefresh = ({ locked, refreshHash }: RefreshLookup, now: Date): boolean => {
+  const token = locked.refreshToken
+  if (token.used_at === null && token.revoked_at === null) return true
+  return isPreviousRefreshInGrace(locked.session, refreshHash, now)
+}
+
+const lockCsrfSession = async (
+  tx: Transaction,
+  deps: WebAuthDeps,
+  input: Readonly<{ accessCookie: string | undefined; refreshCookie: string | undefined }>,
+): Promise<{ readonly session: AuthSession | undefined; readonly byRefresh: RefreshLookup | null }> => {
+  let session: AuthSession | undefined
+  if (input.accessCookie !== undefined) {
+    const verified = await deps.accessTokenService.verify(input.accessCookie).catch(() => null)
+    if (verified !== null) {
+      session = await tx
+        .selectFrom("auth_sessions")
+        .selectAll()
+        .where("id", "=", verified.sid)
+        .forUpdate()
+        .executeTakeFirst()
+    }
+  }
+  if ((session !== undefined && session.state === "active") || input.refreshCookie === undefined) {
+    return { session, byRefresh: null }
+  }
+  const refreshHash = hashToken(input.refreshCookie)
+  const locked = await deps.authSessionRepository.lockByRefreshTokenHash(tx, refreshHash)
+  if (locked === null) return { session, byRefresh: null }
+  return { session: locked.session, byRefresh: { locked, refreshHash } }
+}
+
 /**
  * Reload recovery for the synchronizer CSRF token (spec 04 §3.4). The SPA has
  * lost its in-memory CSRF token after a document load but still holds the
@@ -666,28 +709,13 @@ export const webRecoverCsrf = async <TPrincipal>(
   input: Readonly<{ accessCookie: string | undefined; refreshCookie: string | undefined }>,
 ): Promise<WebCsrfResult<TPrincipal>> => {
   const now = deps.clock()
-
-  let session: AuthSession | undefined
-  if (input.accessCookie !== undefined) {
-    const verified = await deps.accessTokenService.verify(input.accessCookie).catch(() => null)
-    if (verified !== null) {
-      session = await tx
-        .selectFrom("auth_sessions")
-        .selectAll()
-        .where("id", "=", verified.sid)
-        .forUpdate()
-        .executeTakeFirst()
-    }
-  }
-  if ((session === undefined || session.state !== "active") && input.refreshCookie !== undefined) {
-    const locked = await deps.authSessionRepository.lockByRefreshTokenHash(tx, hashToken(input.refreshCookie))
-    if (locked !== null) session = locked.session
-  }
+  const { session, byRefresh } = await lockCsrfSession(tx, deps, input)
 
   if (session === undefined || session.state !== "active" || session.channel !== scope.channel) {
     throw new AppError("AUTHENTICATION_REQUIRED")
   }
   if (new Date(session.expires_at).getTime() <= now.getTime()) throw new AppError("SESSION_INVALID")
+  if (byRefresh !== null && !isReadableRefresh(byRefresh, now)) throw new AppError("SESSION_INVALID")
 
   const user = await tx
     .selectFrom("users")

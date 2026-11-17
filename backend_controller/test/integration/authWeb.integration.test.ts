@@ -17,6 +17,7 @@ import { createAuditRepository } from "../../src/repositories/auditRepository.js
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
+import { registerClientWebAuthRoutes } from "../../src/routes/clientWebAuthRoutes.js"
 import { registerWebAuthRoutes, type WebAuthRouteDeps } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
@@ -25,12 +26,14 @@ import { runSeed } from "../../src/scripts/seed.js"
 let container: StartedPostgreSqlContainer
 let pool: Pool
 let app: FastifyInstance
+let adminUserId: string
+let clientUserId: string
 
 const PASSWORD = "correct horse battery staple"
 const ORIGIN = "https://admin.beonedge.test"
 
 interface WebBody {
-  user: { roles: string[]; permissions: string[] }
+  user: { userId: string; roles: string[]; permissions: string[] }
   csrfToken: string
 }
 const dataOf = <T>(response: { json: () => unknown }): T => (response.json() as { data: T }).data
@@ -64,14 +67,24 @@ const login = async (): Promise<{ jar: Record<string, string>; csrf: string }> =
 const errorOf = (response: { json: () => unknown }): string =>
   (response.json() as { error: { code: string } }).error.code
 
+const csrfRead = (jar: Record<string, string>, url = "/v1/auth/web/csrf", on: FastifyInstance = app) =>
+  on.inject({ method: "GET", url, headers: { origin: ORIGIN, cookie: cookieHeader(jar) } })
+
 const readCsrf = async (jar: Record<string, string>): Promise<string> => {
-  const response = await app.inject({
-    method: "GET",
-    url: "/v1/auth/web/csrf",
-    headers: { origin: ORIGIN, cookie: cookieHeader(jar) },
-  })
+  const response = await csrfRead(jar)
   expect(response.statusCode).toBe(200)
-  return dataOf<WebBody>(response).csrfToken
+  const body = dataOf<WebBody>(response)
+  expect(body.user.userId).toBe(adminUserId)
+  expect(body.user.roles).toContain("onboarding")
+  return body.csrfToken
+}
+
+const readClientCsrf = async (jar: Record<string, string>): Promise<string> => {
+  const response = await csrfRead(jar, "/v1/auth/client/web/csrf")
+  expect(response.statusCode).toBe(200)
+  const body = dataOf<WebBody>(response)
+  expect(body.user.userId).toBe(clientUserId)
+  return body.csrfToken
 }
 
 const refresh = (jar: Record<string, string>, csrf: string, rotationId: string) =>
@@ -92,14 +105,18 @@ const logout = (jar: Record<string, string>, csrf: string) =>
 let webDeps: WebAuthRouteDeps
 
 /** Builds an app over the shared database under a chosen cookie policy. */
-const buildTestApp = (overrides: { readonly cookieSecure: boolean }) => {
+const buildTestApp = (overrides: { readonly cookieSecure: boolean; readonly clock?: () => Date }) => {
   const instanceDeps: WebAuthRouteDeps = {
     ...webDeps,
+    clock: overrides.clock ?? webDeps.clock,
     config: { ...webDeps.config, cookieSecure: overrides.cookieSecure },
   }
   return createApplication({
     logger: false,
-    registerRoutes: (instance) => registerWebAuthRoutes(instance, instanceDeps),
+    registerRoutes: (instance) => {
+      registerWebAuthRoutes(instance, instanceDeps)
+      registerClientWebAuthRoutes(instance, instanceDeps)
+    },
   })
 }
 
@@ -149,8 +166,18 @@ beforeAll(async () => {
       "values ('admin@example.com','+14155559001','Admin User','active', now()) returning id",
   )
   const userId = userRow.rows[0]?.id
+  adminUserId = userId ?? ""
   await pool.query("insert into user_credentials (user_id, password_hash) values ($1,$2)", [
     userId,
+    await hashPassword(PASSWORD),
+  ])
+  const clientRow = await pool.query<{ id: string }>(
+    "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
+      "values ('client@example.com','+14155559002','Client User','active', now()) returning id",
+  )
+  clientUserId = clientRow.rows[0]?.id ?? ""
+  await pool.query("insert into user_credentials (user_id, password_hash) values ($1,$2)", [
+    clientUserId,
     await hashPassword(PASSWORD),
   ])
   const role = await pool.query<{ id: string }>("select id from roles where code = 'onboarding'")
@@ -349,6 +376,70 @@ describe("web authentication (integration)", () => {
       headers: { origin: ORIGIN, cookie: cookieHeader(lostJar) },
     })
     expect(revoked.statusCode).toBe(401)
+  })
+
+  test("the client web CSRF read names the client and keeps its sign-in token", async () => {
+    const signedIn = await app.inject({
+      method: "POST",
+      url: "/v1/auth/client/web/login",
+      headers: { origin: ORIGIN },
+      payload: { email: "client@example.com", password: PASSWORD },
+    })
+    expect(signedIn.statusCode).toBe(200)
+    const jar = cookieJar(signedIn.headers["set-cookie"])
+    const csrf = dataOf<WebBody>(signedIn).csrfToken
+
+    expect(await readClientCsrf(jar)).toBe(csrf)
+    expect(await readClientCsrf(jar)).toBe(csrf)
+    const loggedOut = await app.inject({
+      method: "POST",
+      url: "/v1/auth/client/web/logout",
+      headers: { origin: ORIGIN, cookie: cookieHeader(jar), "x-csrf-token": csrf },
+    })
+    expect(loggedOut.statusCode).toBe(200)
+  })
+
+  test("an upper-case rotationId keeps the rotated token on read and replays within the grace", async () => {
+    const { jar, csrf } = await login()
+    const rotationId = randomUUID().toUpperCase()
+    const rotated = await refresh(jar, csrf, rotationId)
+    expect(rotated.statusCode).toBe(200)
+    const rotatedJar = cookieJar(rotated.headers["set-cookie"])
+    const rotatedCsrf = dataOf<WebBody>(rotated).csrfToken
+    expect(await readCsrf(rotatedJar)).toBe(rotatedCsrf)
+
+    const retried = await refresh({ boe_refresh: jar["boe_refresh"] ?? "" }, rotatedCsrf, rotationId)
+    expect(retried.statusCode).toBe(200)
+    expect(dataOf<WebBody>(retried).csrfToken).toBe(rotatedCsrf)
+    expect((await logout(rotatedJar, rotatedCsrf)).statusCode).toBe(200)
+  })
+
+  test("a CSRF read with a used refresh cookie outside the grace is refused and keeps the session", async () => {
+    const { jar, csrf } = await login()
+    const first = await refresh(jar, csrf, randomUUID())
+    const firstJar = cookieJar(first.headers["set-cookie"])
+    const second = await refresh(firstJar, dataOf<WebBody>(first).csrfToken, randomUUID())
+    expect(second.statusCode).toBe(200)
+    const currentJar = cookieJar(second.headers["set-cookie"])
+    const currentCsrf = dataOf<WebBody>(second).csrfToken
+
+    const older = await csrfRead({ boe_refresh: jar["boe_refresh"] ?? "" })
+    expect(older.statusCode).toBe(401)
+    expect(errorOf(older)).toBe("SESSION_INVALID")
+
+    const previous = { boe_refresh: firstJar["boe_refresh"] ?? "" }
+    expect(await readCsrf(previous)).toBe(currentCsrf)
+    const later = buildTestApp({ cookieSecure: false, clock: () => new Date(Date.now() + 31_000) })
+    try {
+      const afterGrace = await csrfRead(previous, "/v1/auth/web/csrf", later)
+      expect(afterGrace.statusCode).toBe(401)
+      expect(errorOf(afterGrace)).toBe("SESSION_INVALID")
+    } finally {
+      await later.close()
+    }
+
+    expect(await readCsrf({ boe_refresh: currentJar["boe_refresh"] ?? "" })).toBe(currentCsrf)
+    expect((await logout(currentJar, currentCsrf)).statusCode).toBe(200)
   })
 
   test("a CSRF token of another session is refused", async () => {
