@@ -121,7 +121,7 @@ const NotificationsScreen = (): React.ReactElement => {
         empty={
           <EmptyState
             title="Nothing to read"
-            description="Payment confirmations, SIP reminders and account updates arrive here."
+            description="Investments recorded, value updates, and maturity, support and nominee updates arrive here."
           />
         }
       >

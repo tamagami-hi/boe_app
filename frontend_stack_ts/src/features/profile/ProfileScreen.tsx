@@ -34,7 +34,7 @@ const ENTRIES = [
   {
     to: "/notifications",
     title: "Notifications",
-    hint: "Payment confirmations, SIP reminders and account updates.",
+    hint: "Investments recorded, value updates, and maturity, support and nominee updates.",
   },
   {
     to: "/profile/contact",
