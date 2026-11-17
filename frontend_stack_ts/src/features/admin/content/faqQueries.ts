@@ -2,9 +2,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult } from "@tanstack/react-query"
 
 import { archiveAdminFaq, createAdminFaq, editAdminFaq, setAdminFaqStatus } from "~/api/generated/operations"
-import { mintIdempotencyKey } from "~/api/idempotency"
 import { qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
+
+type Keyed = Readonly<{ idempotencyKey: string }>
 
 export type FaqFields = Readonly<{
   question: string
@@ -13,12 +14,16 @@ export type FaqFields = Readonly<{
   order: number
 }>
 
-export const useCreateFaq = (): UseMutationResult<void, Error, FaqFields> => {
+export type FaqEdit = Readonly<{ faqId: string } & FaqFields>
+export type FaqStatusChange = Readonly<{ faqId: string; status: "draft" | "published" | "archived" }>
+export type FaqArchive = Readonly<{ faqId: string }>
+
+export const useCreateFaq = (): UseMutationResult<void, Error, FaqFields & Keyed> => {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (body: FaqFields) => {
-      await api.request(createAdminFaq, { body, idempotencyKey: mintIdempotencyKey() })
+    mutationFn: async ({ idempotencyKey, ...body }: FaqFields & Keyed) => {
+      await api.request(createAdminFaq, { body, idempotencyKey })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: qk.admin.faqs() })
@@ -26,20 +31,12 @@ export const useCreateFaq = (): UseMutationResult<void, Error, FaqFields> => {
   })
 }
 
-export const useEditFaq = (): UseMutationResult<
-  void,
-  Error,
-  Readonly<{ faqId: string } & FaqFields>
-> => {
+export const useEditFaq = (): UseMutationResult<void, Error, FaqEdit & Keyed> => {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ faqId, ...body }: Readonly<{ faqId: string } & FaqFields>) => {
-      await api.request(editAdminFaq, {
-        params: { faqId },
-        body,
-        idempotencyKey: mintIdempotencyKey(),
-      })
+    mutationFn: async ({ faqId, idempotencyKey, ...body }: FaqEdit & Keyed) => {
+      await api.request(editAdminFaq, { params: { faqId }, body, idempotencyKey })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: qk.admin.faqs() })
@@ -47,23 +44,12 @@ export const useEditFaq = (): UseMutationResult<
   })
 }
 
-export const useSetFaqStatus = (): UseMutationResult<
-  void,
-  Error,
-  Readonly<{ faqId: string; status: "draft" | "published" | "archived" }>
-> => {
+export const useSetFaqStatus = (): UseMutationResult<void, Error, FaqStatusChange & Keyed> => {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({
-      faqId,
-      status,
-    }: Readonly<{ faqId: string; status: "draft" | "published" | "archived" }>) => {
-      await api.request(setAdminFaqStatus, {
-        params: { faqId },
-        body: { status },
-        idempotencyKey: mintIdempotencyKey(),
-      })
+    mutationFn: async ({ faqId, status, idempotencyKey }: FaqStatusChange & Keyed) => {
+      await api.request(setAdminFaqStatus, { params: { faqId }, body: { status }, idempotencyKey })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: qk.admin.faqs() })
@@ -71,15 +57,12 @@ export const useSetFaqStatus = (): UseMutationResult<
   })
 }
 
-export const useArchiveFaq = (): UseMutationResult<void, Error, string> => {
+export const useArchiveFaq = (): UseMutationResult<void, Error, FaqArchive & Keyed> => {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (faqId: string) => {
-      await api.request(archiveAdminFaq, {
-        params: { faqId },
-        idempotencyKey: mintIdempotencyKey(),
-      })
+    mutationFn: async ({ faqId, idempotencyKey }: FaqArchive & Keyed) => {
+      await api.request(archiveAdminFaq, { params: { faqId }, idempotencyKey })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: qk.admin.faqs() })

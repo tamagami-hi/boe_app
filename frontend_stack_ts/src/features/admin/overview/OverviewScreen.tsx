@@ -53,7 +53,7 @@ const QUEUE_ENTRIES = [
     id: "mandates",
     to: "/mandates",
     label: "Mandates needing attention",
-    hint: "Setup or cancellation stuck mid-flight with the provider. Shows n/a when PhonePe is not configured here.",
+    hint: "Setup or cancellation stuck mid-flight with the provider.",
     readPermissions: ["payments.read"],
   },
 ] as const satisfies readonly Readonly<{
@@ -87,7 +87,7 @@ const QueueReading = ({ list }: Readonly<{ list: QueueList }>): React.ReactEleme
     return <Skeleton height="2rem" width="3rem" />
   }
   if (isApiError(error) && error.code === "RESOURCE_NOT_FOUND") {
-    return <span className={ADMIN_QUEUE_COUNT}>n/a</span>
+    return <span className={META_MUTED}>This queue is not set up on this server, so there is nothing to count.</span>
   }
   if (isApiError(error) && error.code === "AUTHORIZATION_DENIED") {
     return <span className={META_MUTED}>Your account cannot read this queue.</span>

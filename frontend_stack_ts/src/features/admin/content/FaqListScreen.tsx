@@ -1,14 +1,17 @@
 import { useState } from "react"
 
-import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
+import { useHeldDone } from "~/features/admin/funds/useHeldDone"
 import { useAdminFaqs } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
+import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
+import type { HeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -35,54 +38,71 @@ const STATUS_TONE = {
 
 const EMPTY: FaqFields = { question: "", answer: "", category: "general", order: 0 }
 
+const UNSENT = "The change could not be sent. Reload the page and try again."
+
+type AnyHeldWrite = Pick<HeldWrite<never, unknown>, "outcome" | "pending" | "checkAgain">
+
+type HeldEntry = Readonly<{ id: string; write: AnyHeldWrite; subject: string; failure: string }>
+
+const rejectionText = (outcome: AnyHeldWrite["outcome"], conflict: string): string | null => {
+  if (outcome.kind !== "rejected") return null
+  return outcome.code === "STATE_CONFLICT" ? conflict : outcome.message
+}
+
 const FaqListScreen = (): React.ReactElement => {
   const query = useAdminFaqs()
-  const create = useCreateFaq()
-  const edit = useEditFaq()
-  const setStatus = useSetFaqStatus()
-  const archive = useArchiveFaq()
+  const create = useHeldWrite(useCreateFaq(), UNSENT)
+  const edit = useHeldWrite(useEditFaq(), UNSENT)
+  const setStatus = useHeldWrite(useSetFaqStatus(), UNSENT)
+  const archive = useHeldWrite(useArchiveFaq(), UNSENT)
   const { hasAnyPermission } = useSession()
 
   const [draft, setDraft] = useState<FaqFields>(EMPTY)
   const [editing, setEditing] = useState<string | null>(null)
   const [archiving, setArchiving] = useState<string | null>(null)
-  const [failure, setFailure] = useState<string | null>(null)
 
   const canPublish = hasAnyPermission(["content.publish"])
   const incomplete = draft.question.trim() === "" || draft.answer.trim() === ""
+  const isLocked = create.held !== null || edit.held !== null || setStatus.held !== null || archive.held !== null
+  const isSaving = create.pending || edit.pending
 
-  const describe = (error: unknown): string =>
-    isApiError(error)
-      ? error.code === "STATE_CONFLICT"
-        ? "Only a draft can be edited. Move it back to draft first, or create a new version."
-        : error.message
-      : "We could not save that. Nothing has changed."
+  const clearDraft = (): void => {
+    setDraft(EMPTY)
+    setEditing(null)
+  }
+  useHeldDone(create.outcome, clearDraft)
+  useHeldDone(edit.outcome, clearDraft)
+
+  const held: readonly HeldEntry[] = [
+    { id: "create", write: create, subject: "the answer was saved as a draft", failure: "The answer was not saved." },
+    { id: "edit", write: edit, subject: "the draft was saved", failure: "Only a draft can be edited. Move it back to draft first, or create a new version." },
+    {
+      id: "status",
+      write: setStatus,
+      subject: setStatus.held?.status === "draft" ? "the answer was moved back to draft" : "the answer was published",
+      failure: "This answer changed after the page loaded. Reload the FAQs and try again.",
+    },
+    { id: "archive", write: archive, subject: "the answer was archived", failure: "This answer changed after the page loaded. Reload the FAQs and try again." },
+  ]
 
   const submit = (): void => {
-    setFailure(null)
+    if (isLocked) return
     const payload = {
       question: draft.question.trim(),
       answer: draft.answer.trim(),
       category: draft.category.trim() === "" ? "general" : draft.category.trim(),
       order: draft.order,
     }
-    const onDone = {
-      onError: (error: unknown) => {
-        setFailure(describe(error))
-      },
-      onSuccess: () => {
-        setDraft(EMPTY)
-        setEditing(null)
-      },
-    }
     if (editing === null) {
-      create.mutate(payload, onDone)
+      create.submit(payload)
       return
     }
-    edit.mutate({ faqId: editing, ...payload }, onDone)
+    edit.submit({ faqId: editing, ...payload })
   }
 
-  const pending = create.isPending || edit.isPending || setStatus.isPending || archive.isPending
+  const changeStatus = (faqId: string, status: "published" | "draft"): void => {
+    setStatus.submit({ faqId, status })
+  }
 
   return (
     <Page width="wide">
@@ -91,11 +111,27 @@ const FaqListScreen = (): React.ReactElement => {
         description="Published answers appear in the investor app's support screen. Only one version of a key is published at a time; publishing a new one archives the old."
       />
 
-      {failure === null ? null : (
-        <Alert tone="error" title="Nothing changed">
-          {failure}
-        </Alert>
+      {held.map((entry) =>
+        entry.write.outcome.kind === "unknown" ? (
+          <HeldWriteNotice
+            key={entry.id}
+            write={entry.write}
+            subject={entry.subject}
+            onReload={() => {
+              query.refetch()
+            }}
+            reloadLabel="Reload the FAQs"
+          />
+        ) : null,
       )}
+      {held.map((entry) => {
+        const text = rejectionText(entry.write.outcome, entry.failure)
+        return text === null ? null : (
+          <Alert key={entry.id} tone="error" title="Nothing changed">
+            {text}
+          </Alert>
+        )
+      })}
 
       {canPublish ? (
         <Section title={editing === null ? "Add an answer" : "Edit this draft"}>
@@ -105,6 +141,7 @@ const FaqListScreen = (): React.ReactElement => {
                 {({ id }) => (
                   <Input
                     id={id}
+                    disabled={isLocked}
                     value={draft.question}
                     maxLength={8_000}
                     onChange={(event) => {
@@ -117,6 +154,7 @@ const FaqListScreen = (): React.ReactElement => {
                 {({ id }) => (
                   <Textarea
                     id={id}
+                    disabled={isLocked}
                     value={draft.answer}
                     maxLength={8_000}
                     onChange={(event) => {
@@ -130,6 +168,7 @@ const FaqListScreen = (): React.ReactElement => {
                   {({ id }) => (
                     <Input
                       id={id}
+                      disabled={isLocked}
                       value={draft.category}
                       maxLength={200}
                       onChange={(event) => {
@@ -142,6 +181,7 @@ const FaqListScreen = (): React.ReactElement => {
                   {({ id }) => (
                     <Input
                       id={id}
+                      disabled={isLocked}
                       type="number"
                       min={0}
                       max={100_000}
@@ -154,17 +194,11 @@ const FaqListScreen = (): React.ReactElement => {
                 </FormField>
               </div>
               <div className={ACTION_ROW}>
-                <Button disabled={incomplete} loading={pending} onClick={submit} trailing>
+                <Button disabled={incomplete || isLocked} loading={isSaving} onClick={submit} trailing>
                   {editing === null ? "Save as draft" : "Save the draft"}
                 </Button>
                 {editing === null ? null : (
-                  <Button
-                    tone="ghost"
-                    onClick={() => {
-                      setEditing(null)
-                      setDraft(EMPTY)
-                    }}
-                  >
+                  <Button tone="ghost" disabled={isLocked} onClick={clearDraft}>
                     Cancel
                   </Button>
                 )}
@@ -247,17 +281,9 @@ const FaqListScreen = (): React.ReactElement => {
                         {row.status === "draft" ? (
                           <Button
                             size="sm"
-                            disabled={pending}
+                            disabled={isLocked}
                             onClick={() => {
-                              setFailure(null)
-                              setStatus.mutate(
-                                { faqId: row.id, status: "published" },
-                                {
-                                  onError: (error) => {
-                                    setFailure(describe(error))
-                                  },
-                                },
-                              )
+                              changeStatus(row.id, "published")
                             }}
                           >
                             Publish
@@ -267,17 +293,9 @@ const FaqListScreen = (): React.ReactElement => {
                           <Button
                             tone="secondary"
                             size="sm"
-                            disabled={pending}
+                            disabled={isLocked}
                             onClick={() => {
-                              setFailure(null)
-                              setStatus.mutate(
-                                { faqId: row.id, status: "draft" },
-                                {
-                                  onError: (error) => {
-                                    setFailure(describe(error))
-                                  },
-                                },
-                              )
+                              changeStatus(row.id, "draft")
                             }}
                           >
                             Unpublish
@@ -287,9 +305,8 @@ const FaqListScreen = (): React.ReactElement => {
                           <Button
                             tone="ghost"
                             size="sm"
-                            disabled={pending}
+                            disabled={isLocked}
                             onClick={() => {
-                              setFailure(null)
                               setEditing(row.id)
                               setDraft({
                                 question: row.question,
@@ -306,7 +323,7 @@ const FaqListScreen = (): React.ReactElement => {
                           <Button
                             tone="danger"
                             size="sm"
-                            disabled={pending}
+                            disabled={isLocked}
                             onClick={() => {
                               setArchiving(row.id)
                             }}
@@ -332,18 +349,11 @@ const FaqListScreen = (): React.ReactElement => {
         description="It stops appearing in the investor app. Nothing is deleted, and the archive is recorded in the audit log."
         confirmLabel="Archive it"
         confirmTone="danger"
-        pending={archive.isPending}
+        cancelLabel="Cancel"
         onConfirm={() => {
           if (archiving === null) return
-          setFailure(null)
-          archive.mutate(archiving, {
-            onError: (error) => {
-              setFailure(describe(error))
-            },
-            onSettled: () => {
-              setArchiving(null)
-            },
-          })
+          setArchiving(null)
+          archive.submit({ faqId: archiving })
         }}
         onCancel={() => {
           setArchiving(null)

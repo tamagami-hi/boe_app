@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
@@ -9,10 +8,14 @@ import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
 import { applicationState, emailDeliveryState } from "~/domain/status"
+import { useHeldDone } from "~/features/admin/funds/useHeldDone"
 import { useAdminApplication } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
+import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
+import { EmptyState } from "~/ui/patterns/EmptyState"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
@@ -20,47 +23,34 @@ import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
 import { PROSE_SM } from "~/ui/recipes/datalist"
+import { META_MUTED } from "~/ui/recipes/text"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 
 import { useDecideApplication } from "./applicationQueries"
 
 type Confirming = "approved" | "rejected" | null
 
-type Failure = Readonly<{ isUnknown: boolean; message: string }>
-
-const decisionFailure = (error: unknown): Failure =>
-  isUnknownWriteOutcome(error)
-    ? {
-        isUnknown: true,
-        message:
-          "The reply did not arrive, so it is not known whether the decision was recorded. Reload this application to see its current status before deciding again.",
-      }
-    : { isUnknown: false, message: isApiError(error) ? error.message : "We could not record that decision." }
+const UNSENT = "The decision could not be sent. Reload the page and try again."
 
 const ApplicationDetailScreen = (): React.ReactElement => {
   const { applicationId = "" } = useParams()
   const query = useAdminApplication(applicationId)
-  const decide = useDecideApplication(applicationId)
+  const decide = useHeldWrite(useDecideApplication(applicationId), UNSENT)
   const navigate = useNavigate()
   const { hasAnyPermission } = useSession()
   const [confirming, setConfirming] = useState<Confirming>(null)
-  const [failure, setFailure] = useState<Failure | null>(null)
 
   const canDecide = hasAnyPermission(["applications.decide"])
+  const isLocked = decide.held !== null
+  const { outcome } = decide
 
-  const run = (outcome: "approved" | "rejected"): void => {
-    setFailure(null)
-    decide.mutate(outcome, {
-      onError: (error) => {
-        setFailure(decisionFailure(error))
-      },
-      onSuccess: () => {
-        void navigate("/applications", { replace: true })
-      },
-      onSettled: () => {
-        setConfirming(null)
-      },
-    })
+  useHeldDone(outcome, () => {
+    void navigate("/applications", { replace: true })
+  })
+
+  const run = (decision: "approved" | "rejected"): void => {
+    setConfirming(null)
+    decide.submit({ outcome: decision })
   }
 
   return (
@@ -72,6 +62,17 @@ const ApplicationDetailScreen = (): React.ReactElement => {
 
       <AsyncBoundary
         query={query}
+        fallback={
+          <EmptyState
+            title="This application was not found"
+            description="No application has this address. It may have been mistyped, or the link may be out of date."
+            action={
+              <ButtonLink to="/applications" tone="secondary" size="sm">
+                Back to applications
+              </ButtonLink>
+            }
+          />
+        }
         skeleton={
           <Card>
             <Skeleton height="1.2rem" width="45%" />
@@ -81,14 +82,21 @@ const ApplicationDetailScreen = (): React.ReactElement => {
       >
         {(data) => (
           <>
-            {failure === null ? null : (
-              <Alert
-                tone={failure.isUnknown ? "warning" : "error"}
-                title={failure.isUnknown ? "Outcome unknown" : "Nothing changed"}
-              >
-                {failure.message}
+            {outcome.kind === "unknown" ? (
+              <HeldWriteNotice
+                write={decide}
+                subject={decide.held?.outcome === "rejected" ? "the application was rejected" : "the application was approved"}
+                onReload={() => {
+                  void query.refetch()
+                }}
+                reloadLabel="Reload the application"
+              />
+            ) : null}
+            {outcome.kind === "rejected" ? (
+              <Alert tone="error" title="Nothing changed">
+                {outcome.message}
               </Alert>
-            )}
+            ) : null}
 
             <Card elevated>
               <DataList split>
@@ -125,7 +133,8 @@ const ApplicationDetailScreen = (): React.ReactElement => {
                 {canDecide ? (
                   <div className={ACTION_ROW}>
                     <Button
-                      disabled={decide.isPending}
+                      disabled={isLocked}
+                      loading={decide.pending && decide.held?.outcome === "approved"}
                       onClick={() => {
                         setConfirming("approved")
                       }}
@@ -134,7 +143,8 @@ const ApplicationDetailScreen = (): React.ReactElement => {
                     </Button>
                     <Button
                       tone="danger"
-                      disabled={decide.isPending}
+                      disabled={isLocked}
+                      loading={decide.pending && decide.held?.outcome === "rejected"}
                       onClick={() => {
                         setConfirming("rejected")
                       }}
@@ -205,44 +215,51 @@ const ApplicationDetailScreen = (): React.ReactElement => {
                   <p className={PROSE_SM}>No email has been sent for this application.</p>
                 </Card>
               ) : (
-                <AdminTable
-                  caption="Email deliveries"
-                  rows={data.deliveries.items}
-                  rowKey={(row) => row.emailDeliveryId}
-                  columns={[
-                    { key: "template", header: "Template", render: (row) => row.templateKey },
-                    {
-                      key: "recipient",
-                      header: "Recipient",
-                      render: (row) => row.recipientMasked,
-                    },
-                    {
-                      key: "state",
-                      header: "State",
-                      render: (row) => (
-                        <StatusBadge
-                          status={emailDeliveryState(row.state)}
-                        />
-                      ),
-                    },
-                    {
-                      key: "attempts",
-                      header: "Attempts",
-                      numeric: true,
-                      render: (row) => String(row.attemptCount),
-                    },
-                    {
-                      key: "error",
-                      header: "Last error",
-                      render: (row) => row.lastErrorCode ?? "—",
-                    },
-                    {
-                      key: "updatedAt",
-                      header: "Updated",
-                      render: (row) => formatDateTime(row.updatedAt),
-                    },
-                  ]}
-                />
+                <>
+                  {data.deliveries.page.hasMore ? (
+                    <p className={META_MUTED}>
+                      {`Only the first ${String(data.deliveries.items.length)} emails are listed here. This application has more.`}
+                    </p>
+                  ) : null}
+                  <AdminTable
+                    caption="Email deliveries"
+                    rows={data.deliveries.items}
+                    rowKey={(row) => row.emailDeliveryId}
+                    columns={[
+                      { key: "template", header: "Template", render: (row) => row.templateKey },
+                      {
+                        key: "recipient",
+                        header: "Recipient",
+                        render: (row) => row.recipientMasked,
+                      },
+                      {
+                        key: "state",
+                        header: "State",
+                        render: (row) => (
+                          <StatusBadge
+                            status={emailDeliveryState(row.state)}
+                          />
+                        ),
+                      },
+                      {
+                        key: "attempts",
+                        header: "Attempts",
+                        numeric: true,
+                        render: (row) => String(row.attemptCount),
+                      },
+                      {
+                        key: "error",
+                        header: "Last error",
+                        render: (row) => row.lastErrorCode ?? "—",
+                      },
+                      {
+                        key: "updatedAt",
+                        header: "Updated",
+                        render: (row) => formatDateTime(row.updatedAt),
+                      },
+                    ]}
+                  />
+                </>
               )}
             </Section>
 
@@ -251,7 +268,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
               title="Approve this application?"
               description="This creates the account, activates it, and emails the applicant. It cannot be undone from here."
               confirmLabel="Approve and notify"
-              pending={decide.isPending}
+              cancelLabel="Cancel"
               onConfirm={() => {
                 run("approved")
               }}
@@ -266,7 +283,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
               description="This emails the applicant that they were not accepted. It cannot be undone from here."
               confirmLabel="Reject and notify"
               confirmTone="danger"
-              pending={decide.isPending}
+              cancelLabel="Cancel"
               onConfirm={() => {
                 run("rejected")
               }}

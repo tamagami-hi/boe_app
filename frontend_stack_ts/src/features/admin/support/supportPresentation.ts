@@ -1,4 +1,4 @@
-import { daysBetween, parseIsoDateTime } from "~/domain/dates"
+import { daysBetween, indiaToday, parseIsoDateTime } from "~/domain/dates"
 import { countOf } from "~/domain/plural"
 import { supportRequestState, type SupportRequestState } from "~/domain/status"
 import { supportCategoryLabel } from "~/domain/supportCategories"
@@ -18,8 +18,10 @@ export const isSupportState = (value: string): value is SupportRequestState =>
 const stateLabel = (value: string | null): string =>
   value !== null && isSupportState(value) ? supportRequestState(value).label : (value ?? "none")
 
+const indiaDayOf = (moment: Date): Date => parseIsoDateTime(`${indiaToday(moment)}T00:00:00Z`)
+
 export const ticketAge = (createdAt: string, now: Date): string => {
-  const days = daysBetween(parseIsoDateTime(createdAt), now)
+  const days = daysBetween(indiaDayOf(parseIsoDateTime(createdAt)), indiaDayOf(now))
   return days <= 0 ? "Today" : countOf(days, "day")
 }
 
