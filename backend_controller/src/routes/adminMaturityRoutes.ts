@@ -13,7 +13,13 @@ import {
   withdrawMaturedPosition,
   type MaturitySettlementDeps,
 } from "../domain/admin/maturitySettlement.js"
-import { AdminMarkMaturityBody, AdminPayoutStatusBody, AdminReinvestmentBody, AdminWithdrawalBody } from "./adminMaturitySchemas.js"
+import {
+  AdminMarkMaturityBody,
+  AdminPayoutStatusBody,
+  AdminReinvestmentBody,
+  AdminWithdrawalBody,
+  recordedTransferReference,
+} from "./adminMaturitySchemas.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
@@ -131,7 +137,7 @@ const updatePayout = (deps: AdminMaturityDeps, request: FastifyRequest, reply: F
           ...context,
           ...params,
           ...body,
-          transferReference: body.state === "paid" ? body.transferReference : null,
+          transferReference: recordedTransferReference(body),
           failureCode: body.state === "failed" ? body.failureCode : null,
         })
         return { status: 200, body: { payoutId: params.payoutId, state: body.state } }

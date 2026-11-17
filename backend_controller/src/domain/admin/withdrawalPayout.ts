@@ -13,13 +13,14 @@ export interface UpdateWithdrawalPayoutInput {
   readonly requestId: string
 }
 
+const isRecordableReference = (reference: string | null): boolean =>
+  reference === null || (reference.trim().length > 0 && reference.length <= 256)
+
 const assertPayoutUpdate = (input: UpdateWithdrawalPayoutInput): void => {
   if (!Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 0) {
     throw new AppError("VALIDATION_FAILED")
   }
-  const isPaid = input.state === "paid" && input.failureCode === null &&
-    input.transferReference !== null && input.transferReference.trim().length > 0 &&
-    input.transferReference.length <= 256
+  const isPaid = input.state === "paid" && input.failureCode === null && isRecordableReference(input.transferReference)
   const isFailed = input.state === "failed" && input.transferReference === null &&
     input.failureCode !== null && /^[A-Za-z0-9_.:-]{1,128}$/u.test(input.failureCode)
   if (!isPaid && !isFailed) throw new AppError("VALIDATION_FAILED")
@@ -31,7 +32,7 @@ export const updateWithdrawalPayout = async (
   assertPayoutUpdate(input)
   const update = { ...input, now: deps.clock() }
   const changed = input.state === "paid"
-    ? await deps.maturityRepository.markPayoutPaid(tx, { ...update, transferReference: input.transferReference!.trim() })
+    ? await deps.maturityRepository.markPayoutPaid(tx, { ...update, transferReference: input.transferReference?.trim() ?? null })
     : await deps.maturityRepository.markPayoutFailed(tx, { ...update, failureCode: input.failureCode! })
   if (!changed) {
     throw new AppError("STATE_CONFLICT", { message: "The payout is no longer pending or its version changed. Reload before continuing." })

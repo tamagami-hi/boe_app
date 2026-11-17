@@ -31,6 +31,22 @@ type Props = Readonly<{
 type Outcome = "paid" | "failed"
 
 const FAILURE_CODE_PATTERN = /^[A-Za-z0-9_.:-]{1,80}$/u
+const NOT_RECORDED = "Not recorded"
+
+const payoutDetail = ({ state, transferReference, failureCode }: Props["payout"]): string => {
+  if (state === "pending") return "Awaiting transfer confirmation"
+  if (state === "failed") return `Failure code: ${failureCode ?? NOT_RECORDED}`
+  return `Bank transfer reference: ${transferReference ?? NOT_RECORDED}`
+}
+
+const confirmDescription = (state: Outcome, reference: string): string => {
+  if (state === "failed") {
+    return "This records a failed transfer. The withdrawal stays in the investor's record and needs separate reconciliation."
+  }
+  return reference === ""
+    ? "Confirm that the transfer has completed."
+    : "Confirm that the transfer has completed and the bank transfer reference is correct."
+}
 
 export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrite, onReload }: Props): React.ReactElement => {
   const write = useHeldWrite(useUpdatePayout(payout.userId), "The payout status could not be sent. Reload the page and try again.", {
@@ -40,20 +56,23 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
   const held = write.held?.body ?? null
   const [state, setState] = useState<Outcome>(() => held?.state ?? "paid")
   const [reference, setReference] = useState(() =>
-    held === null ? "" : held.state === "paid" ? held.transferReference : held.failureCode,
+    held === null ? "" : held.state === "paid" ? (held.transferReference ?? "") : held.failureCode,
   )
   const [isConfirming, setIsConfirming] = useState(false)
   const locked = write.held !== null || write.pending || write.unreadable
   useUnloadGuard(isUnsavedHold(write))
   const trimmed = reference.trim()
-  const isValid = trimmed !== "" && (state === "paid" || FAILURE_CODE_PATTERN.test(trimmed))
+  const isValid = state === "paid" || FAILURE_CODE_PATTERN.test(trimmed)
 
   const submit = (): void => {
     setIsConfirming(false)
     const expectedVersion = Number(payout.version)
     write.submit({
       payoutId: payout.id,
-      body: state === "paid" ? { state, expectedVersion, transferReference: trimmed } : { state, expectedVersion, failureCode: trimmed },
+      body:
+        state === "paid"
+          ? { state, expectedVersion, ...(trimmed === "" ? {} : { transferReference: trimmed }) }
+          : { state, expectedVersion, failureCode: trimmed },
     })
   }
 
@@ -64,7 +83,7 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
           {fundName} · {formatDate(payout.effectiveDate)} · {payout.state}
         </p>
         <MoneyValue amount={toPaise(payout.amountPaise)} size="sm" showDecimals />
-        <p>{payout.transferReference ?? payout.failureCode ?? "Awaiting transfer confirmation"}</p>
+        <p>{payoutDetail(payout)}</p>
         {payout.state === "failed" ? (
           <Alert tone="info" title="Transfer failed">
             The withdrawal remains recorded. Reconcile the transfer separately; this status does not restore the
@@ -98,7 +117,10 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
                   />
                 )}
               </FormField>
-              <FormField label={state === "paid" ? "Bank transfer reference" : "Failure code"} required>
+              <FormField
+                label={state === "paid" ? "Bank transfer reference (optional)" : "Failure code"}
+                required={state === "failed"}
+              >
                 {({ id }) => (
                   <Input
                     id={id}
@@ -127,11 +149,7 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
       <ConfirmDialog
         open={isConfirming}
         title={`Mark payout ${state}?`}
-        description={
-          state === "paid"
-            ? "Confirm that the transfer has completed and the bank reference is correct."
-            : "This records a failed transfer. The withdrawal stays in the investor's record and needs separate reconciliation."
-        }
+        description={confirmDescription(state, trimmed)}
         confirmLabel={state === "paid" ? "Mark paid" : "Mark failed"}
         cancelLabel="Cancel"
         onConfirm={submit}
@@ -147,6 +165,11 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
           </DetailRow>
           <DetailRow label="Withdrawal date">{formatDate(payout.effectiveDate)}</DetailRow>
           <DetailRow label="Outcome">{state === "paid" ? "Paid" : "Failed"}</DetailRow>
+          {state === "paid" ? (
+            <DetailRow label="Bank transfer reference">{trimmed === "" ? NOT_RECORDED : trimmed}</DetailRow>
+          ) : (
+            <DetailRow label="Failure code">{trimmed}</DetailRow>
+          )}
         </DataList>
       </ConfirmDialog>
     </Card>

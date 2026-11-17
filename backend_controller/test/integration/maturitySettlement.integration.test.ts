@@ -8,6 +8,7 @@ import { exportPKCS8, exportSPKI, generateKeyPair } from "jose"
 import type { Pool } from "pg"
 import { Wait } from "testcontainers"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
+import { z } from "zod"
 
 import { createAccessTokenService } from "../../src/auth/accessToken.js"
 import { hashPassword } from "../../src/auth/passwordHasher.js"
@@ -38,6 +39,26 @@ import { runSeed } from "../../src/scripts/seed.js"
 import { CRYPTO_ENV } from "./passwordMailSupport.js"
 
 const PASSWORD = "correct horse battery staple"
+const RELEASED_PAISE = z.string().regex(/^(0|[1-9][0-9]*)$/u)
+const RELEASED_ADMIN_PAYOUT_LIST = z.strictObject({
+  userId: z.string().uuid(),
+  items: z.array(z.strictObject({
+    id: z.string().uuid(),
+    userId: z.string().uuid(),
+    fundId: z.string().uuid(),
+    maturityId: z.string().uuid(),
+    ledgerEntryId: z.string().uuid(),
+    state: z.enum(["pending", "paid", "failed"]),
+    amountPaise: RELEASED_PAISE,
+    growthPortionPaise: RELEASED_PAISE,
+    principalPortionPaise: RELEASED_PAISE,
+    effectiveDate: z.iso.date(),
+    transferReference: z.string().nullable(),
+    failureCode: z.string().nullable(),
+    version: RELEASED_PAISE,
+    createdAt: z.iso.datetime({ offset: true }),
+  })),
+})
 const ORIGIN = "https://admin.beonedge.test"
 
 let container: StartedPostgreSqlContainer
@@ -494,5 +515,68 @@ describe("maturity database and authorization integrity", () => {
       "insert into client_value_entries (user_id, fund_id, entry_type, principal_delta_paise, value_delta_paise, effective_date, reason_code, actor_type, created_by_user_id, request_id) values ($1, $2, $3, $4, $5, current_date, 'maturity_settlement', 'admin', $6, $7)",
       [position.userId, position.fundId, entryType, principal, value, financeAdminId, randomUUID()],
     )).rejects.toMatchObject({ code: "23514" })
+  })
+})
+
+describe("optional payout transfer reference", () => {
+  const pendingPayout = async () => {
+    const position = await fixture()
+    const response = await app.inject(withdrawal(position))
+    expect(response.statusCode, response.body).toBe(201)
+    return { userId: position.userId, payoutId: dataOf<{ payoutId: string }>(response).payoutId }
+  }
+  const markPaid = (payout: Awaited<ReturnType<typeof pendingPayout>>, fields: Readonly<Record<string, unknown>>) =>
+    app.inject({
+      method: "POST", url: `/v1/admin/clients/${payout.userId}/withdrawal-payouts/${payout.payoutId}/status`,
+      headers: authHeaders(financeSession, { "idempotency-key": randomUUID() }),
+      payload: { state: "paid", expectedVersion: 0, ...fields },
+    })
+  const stored = async (payoutId: string): Promise<unknown> =>
+    (await pool.query<Record<string, unknown>>(
+      "select state, transfer_reference, paid_at is not null as has_paid_at, version from withdrawal_operations where id = $1", [payoutId],
+    )).rows[0]
+  const auditedReferences = async (payoutId: string): Promise<unknown[]> =>
+    (await pool.query<{ metadata: Record<string, unknown> }>(
+      "select metadata from audit_events where entity_id = $1 and command = 'withdrawal_payout.paid'", [payoutId],
+    )).rows.map((row) => row.metadata.transferReference)
+
+  test.each([
+    ["left out", {}],
+    ["empty", { transferReference: "" }],
+    ["blank", { transferReference: "   " }],
+  ])("records a paid transfer with the reference %s and stores no reference", async (_label, fields) => {
+    const payout = await pendingPayout()
+    const response = await markPaid(payout, fields)
+    expect(response.statusCode, response.body).toBe(200)
+    expect(dataOf(response)).toEqual({ payoutId: payout.payoutId, state: "paid" })
+    expect(await stored(payout.payoutId)).toEqual({ state: "paid", transfer_reference: null, has_paid_at: true, version: "1" })
+    expect(await auditedReferences(payout.payoutId)).toEqual([null])
+  })
+
+  test("a sent reference is stored trimmed and an over-long one is refused, as before", async () => {
+    const payout = await pendingPayout()
+    const response = await markPaid(payout, { transferReference: "  BANK-TEST-456 " })
+    expect(response.statusCode, response.body).toBe(200)
+    expect(await stored(payout.payoutId)).toEqual({ state: "paid", transfer_reference: "BANK-TEST-456", has_paid_at: true, version: "1" })
+    expect(await auditedReferences(payout.payoutId)).toEqual(["BANK-TEST-456"])
+    const other = await pendingPayout()
+    const tooLong = await markPaid(other, { transferReference: "a".repeat(201) })
+    expect(tooLong.statusCode).toBe(400)
+    expect(errorOf(tooLong)).toBe("VALIDATION_FAILED")
+    expect(await stored(other.payoutId)).toEqual({ state: "pending", transfer_reference: null, has_paid_at: false, version: "0" })
+  })
+
+  test("a payout paid without a reference still parses under the released admin app's payout list schema", async () => {
+    const payout = await pendingPayout()
+    expect((await markPaid(payout, {})).statusCode).toBe(200)
+    const list = await app.inject({
+      method: "GET", url: `/v1/admin/clients/${payout.userId}/withdrawal-payouts?limit=100`, headers: authHeaders(financeSession),
+    })
+    expect(list.statusCode, list.body).toBe(200)
+    const parsed = RELEASED_ADMIN_PAYOUT_LIST.safeParse(dataOf(list))
+    expect(parsed.error).toBeUndefined()
+    expect(parsed.data?.items).toEqual([
+      expect.objectContaining({ id: payout.payoutId, state: "paid", transferReference: null, failureCode: null, version: "1" }),
+    ])
   })
 })

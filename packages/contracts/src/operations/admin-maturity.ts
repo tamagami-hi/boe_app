@@ -46,7 +46,7 @@ export const AdminPayoutStatusBody = z.discriminatedUnion("state", [
   z.strictObject({
     state: z.literal("paid"),
     expectedVersion: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
-    transferReference: z.string().trim().min(1).max(200),
+    transferReference: z.string().trim().max(200).optional(),
   }),
   z.strictObject({
     state: z.literal("failed"),

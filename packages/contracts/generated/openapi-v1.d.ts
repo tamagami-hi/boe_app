@@ -15581,7 +15581,7 @@ export interface operations {
                     /** @enum {string} */
                     state: "paid";
                     expectedVersion: number;
-                    transferReference: string;
+                    transferReference?: string;
                 } | {
                     /** @enum {string} */
                     state: "failed";

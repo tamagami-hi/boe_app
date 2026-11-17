@@ -111,7 +111,7 @@ export interface MaturityRepository {
     input: Readonly<{
       userId: string
       payoutId: string
-      transferReference: string
+      transferReference: string | null
       expectedVersion: number
       now: Date
     }>,

@@ -26,7 +26,7 @@ export const AdminPayoutStatusBody = z.discriminatedUnion("state", [
   z.strictObject({
     state: z.literal("paid"),
     expectedVersion: versionSchema,
-    transferReference: z.string().trim().min(1).max(200),
+    transferReference: z.string().trim().max(200).optional(),
   }),
   z.strictObject({
     state: z.literal("failed"),
@@ -34,3 +34,6 @@ export const AdminPayoutStatusBody = z.discriminatedUnion("state", [
     failureCode: z.string().trim().regex(/^[A-Za-z0-9_.:-]{1,80}$/u),
   }),
 ])
+
+export const recordedTransferReference = (body: z.infer<typeof AdminPayoutStatusBody>): string | null =>
+  body.state === "paid" && body.transferReference !== undefined && body.transferReference !== "" ? body.transferReference : null

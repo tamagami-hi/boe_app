@@ -25361,14 +25361,12 @@
                       },
                       "transferReference": {
                         "type": "string",
-                        "minLength": 1,
                         "maxLength": 200
                       }
                     },
                     "required": [
                       "state",
-                      "expectedVersion",
-                      "transferReference"
+                      "expectedVersion"
                     ],
                     "additionalProperties": false
                   },
