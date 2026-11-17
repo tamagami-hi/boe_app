@@ -1,7 +1,6 @@
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
-import { isNative } from "~/platform/capacitor"
 import { DataList } from "~/ui/patterns/DataList"
 import { Card } from "~/ui/primitives/Card"
 
@@ -15,13 +14,11 @@ export const WhatsNewScreen = ({ notes }: WhatsNewScreenProps): React.ReactEleme
   <Page width="default">
     <PageHeader title="What's new" description="What changed in each release, newest first." />
 
-    {isNative() ? (
-      <Card>
-        <DataList>
-          <InstalledVersionRow label="Installed version" />
-        </DataList>
-      </Card>
-    ) : null}
+    <Card>
+      <DataList>
+        <InstalledVersionRow label="Version" />
+      </DataList>
+    </Card>
 
     {notes.map((entry) => (
       <Section key={entry.id} title={`Version ${entry.id}`}>

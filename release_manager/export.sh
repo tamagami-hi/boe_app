@@ -229,6 +229,7 @@ build_images() {
     step "user SPA → $app_tag"
     docker build \
         --build-arg "VITE_BEO_APP_TARGET=client" \
+        --build-arg "VITE_BEO_APP_VERSION=$VERSION" \
         --build-arg "VITE_BEO_API_MODE=http" \
         --build-arg "VITE_BEO_API_BASE_URL=$api_base" \
         -f "$app_dockerfile" \
@@ -238,6 +239,7 @@ build_images() {
     step "admin SPA → $admin_tag"
     docker build \
         --build-arg "VITE_BEO_APP_TARGET=admin" \
+        --build-arg "VITE_BEO_APP_VERSION=$VERSION" \
         --build-arg "VITE_BEO_API_MODE=http" \
         --build-arg "VITE_BEO_API_BASE_URL=$admin_api_base" \
         -f "$app_dockerfile" \

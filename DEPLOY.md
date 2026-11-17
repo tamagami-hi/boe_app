@@ -116,6 +116,16 @@ Version labelling: a clean tree on the exact `vX.Y.Z` tag produces a stable `X.Y
 anything else produces `<next>-dev.N.gSHA[.dirty]`. **Production deploys refuse any version
 containing `-`**, so cut a release in `status.sh` before exporting a production bundle.
 
+The frontend learns that label at build time from `VITE_BEO_APP_VERSION` (DEC-71). `export.sh`
+passes it to both SPA images as the `--build-arg VITE_BEO_APP_VERSION=<label>` that
+`frontend_stack_ts/Dockerfile` turns into the same env variable, and `emu/boe_update.sh` exports
+it with the label it gives the APK `versionName`, so the native and JavaScript versions agree.
+The build sends it as `x-app-version` and `device.appVersion` on native sign-in and shows it as
+"Version" on the admin Account and the What's new pages (the APK shows its `versionName` there).
+A build without the variable, such as `npm run dev` or a plain `npm run build:client`, is
+labelled `0.0.0-dev`; a value that is not `X.Y.Z` or `X.Y.Z-label` fails the Vite build, since
+the server refuses such a version at native sign-in.
+
 `release_manager/verify.sh` checks the whole contract locally (108 assertions; add
 `--remote` for the VPS checks). `release_manager/status.sh` is the interactive console for
 version state, git workflow and stack status.

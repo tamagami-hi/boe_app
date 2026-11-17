@@ -1,4 +1,5 @@
 import type { SessionScope } from "~/api/session/scope"
+import { buildVersion } from "~/lib/env"
 
 /**
  * The device descriptor a native login sends, and the compatibility headers that
@@ -15,7 +16,7 @@ import type { SessionScope } from "~/api/session/scope"
  * credential, it identifies an install, and it must survive a reinstall of the
  * WebView's memory the same way it survives a browser reload.
  */
-export const APP_VERSION = "0.1.0"
+export const APP_VERSION = buildVersion()
 
 export type NativeDevice = Readonly<{
   installationId: string

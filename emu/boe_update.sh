@@ -410,6 +410,7 @@ build_variant() {
 
     # Vite reads these from the process environment; shell wins over .env files.
     export VITE_BEO_APP_TARGET="$variant"
+    export VITE_BEO_APP_VERSION="$BUILD_LABEL"
     export BOE_CAPACITOR_VARIANT="$variant"
     export VITE_BEO_API_MODE="http"
     export VITE_BEO_API_BASE_URL="$API_BASE"

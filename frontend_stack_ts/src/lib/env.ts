@@ -19,6 +19,8 @@ export class ConfigurationError extends Error {
 export const appTarget = (): AppTarget =>
   import.meta.env.VITE_BEO_APP_TARGET === "client" ? "client" : "admin"
 
+export const buildVersion = (): string => import.meta.env.VITE_BEO_APP_VERSION
+
 export const isNativeShell = (): boolean =>
   typeof window !== "undefined" && window.location.hostname === "localhost" &&
   window.location.protocol === "https:"

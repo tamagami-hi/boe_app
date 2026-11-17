@@ -7,7 +7,6 @@ import { useSession } from "~/app/providers/SessionProvider"
 import type { RoleCode } from "~/domain/permissions"
 import { useAuthPort } from "~/features/auth/authPort"
 import { InstalledVersionRow } from "~/features/whats-new/InstalledVersionRow"
-import { isNative } from "~/platform/capacitor"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
@@ -39,7 +38,7 @@ const AccountScreen = (): React.ReactElement => {
           <DetailRow label="Name">{principal.fullName}</DetailRow>
           <DetailRow label="Email">{principal.email}</DetailRow>
           <DetailRow label="Role">{roleLabel(principal.roles)}</DetailRow>
-          {isNative() ? <InstalledVersionRow label="App version" /> : null}
+          <InstalledVersionRow label="Version" />
         </DataList>
       </Card>
 

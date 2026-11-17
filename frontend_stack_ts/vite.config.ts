@@ -17,10 +17,25 @@ const resolveAppTarget = (): AppTarget => {
 
 const appTarget = resolveAppTarget()
 
+const APP_VERSION_PATTERN = /^[0-9]+[.][0-9]+[.][0-9]+([+-][A-Za-z0-9.-]+)?$/u
+const DEV_APP_VERSION = "0.0.0-dev"
+
+const resolveAppVersion = (): string => {
+  const supplied = process.env.VITE_BEO_APP_VERSION?.trim() ?? ""
+  if (supplied === "") return DEV_APP_VERSION
+  if (APP_VERSION_PATTERN.test(supplied)) return supplied
+  throw new Error(
+    `VITE_BEO_APP_VERSION must be X.Y.Z or X.Y.Z-label, received ${JSON.stringify(supplied)}`,
+  )
+}
+
+const appVersion = resolveAppVersion()
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   define: {
     "import.meta.env.VITE_BEO_APP_TARGET": JSON.stringify(appTarget),
+    "import.meta.env.VITE_BEO_APP_VERSION": JSON.stringify(appVersion),
   },
   resolve: {
     alias: {
