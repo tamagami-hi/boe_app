@@ -2008,6 +2008,14 @@
     {
       "commit": "f774937",
       "note": "Plan: section 8 entry for UI overhaul stage A on main (2a11725); status line, DEC-61, DEC-63, DEC-64 updated for v0.18.0."
+    },
+    {
+      "commit": "a033b3b",
+      "note": "Release v0.18.0 cut by the maintainer with release_manager/status.sh: UI overhaul stage A (DEC-61) plus fx-outage-502."
+    },
+    {
+      "commit": "66fd4c1",
+      "note": "Plan: v0.18.0 cut recorded; releases from now are 0.18.x patches only (DEC-67)."
     }
   ]
 }

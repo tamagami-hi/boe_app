@@ -660,6 +660,16 @@
       "state": "decided, not built",
       "by": "operator",
       "on": "2026-11-17T04:04:53.215Z"
+    },
+    {
+      "id": "DEC-67",
+      "group": "admin-improvements",
+      "text": "From v0.18.0 every release is a patch release (0.18.x). The main reform is done; what is left is minor changes and fixes, each shipped as a 0.18.x patch. No minor or major version bump unless the maintainer says otherwise.",
+      "since": "2026-11-17",
+      "status": "In force from v0.18.0, cut by the maintainer on 2026-11-17.",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-17T10:11:09.364Z"
     }
   ],
   "replaced": []
