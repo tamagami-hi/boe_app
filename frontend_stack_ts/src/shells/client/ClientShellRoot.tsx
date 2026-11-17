@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { BrowserRouter } from "react-router-dom"
 
 import { createQueryClient } from "~/app/providers/QueryProvider"
 import { ApiProvider } from "~/app/providers/ApiProvider"
@@ -66,27 +67,29 @@ const ClientShellRoot = (): React.ReactElement => {
   )
 
   return (
-    <AppProviders
-      scope="client"
-      tokenStore={runtime.tokenStore}
-      restore={runtime.restore}
-      backPolicy={backPolicy}
-      onTransactionalBack={confirmTransactionalBack}
-      queryClient={queryClient}
-    >
-      <TransportReporter bind={runtime.setOutcomeReporter} />
-      <ApiProvider value={runtime.http}>
-        <AuthPortProvider value={port}>
-          <AppNoticeGate>
-            <AppUpdateGate>
-              <ClientFrame>
-                <ClientRoutes targets={TARGETS} />
-              </ClientFrame>
-            </AppUpdateGate>
-          </AppNoticeGate>
-        </AuthPortProvider>
-      </ApiProvider>
-    </AppProviders>
+    <BrowserRouter>
+      <AppProviders
+        scope="client"
+        tokenStore={runtime.tokenStore}
+        restore={runtime.restore}
+        backPolicy={backPolicy}
+        onTransactionalBack={confirmTransactionalBack}
+        queryClient={queryClient}
+      >
+        <TransportReporter bind={runtime.setOutcomeReporter} />
+        <ApiProvider value={runtime.http}>
+          <AuthPortProvider value={port}>
+            <AppNoticeGate>
+              <AppUpdateGate>
+                <ClientFrame>
+                  <ClientRoutes targets={TARGETS} />
+                </ClientFrame>
+              </AppUpdateGate>
+            </AppNoticeGate>
+          </AuthPortProvider>
+        </ApiProvider>
+      </AppProviders>
+    </BrowserRouter>
   )
 }
 

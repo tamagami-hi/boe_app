@@ -2,7 +2,9 @@ import { useEffect, useSyncExternalStore } from "react"
 
 type Listener = () => void
 
-const holders = new Set<symbol>()
+export type HeldWriteKeeping = "none" | "device" | "page"
+
+const holders = new Map<symbol, boolean>()
 const listeners = new Set<Listener>()
 
 const notify = (): void => {
@@ -16,20 +18,27 @@ const subscribe = (listener: Listener): (() => void) => {
   }
 }
 
-const hasUnsettledHeldWrite = (): boolean => holders.size > 0
+export const unsettledHeldWriteKeeping = (): HeldWriteKeeping => {
+  if (holders.size === 0) return "none"
+  return [...holders.values()].some((isPageOnly) => isPageOnly) ? "page" : "device"
+}
 
-export const useMarkUnsettledHeldWrite = (isUnsettled: boolean): void => {
+const NO_KEEPING = (): HeldWriteKeeping => "none"
+
+export const useMarkUnsettledHeldWrite = (isUnsettled: boolean, isKeptOnPageOnly: boolean): void => {
   useEffect(() => {
     if (!isUnsettled) return undefined
     const holder = Symbol("held-write")
-    holders.add(holder)
+    holders.set(holder, isKeptOnPageOnly)
     notify()
     return () => {
       holders.delete(holder)
       notify()
     }
-  }, [isUnsettled])
+  }, [isUnsettled, isKeptOnPageOnly])
 }
 
-export const useHasUnsettledHeldWrite = (): boolean =>
-  useSyncExternalStore(subscribe, hasUnsettledHeldWrite, () => false)
+export const useUnsettledHeldWriteKeeping = (): HeldWriteKeeping =>
+  useSyncExternalStore(subscribe, unsettledHeldWriteKeeping, NO_KEEPING)
+
+export const useHasUnsettledHeldWrite = (): boolean => useUnsettledHeldWriteKeeping() !== "none"

@@ -8,6 +8,7 @@ import { formatYearMonth, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { ListSkeleton } from "~/features/admin/client-values/ListSkeleton"
 import { SIP_MONTH_PATTERN } from "~/features/admin/client-values/sipScheduleMonths"
+import { useMarkUnsettledHeldWrite } from "~/features/admin/shared/unsettledHeldWrites"
 import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
@@ -100,6 +101,7 @@ const RecordingSheetMonth = ({ month, fundId, onMonth, onFund }: SheetMonthProps
   const hiddenHeld = [...waiting].filter((scheduleId) => !visible.has(scheduleId)).length
   const isLeaveBlocked = recorder.busy || recorder.unsaved.size > 0
   useUnloadGuard(recorder.unsaved.size > 0)
+  useMarkUnsettledHeldWrite(waiting.size > 0, recorder.unsaved.size > 0)
 
   const setDraft = (scheduleId: string, draft: RowDraft): void => {
     setDrafts((current) => ({ ...current, [scheduleId]: draft }))

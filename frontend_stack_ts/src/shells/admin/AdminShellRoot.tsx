@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { RouterProvider, createBrowserRouter } from "react-router-dom"
 
 import { createQueryClient } from "~/app/providers/QueryProvider"
 import { ApiProvider } from "~/app/providers/ApiProvider"
@@ -15,7 +16,9 @@ import {
   ADMIN_SPLASH_PATH,
 } from "~/app/routing/adminRoutes"
 import { buildRouter } from "~/app/routing/buildRouter"
+import { RouteErrorBoundary } from "~/app/routing/RouteErrorBoundary"
 import type { EligibilityGate, GuardTargets } from "~/app/routing/guards"
+import { HeldWriteLeaveGuard } from "~/features/admin/shared/HeldWriteLeaveGuard"
 import { AuthPortProvider } from "~/features/auth/authPort"
 import type { AuthPort } from "~/features/auth/authPort"
 import { AdminFrame } from "~/shells/admin/AdminFrame"
@@ -37,7 +40,7 @@ export const backPolicy = (input: BackPolicyInput): BackPolicy => resolveAdminBa
 
 export const probeReachability = (): Promise<boolean> => createAdminRuntime().probeReachability()
 
-const AdminShellRoot = (): React.ReactElement => {
+const AdminApp = (): React.ReactElement => {
   const [runtime] = useState(createAdminRuntime)
   const [queryClient] = useState(createQueryClient)
 
@@ -83,10 +86,24 @@ const AdminShellRoot = (): React.ReactElement => {
               <AdminFrame>{router}</AdminFrame>
             </AppUpdateGate>
           </AppNoticeGate>
+          <HeldWriteLeaveGuard />
         </AuthPortProvider>
       </ApiProvider>
     </AppProviders>
   )
 }
+
+const ADMIN_ROUTER = createBrowserRouter([
+  {
+    path: "*",
+    element: (
+      <RouteErrorBoundary>
+        <AdminApp />
+      </RouteErrorBoundary>
+    ),
+  },
+])
+
+const AdminShellRoot = (): React.ReactElement => <RouterProvider router={ADMIN_ROUTER} />
 
 export default AdminShellRoot

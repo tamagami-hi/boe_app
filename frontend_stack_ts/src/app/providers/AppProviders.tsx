@@ -1,4 +1,3 @@
-import { BrowserRouter } from "react-router-dom"
 import type { QueryClient } from "@tanstack/react-query"
 import type { ReactNode } from "react"
 
@@ -37,26 +36,24 @@ export const AppProviders = ({
   queryClient,
   children,
 }: AppProvidersProps): React.ReactElement => (
-  <BrowserRouter>
-    <QueryProvider client={queryClient}>
-      <NetworkStatusProvider>
-        <OverlayStackProvider>
-          <SessionProvider scope={scope} tokenStore={tokenStore} restore={restore}>
-            <DeviceLockGate>
-              <ToastProvider>
-                <SystemBarsController />
-                <AppLinkRouter />
-                <NativeBackCoordinator
-                  resolvePolicy={backPolicy}
-                  {...(onTransactionalBack === undefined ? {} : { onTransactionalBack })}
-                />
-                <ConnectivityBanner />
-                {children}
-              </ToastProvider>
-            </DeviceLockGate>
-          </SessionProvider>
-        </OverlayStackProvider>
-      </NetworkStatusProvider>
-    </QueryProvider>
-  </BrowserRouter>
+  <QueryProvider client={queryClient}>
+    <NetworkStatusProvider>
+      <OverlayStackProvider>
+        <SessionProvider scope={scope} tokenStore={tokenStore} restore={restore}>
+          <DeviceLockGate>
+            <ToastProvider>
+              <SystemBarsController />
+              <AppLinkRouter />
+              <NativeBackCoordinator
+                resolvePolicy={backPolicy}
+                {...(onTransactionalBack === undefined ? {} : { onTransactionalBack })}
+              />
+              <ConnectivityBanner />
+              {children}
+            </ToastProvider>
+          </DeviceLockGate>
+        </SessionProvider>
+      </OverlayStackProvider>
+    </NetworkStatusProvider>
+  </QueryProvider>
 )

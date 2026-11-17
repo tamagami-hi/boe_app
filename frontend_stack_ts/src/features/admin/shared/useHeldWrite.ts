@@ -87,7 +87,7 @@ export const useHeldWrite = <TBody extends object, TResult>(
   const [unreadableAt, setUnreadableAt] = useState(restored.unreadableAt)
   const [expired, setExpired] = useState(restored.expired)
   const [outcome, setOutcome] = useState<HeldWriteOutcome<TResult>>(() => (restored.hold === null ? IDLE : UNKNOWN))
-  useMarkUnsettledHeldWrite(hold !== null || unreadableAt !== null)
+  useMarkUnsettledHeldWrite(hold !== null || unreadableAt !== null, hold !== null && !persisted)
 
   const holdOn = (next: Hold<TBody> | null): void => {
     current.current = next
