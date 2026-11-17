@@ -16,7 +16,7 @@ export const WhatsNewScreen = ({ notes }: WhatsNewScreenProps): React.ReactEleme
 
     <Card>
       <DataList>
-        <InstalledVersionRow label="Version" />
+        <InstalledVersionRow label="App version" />
       </DataList>
     </Card>
 

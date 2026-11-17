@@ -38,7 +38,7 @@ const AccountScreen = (): React.ReactElement => {
           <DetailRow label="Name">{principal.fullName}</DetailRow>
           <DetailRow label="Email">{principal.email}</DetailRow>
           <DetailRow label="Role">{roleLabel(principal.roles)}</DetailRow>
-          <InstalledVersionRow label="Version" />
+          <InstalledVersionRow label="App version" />
         </DataList>
       </Card>
 

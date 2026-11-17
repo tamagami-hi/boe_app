@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "vite"
 
+import { NativeAuthHeaders } from "../packages/contracts/dist/index.js"
+
 type AppTarget = "client" | "admin"
 
 const resolveAppTarget = (): AppTarget => {
@@ -17,15 +19,16 @@ const resolveAppTarget = (): AppTarget => {
 
 const appTarget = resolveAppTarget()
 
-const APP_VERSION_PATTERN = /^[0-9]+[.][0-9]+[.][0-9]+([+-][A-Za-z0-9.-]+)?$/u
+const APP_VERSION_SCHEMA = NativeAuthHeaders.shape["x-app-version"]
 const DEV_APP_VERSION = "0.0.0-dev"
 
 const resolveAppVersion = (): string => {
   const supplied = process.env.VITE_BEO_APP_VERSION?.trim() ?? ""
   if (supplied === "") return DEV_APP_VERSION
-  if (APP_VERSION_PATTERN.test(supplied)) return supplied
+  const parsed = APP_VERSION_SCHEMA.safeParse(supplied)
+  if (parsed.success) return parsed.data
   throw new Error(
-    `VITE_BEO_APP_VERSION must be X.Y.Z or X.Y.Z-label, received ${JSON.stringify(supplied)}`,
+    `VITE_BEO_APP_VERSION must be X.Y.Z, X.Y.Z-label or X.Y.Z+label, received ${JSON.stringify(supplied)}`,
   )
 }
 

@@ -217,6 +217,18 @@ build_images() {
         exit 1
     fi
     ok "Dockerfile declares ARG VITE_BEO_APP_TARGET"
+    if ! grep -q 'ARG[[:space:]]\+VITE_BEO_APP_VERSION' "$app_dockerfile"; then
+        err "frontend_stack_ts/Dockerfile does not declare ARG VITE_BEO_APP_VERSION"
+        err ""
+        err "Docker would ignore the version build argument, and both frontend images"
+        err "would be labelled 0.0.0-dev. Add these two lines to its build stage,"
+        err "before the 'npm run build' line:"
+        err ""
+        err "    ARG VITE_BEO_APP_VERSION"
+        err "    ENV VITE_BEO_APP_VERSION=\${VITE_BEO_APP_VERSION}"
+        exit 1
+    fi
+    ok "Dockerfile declares ARG VITE_BEO_APP_VERSION"
 
     local backend_tag app_tag admin_tag
     backend_tag="$(stack_image_tag "$STACK" backend "$VERSION")"

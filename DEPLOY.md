@@ -121,10 +121,11 @@ passes it to both SPA images as the `--build-arg VITE_BEO_APP_VERSION=<label>` t
 `frontend_stack_ts/Dockerfile` turns into the same env variable, and `emu/boe_update.sh` exports
 it with the label it gives the APK `versionName`, so the native and JavaScript versions agree.
 The build sends it as `x-app-version` and `device.appVersion` on native sign-in and shows it as
-"Version" on the admin Account and the What's new pages (the APK shows its `versionName` there).
+"App version" on the admin Account and the What's new pages (the APK shows its `versionName` there).
 A build without the variable, such as `npm run dev` or a plain `npm run build:client`, is
-labelled `0.0.0-dev`; a value that is not `X.Y.Z` or `X.Y.Z-label` fails the Vite build, since
-the server refuses such a version at native sign-in.
+labelled `0.0.0-dev`. A value that is not `X.Y.Z`, `X.Y.Z-label` or `X.Y.Z+label` fails the
+Vite build, which checks it with the contracts' `AppVersion`, the pattern the server uses to
+refuse a version at native sign-in.
 
 `release_manager/verify.sh` checks the whole contract locally (108 assertions; add
 `--remote` for the VPS checks). `release_manager/status.sh` is the interactive console for

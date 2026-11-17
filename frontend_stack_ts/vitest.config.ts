@@ -16,6 +16,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    env: { VITE_BEO_APP_VERSION: "0.0.0-dev" },
     globals: false,
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
