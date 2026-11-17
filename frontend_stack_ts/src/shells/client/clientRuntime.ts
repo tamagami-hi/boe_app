@@ -11,8 +11,10 @@ import {
 import { isTemporaryFailure } from "~/api/errors"
 import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
-import { createRecoveryQueue, createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
+import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
+import { createRecoveryQueue } from "~/api/session/recoveryQueue"
+import type { RefreshedElsewhere } from "~/api/session/recoveryQueue"
 import { endSession, watchStoredPrincipal } from "~/api/session/sessionEnd"
 import {
   createTokenStore,
@@ -118,11 +120,15 @@ export const createClientRuntime = (): ClientRuntime => {
    * itself and accepts the refresh cookie alone, which is exactly the state an
    * expired access cookie leaves behind.
    */
-  const executeCookieRefresh = async (): Promise<RefreshOutcome> => {
+  const executeCookieRefresh = async (refreshedElsewhere: RefreshedElsewhere): Promise<RefreshOutcome> => {
     if (heldUserId(tokenStore, "client") === null) return "replaced"
     try {
       const recovered = await bareClient.request(getClientWebCsrf, { unauthenticated: true })
       if (!holdsUser(tokenStore, "client", recovered.data.user.userId)) return "replaced"
+      if (refreshedElsewhere(recovered.data.csrfToken)) {
+        tokenStore.set("client", "csrfToken", recovered.data.csrfToken)
+        return "rotated"
+      }
       const { data } = await bareClient.request(clientWebRefresh, {
         body: { rotationId: rotationId.value },
         headers: { "x-csrf-token": recovered.data.csrfToken },
@@ -154,7 +160,7 @@ export const createClientRuntime = (): ClientRuntime => {
     }
   }
 
-  const recoveries = createRecoveryQueue()
+  const recoveries = createRecoveryQueue("client")
 
   const refreshCoordinator = createRefreshCoordinator(
     native ? executeNativeRefresh : () => recoveries(executeCookieRefresh),

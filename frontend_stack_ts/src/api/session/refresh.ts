@@ -29,17 +29,6 @@ export const heldUserId = (tokenStore: TokenStore, scope: SessionScope): string 
 export const holdsUser = (tokenStore: TokenStore, scope: SessionScope, userId: string): boolean =>
   heldUserId(tokenStore, scope) === userId
 
-export type RecoveryQueue = (step: () => Promise<RefreshOutcome>) => Promise<RefreshOutcome>
-
-export const createRecoveryQueue = (): RecoveryQueue => {
-  let last: Promise<unknown> = Promise.resolve()
-  return (step) => {
-    const run = last.then(step)
-    last = run.catch(() => undefined)
-    return run
-  }
-}
-
 export const createRefreshCoordinator = (execute: RefreshExecutor): RefreshCoordinator => {
   const pending = new Map<SessionScope, Promise<RefreshOutcome>>()
 

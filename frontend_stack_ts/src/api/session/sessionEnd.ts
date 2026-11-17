@@ -28,7 +28,7 @@ const endIfAnotherUserStored = (
   if (namesAnotherUser(stored, heldUserId(tokenStore, scope))) endSession(tokenStore, scope, "revoked")
 }
 
-const readStored = (key: string): string | null => {
+export const readStored = (key: string): string | null => {
   try {
     return localStorage.getItem(key)
   } catch {
