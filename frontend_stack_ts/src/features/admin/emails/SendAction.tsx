@@ -22,9 +22,7 @@ const IDLE: Outcome = { kind: "idle" }
 
 const describeRejection = (error: unknown): string => {
   if (!isApiError(error)) return "This email could not be sent. Reload the page and try again."
-  if (error.code === "RATE_LIMITED") {
-    return "This address was sent a message a moment ago. Wait a minute, then try again."
-  }
+  if (error.code === "RATE_LIMITED") return "Too many requests right now. Try again in a few minutes."
   if (error.code === "RESOURCE_NOT_FOUND") return "That template or client could not be found. Reload the page and choose again."
   return error.message
 }

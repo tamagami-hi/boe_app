@@ -20,9 +20,7 @@ const CODE_LENGTH = 6
 const issueMessage = (error: unknown): string => {
   if (isTransportError(error)) return "We could not reach BeOnEdge. Try again."
   if (!isApiError(error)) return "We could not send the code. Try again."
-  if (error.code === "RATE_LIMITED") {
-    return "A code was sent recently. You can ask for another shortly."
-  }
+  if (error.code === "RATE_LIMITED") return "Too many requests right now. Try again in a few minutes."
   if (error.code === "DEPENDENCY_UNAVAILABLE") {
     return "We could not send the email just now. Try again shortly."
   }
@@ -71,8 +69,8 @@ const EmailVerificationScreen = (): React.ReactElement => {
   const requestCode = (): void => {
     start.mutate(undefined, {
       onError: (error) => {
-        if (error instanceof ApiError && error.code === "RATE_LIMITED") {
-          setCooldown(error.retryAfterSeconds ?? 60)
+        if (error instanceof ApiError && error.code === "RATE_LIMITED" && error.retryAfterSeconds !== null) {
+          setCooldown(error.retryAfterSeconds)
         }
       },
       onSuccess: ({ alreadyVerified }) => {

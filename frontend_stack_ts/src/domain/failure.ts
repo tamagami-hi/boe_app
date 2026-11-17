@@ -83,6 +83,8 @@ const CODE_BASE: Readonly<Partial<Record<ErrorCode, Copy>>> = {
   DEPENDENCY_UNAVAILABLE: { message: "This is temporarily unavailable. Please try again shortly." },
 }
 
+const TOO_MANY_REQUESTS: Copy = { message: "Too many requests right now. Try again in a few minutes." }
+
 const UNCONFIRMED_MONEY_SAFE =
   "We couldn't confirm this. No payment has been taken — check Activity before trying again."
 
@@ -124,7 +126,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
   sendVerificationCode: {
     title: "We couldn't send the code",
     codes: {
-      RATE_LIMITED: { message: "A code was sent recently. You can ask for another shortly." },
+      RATE_LIMITED: TOO_MANY_REQUESTS,
       DEPENDENCY_UNAVAILABLE: { message: "We couldn't send the email just now. Try again shortly." },
       STATE_CONFLICT: { message: "This email address is already verified." },
     },
@@ -135,7 +137,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     title: "That code didn't work",
     codes: {
       STATE_CONFLICT: { message: "That code is no longer valid. Ask for a new one." },
-      RATE_LIMITED: { message: "Too many attempts on that code. Ask for a new one." },
+      RATE_LIMITED: TOO_MANY_REQUESTS,
     },
     fallback: { message: "We couldn't check that code. Please try again." },
   },
@@ -234,7 +236,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     title: "We couldn't send that",
     codes: {
       VALIDATION_FAILED: { message: "Enter the email address on your account." },
-      RATE_LIMITED: { message: "A link was requested recently. You can ask for another shortly." },
+      RATE_LIMITED: TOO_MANY_REQUESTS,
       DEPENDENCY_UNAVAILABLE: { message: "We couldn't send the email just now. Try again shortly." },
     },
     transport: {
@@ -251,7 +253,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
         message: "This link is no longer valid. Ask for a new one and use the newest email.",
       },
       VALIDATION_FAILED: { message: "Use at least 12 characters." },
-      RATE_LIMITED: { message: "Too many attempts. Ask for a new link." },
+      RATE_LIMITED: TOO_MANY_REQUESTS,
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
@@ -265,7 +267,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     codes: {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
       VALIDATION_FAILED: { message: "Use at least 12 characters for the new password." },
-      RATE_LIMITED: { message: "Too many attempts with your password. Wait 15 minutes, then try again." },
+      RATE_LIMITED: TOO_MANY_REQUESTS,
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
@@ -280,7 +282,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
       VALIDATION_FAILED: { message: "Enter the number with its country code, for example +919876543210." },
       STATE_CONFLICT: { message: "That number is already used by another account or a pending application." },
-      RATE_LIMITED: { message: "Too many attempts with your password. Wait 15 minutes, then try again." },
+      RATE_LIMITED: TOO_MANY_REQUESTS,
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
@@ -296,7 +298,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     title: "Request not sent",
     codes: {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
-      RATE_LIMITED: { message: "Too many attempts with your password. Wait 15 minutes, then try again." },
+      RATE_LIMITED: TOO_MANY_REQUESTS,
       VALIDATION_FAILED: { message: "Check the nominee's name and their relation to you, then try again." },
       ACCOUNT_NOT_ACTIVE: { message: "This account is not active, so it cannot send a nominee request. Contact support." },
       STATE_CONFLICT: { message: "A nominee request is already waiting for the BeOnEdge team. Reload to see it." },
@@ -319,7 +321,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
       VALIDATION_FAILED: { message: "Enter a full email address, like name@example.com." },
       STATE_CONFLICT: { message: "That email address is already used by another account or a pending application." },
-      RATE_LIMITED: { message: "A code was sent moments ago, or there were too many attempts with your password. Wait a few minutes, then ask again." },
+      RATE_LIMITED: TOO_MANY_REQUESTS,
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },

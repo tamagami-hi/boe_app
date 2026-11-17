@@ -108,7 +108,7 @@ const ResetPasswordScreen = (): React.ReactElement => {
           {describeClientFailure(error, "resetPassword").message}
         </Alert>
       )}
-      {hasCode(error, "INVALID_CREDENTIALS", "RATE_LIMITED") ? (
+      {hasCode(error, "INVALID_CREDENTIALS") ? (
         <div className={ACTION_ROW}>
           <ButtonLink to="/password/forgot" tone="secondary">
             Request a new link

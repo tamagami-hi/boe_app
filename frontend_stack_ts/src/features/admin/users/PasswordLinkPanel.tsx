@@ -77,7 +77,7 @@ const CONFIRM_COPY: Readonly<Record<SendKind, Readonly<{ title: string; descript
 
 const rejectionMessage = (error: unknown): string => {
   if (!isApiError(error)) return "The request could not be sent. Reload the page and try again."
-  if (error.code === "RATE_LIMITED") return "A link was sent moments ago. Wait for the cooldown to end, then try again."
+  if (error.code === "RATE_LIMITED") return "Too many requests right now. Try again in a few minutes."
   return error.message
 }
 
