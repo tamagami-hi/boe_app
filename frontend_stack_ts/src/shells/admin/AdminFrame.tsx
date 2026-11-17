@@ -2,15 +2,17 @@ import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import type { ReactNode } from "react"
 
-import { ADMIN_LOGIN_PATH, ADMIN_NAV_DOMAINS, ADMIN_ROUTES } from "~/app/routing/adminRoutes"
+import { ADMIN_ACCOUNT_PATH, ADMIN_LOGIN_PATH, ADMIN_NAV_DOMAINS, ADMIN_ROUTES } from "~/app/routing/adminRoutes"
 import { findRoute, navBarEntries, navGroups, navRoutes } from "~/app/routing/routeManifest"
 import { Modal } from "~/app/overlays/Modal"
 import { useSession } from "~/app/providers/SessionProvider"
 import { MaturityDuePrompt } from "~/features/admin/maturities/MaturityDuePrompt"
 import { useAuthPort } from "~/features/auth/authPort"
+import { WhatsNewPrompt } from "~/features/whats-new/WhatsNewPrompt"
 import { hasAll, hasAny } from "~/domain/permissions"
 import {
   ADMIN_ACTION,
+  ADMIN_ACTION_LINK,
   ADMIN_BODY,
   ADMIN_BOTTOM_NAV,
   ADMIN_CONTENT,
@@ -107,6 +109,13 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
         <div className={ADMIN_CONTENT}>
           <header className={ADMIN_TOPBAR}>
             <span className={ADMIN_TITLE}>{route.title}</span>
+            <Link
+              to={ADMIN_ACCOUNT_PATH}
+              className={ADMIN_ACTION_LINK}
+              aria-current={activeId === "account" ? "page" : undefined}
+            >
+              Account
+            </Link>
             <button type="button" className={ADMIN_ACTION} onClick={signOut}>
               Sign out
             </button>
@@ -164,6 +173,8 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
           setMaturityPromptDismissedFor(session.principal?.userId ?? null)
         }}
       />
+
+      <WhatsNewPrompt />
 
       <Modal
         open={moreOpen}

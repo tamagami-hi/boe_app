@@ -6,6 +6,7 @@ import { CLIENT_HOME_PATH, CLIENT_ROUTES } from "~/app/routing/clientRoutes"
 import { findRoute, navRoutes } from "~/app/routing/routeManifest"
 import { useSession } from "~/app/providers/SessionProvider"
 import { useNotifications } from "~/features/shared/queries"
+import { WhatsNewPrompt } from "~/features/whats-new/WhatsNewPrompt"
 import { BackGlyph, BellGlyph, NAV_GLYPHS } from "~/shells/client/navGlyphs"
 import {
   BELL_COUNT,
@@ -145,6 +146,8 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
           )
         })}
       </nav>
+
+      <WhatsNewPrompt />
     </div>
   )
 }

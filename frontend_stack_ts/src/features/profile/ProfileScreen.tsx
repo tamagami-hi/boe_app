@@ -62,6 +62,11 @@ const ENTRIES = [
     hint: "Rate BeOnEdge and tell the team what you think. Only the team reads reviews.",
   },
   {
+    to: "/profile/whats-new",
+    title: "What's new",
+    hint: "What changed in each release of BeOnEdge.",
+  },
+  {
     to: "/profile/legal",
     title: "Legal",
     hint: "Investor charter and grievance redressal.",

@@ -3,6 +3,7 @@ import type { RouteManifest } from "~/app/routing/routeManifest"
 export const ADMIN_HOME_PATH = "/overview"
 export const ADMIN_LOGIN_PATH = "/login"
 export const ADMIN_SPLASH_PATH = "/splash"
+export const ADMIN_ACCOUNT_PATH = "/account"
 
 export const ADMIN_ROUTES: RouteManifest = [
   {
@@ -487,6 +488,24 @@ export const ADMIN_ROUTES: RouteManifest = [
     back: { kind: "parent", path: ADMIN_HOME_PATH },
   },
   {
+    id: "account",
+    path: ADMIN_ACCOUNT_PATH,
+    title: "Account",
+    access: "session",
+    role: "admin",
+    element: () => import("~/features/admin/account/AccountScreen"),
+    back: { kind: "parent", path: ADMIN_HOME_PATH },
+  },
+  {
+    id: "account-whats-new",
+    path: "/account/whats-new",
+    title: "What's new",
+    access: "session",
+    role: "admin",
+    element: () => import("~/features/whats-new/WhatsNewScreen"),
+    back: { kind: "parent", path: ADMIN_ACCOUNT_PATH },
+  },
+  {
     id: "not-found",
     path: "*",
     title: "Not found",
@@ -522,7 +541,9 @@ export const ADMIN_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
     "emails",
     "client-values",
     "support",
+    "account",
   ],
+  account: ["account-whats-new"],
   applications: ["application-detail"],
   users: ["user-detail", "client-create"],
   "nominee-requests": ["user-detail"],

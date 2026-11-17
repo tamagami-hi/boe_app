@@ -31,6 +31,12 @@ export const ADMIN_ACTION = [
   "hover:text-fg active:scale-[0.97] motion-reduce:active:scale-100",
 ].join(" ")
 
+export const ADMIN_ACTION_LINK = [
+  ADMIN_ACTION,
+  "inline-flex items-center no-underline",
+  "aria-[current=page]:text-fg",
+].join(" ")
+
 export const ADMIN_DOMAIN_STRIP = [
   "relative z-1 flex gap-2 overflow-x-auto lg:hidden",
   "px-[max(var(--be-space-5),var(--be-safe-left))] py-3",

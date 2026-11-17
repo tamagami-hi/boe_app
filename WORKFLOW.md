@@ -52,13 +52,19 @@ VPS. Never report a deployment or device check from a unit-test result.
 
 ## Release — maintainer-operated, from the full integration checkout
 
-1. Use `release_manager/status.sh` to inspect/prepare Git and release state.
-2. Production export requires a clean, tagged, published release commit; prepare
+1. Before cutting a release, add its What's new entry. In
+   `frontend_stack_ts/src/features/whats-new/`, give `clientNotes.ts` and
+   `adminNotes.ts` a new first entry whose `id` is the new version, but only for
+   an audience that has something to tell; the other gets no entry and sees no
+   sheet. Each build treats its newest entry as the current release, and the
+   copy follows `RULES.md` "Product, copy, and accessibility".
+2. Use `release_manager/status.sh` to inspect/prepare Git and release state.
+3. Production export requires a clean, tagged, published release commit; prepare
    that through the maintainer's release flow before exporting.
-3. Export the selected stack with exactly one of `--dev`, `--prod`, `--monitor`.
-4. The maintainer ships/deploys the matching bundle, observes its health/runtime
+4. Export the selected stack with exactly one of `--dev`, `--prod`, `--monitor`.
+5. The maintainer ships/deploys the matching bundle, observes its health/runtime
    checks, and decides whether it is accepted.
-5. If recovery is needed, the maintainer selects a rollback only after checking
+6. If recovery is needed, the maintainer selects a rollback only after checking
    the current schema/configuration. Database restoration is separate and destructive.
 
 The commands are in [release_manager/README.md](release_manager/README.md#normal-flow)

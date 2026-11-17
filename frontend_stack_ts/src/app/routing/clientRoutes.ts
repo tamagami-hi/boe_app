@@ -297,6 +297,15 @@ export const CLIENT_ROUTES: RouteManifest = [
     back: { kind: "parent", path: "/profile" },
   },
   {
+    id: "profile-whats-new",
+    path: "/profile/whats-new",
+    title: "What's new",
+    access: "session",
+    role: "client",
+    element: () => import("~/features/whats-new/WhatsNewScreen"),
+    back: { kind: "parent", path: "/profile" },
+  },
+  {
     id: "profile-legal",
     path: "/profile/legal",
     title: "Legal",
@@ -362,6 +371,7 @@ export const CLIENT_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
     "profile-security",
     "profile-support",
     "profile-reviews",
+    "profile-whats-new",
     "profile-legal",
   ],
   "profile-legal": ["investor-charter", "grievance"],
