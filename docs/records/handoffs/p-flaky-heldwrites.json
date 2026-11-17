@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "track": "p-flaky-heldwrites",
+  "current": {
+    "task": "P-flaky-heldwrites",
+    "from": "claude-opus-5-5 builder p-flaky-heldwrites",
+    "track": "p-flaky-heldwrites",
+    "at": "2026-11-17T15:51:10.991Z",
+    "lines": [
+      "Commit: c0ed509 test(admin-funds): press Publish only once the config draft is loaded (on base 6f495e1; test file only, +3 lines in the publishAdminAppConfig row).",
+      "CAUSE (TESTED): the dialog was never slow. The click missed. AppConfigBuilderScreen seeds its JSON draft in a useEffect. The commit that first shows the read config renders Publish disabled (draft null, so body null). The draft that enables Publish lands one React Scheduler task (setImmediate) later.",
+      "The row's readiness wait looks for text matching 'Loading|could not be loaded'. This screen's skeleton is text-free (aria-hidden spans), so the wait passes before the read lands. The press then runs whenever the RTL drain timers happen to fire.",
+      "When the test's drain setTimeout fired in the same timer phase as TanStack's notify setTimeout, after it, the press ran before the check phase. It hit the disabled button, so no dialog opened and confirmIn failed after 3 s with 'Unable to find role=dialog'.",
+      "That needs a stall of 1 ms or more just after the drain timer is registered, which is why it shows up under CPU load. Probed with timer and MutationObserver tracing: the order is button disabled, setImmediate fires, button enabled.",
+      "Corrected belief: 2a11725 read this as the dialog opening at 1,020 ms and raised the wait to 3 s. Raising the wait could not help, because the dialog renders in the click's own act() or never.",
+      "FIX: the row's act now waits (waitFor) for the Publish this configuration button to be enabled before pressing. Nothing it checks changed: Not confirmed, Configuration locked, Check again resends the same key and options.",
+      "confirmIn is untouched and keeps 3 s as a backstop only. It could go back to the default in a later tidy-up, but I left it so I do not conflict with p-terms-version. No reformatting.",
+      "Screen left unchanged on purpose. Seeding the draft during render would remove the disabled frame, but it changes when the draft freezes against a newer published version. The frame is invisible to people.",
+      "STRESS (other runs, file heldWrites.test.tsx, 12 parallel copies beside 6 node CPU hogs on cpuset 16-21, docker image boe-node24-check):",
+      "  before, base 6f495e1: 71e75e0b 2 of 48 file runs failed, 12e97d2b 2 of 48 failed. Total 4 of 96, every time publishAdminAppConfig with 'Unable to find role=dialog' from confirmIn.",
+      "  after, c0ed509: c39eb161 0 of 48 failed, 1e9a724d 0 of 144 failed. Total 0 of 192.",
+      "RED CONTROL (uncommitted probe, deleted afterwards): a copy of the file whose app-config row starts its act from a MutationObserver at the first commit that shows Publish.",
+      "  red bc3f7786: the original act fails with 'Unable to find role=dialog' (failed in 3 of 3 runs before recording).",
+      "  green f0f72f00: the same probe with the fixed act passes.",
+      "CHECKS on c0ed509, clean tree, Node 24 container:",
+      "  contracts npm ci && npm run build: a8b44214 green.",
+      "  frontend npm ci && npm run check: 0cdda449 green, 52 files and 476 tests passed, bundle boots.",
+      "  build:client: bee7cd3b green, android dist 17 assets, 959677 bytes.",
+      "  build:admin: 62e89689 green.",
+      "COMPAT (rule 11): test-only change. No app code, API, contract, schema, data or released-client impact.",
+      "SIBLINGS (rule 15, STATIC): no other row's screen folder (content, applications, funds, fund-aum) uses useEffect, so the disabled-until-effect window is specific to app-config. The stress showed failures on no other row.",
+      "  The shared 'Loading' readiness wait is still not a real readiness signal for screens with text-free skeletons. It works for the other rows only because N always fires before the act. Not changed (out of scope).",
+      "RUNTIME for the coordinator: nothing to click. To re-prove, run .temp/p-flaky-heldwrites/stress.sh <rounds> <copies> <hogs> <cpuset> <label> from this worktree's frontend_stack_ts. It uses the docker image directly with --cpuset-cpus; probes are saved there as *.tsx.txt.",
+      "finding-65 can be retired once c0ed509 lands.",
+      "Doubtful or left: none in scope. If p-terms-version lands first, the rebase should be trivial: only the app-config row changed."
+    ]
+  },
+  "history": []
+}

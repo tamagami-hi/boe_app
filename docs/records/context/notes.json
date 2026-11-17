@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 114,
+  "nextNumber": 130,
   "notes": [
     {
       "id": "note-1",
@@ -1897,6 +1897,230 @@
       "kind": "heads-up",
       "text": "track fx-paging was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/fx-paging.",
       "at": "2026-11-17T05:56:31.736Z",
+      "replies": []
+    },
+    {
+      "id": "note-114",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-self-lockout was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-self-lockout.",
+      "at": "2026-11-17T13:11:23.732Z",
+      "replies": []
+    },
+    {
+      "id": "note-115",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-erasure-phones was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-erasure-phones.",
+      "at": "2026-11-17T13:11:23.732Z",
+      "replies": []
+    },
+    {
+      "id": "note-116",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-csrf-tabs was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-csrf-tabs.",
+      "at": "2026-11-17T13:11:23.732Z",
+      "replies": []
+    },
+    {
+      "id": "note-117",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-whats-new was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-whats-new.",
+      "at": "2026-11-17T13:16:05.846Z",
+      "replies": []
+    },
+    {
+      "id": "note-118",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-payout-reference was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-payout-reference.",
+      "at": "2026-11-17T13:26:32.133Z",
+      "replies": []
+    },
+    {
+      "id": "note-119",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-payout-dates was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-payout-dates.",
+      "at": "2026-11-17T16:16:10.983Z",
+      "replies": []
+    },
+    {
+      "id": "note-120",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-app-version was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-app-version.",
+      "at": "2026-11-17T16:20:43.105Z",
+      "replies": []
+    },
+    {
+      "id": "note-121",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-csrf-stable was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-csrf-stable.",
+      "at": "2026-11-17T16:24:11.146Z",
+      "replies": []
+    },
+    {
+      "id": "note-122",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-flaky-heldwrites was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-flaky-heldwrites.",
+      "at": "2026-11-17T16:53:57.826Z",
+      "replies": []
+    },
+    {
+      "id": "note-123",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-terms-version was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-terms-version.",
+      "at": "2026-11-17T17:04:58.169Z",
+      "replies": []
+    },
+    {
+      "id": "note-124",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-lows was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-lows.",
+      "at": "2026-11-17T17:14:02.363Z",
+      "replies": []
+    },
+    {
+      "id": "note-125",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-session-hardening was closed: its work is on main and it sat idle for 60 minutes.",
+      "at": "2026-11-17T18:43:32.618Z",
+      "replies": []
+    },
+    {
+      "id": "note-126",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-lifecycle-version was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-lifecycle-version.",
+      "at": "2026-11-17T18:43:32.618Z",
+      "replies": []
+    },
+    {
+      "id": "note-127",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-copy-sweep was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-copy-sweep.",
+      "at": "2026-11-17T18:43:32.618Z",
+      "replies": []
+    },
+    {
+      "id": "note-128",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-held-nav-guard was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-held-nav-guard.",
+      "at": "2026-11-17T18:43:32.618Z",
+      "replies": []
+    },
+    {
+      "id": "note-129",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-whatsnew-entries was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-whatsnew-entries.",
+      "at": "2026-11-17T18:43:32.618Z",
       "replies": []
     }
   ]

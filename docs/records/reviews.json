@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextId": 42,
+  "nextId": 73,
   "reviews": [
     {
       "id": "review-1",
@@ -927,6 +927,619 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-17T09:20:01.800Z"
+    },
+    {
+      "id": "review-42",
+      "milestone": "M19-patches-0-18",
+      "task": "P-self-lockout",
+      "track": "p-self-lockout",
+      "commit": "d2f02f3",
+      "reviewer": "claude-opus-5-5 (claude-pro account), read-only",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 3
+      },
+      "summary": "Land. The guard refuses own suspend/close with 403 AUTHORIZATION_DENIED before mutate(): no transaction, receipt, audit or session change (tested). Ids compared case-insensitively; red control 5c8a7195 shows why. Every other path is covered or unreachable: erasure refuses staff, contact release needs a closed client, there are no role or bulk routes, and seedAuth creates only active users. Released admin apps v0.15.4 and v0.18.0 show the message under 'Nothing changed'; only a 401 ends a session. LOW: an empty Reason box still renders on the own record; two admins suspending each other at once can still leave no active admin (outside DEC-65, needs a new question); plan line 7 still says Q-013 is carried. Not run: the own-record UI, the APK bearer path, and old builds against the new backend.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-p-self-lockout.out.md",
+        "sha256": "3a5e99c85e6d1137b4f4d11669843dea36d9138a269eb918af9c7f4cfa4e0e68",
+        "bytes": 8946
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T10:59:19.450Z"
+    },
+    {
+      "id": "review-43",
+      "milestone": "M19-patches-0-18",
+      "task": "P-csrf-tabs",
+      "track": "p-csrf-tabs",
+      "commit": "43f9ecb",
+      "reviewer": "claude-opus-5-5 subagent, read-only (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 4
+      },
+      "summary": "PASS with notes. A CSRF refusal happens before any handler or idempotency work. The resend uses identical options and key via sendOnce, so it recovers at most once with no loop or refresh. The user check runs before, inside and after the recovery. Outages and 429s keep the session and leave the write unknown. Native and unauthenticated requests are untouched. All 10 tests fail without the fix. LOW: F1, sign-out, password change and email change also recover; the server session is now really revoked on a stale-token sign-out (an improvement, accepted). F2, cross-tab refresh family revocation remains (backend fix: grace for the previous token). F3, concurrent writes can rotate each other out (bounded, no double apply). F4, resend safety relies on every web write resolving the principal before any side effect; no guard enforces it. Runtime R1 to R4 not yet run.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T11:09:44.667Z"
+    },
+    {
+      "id": "review-44",
+      "milestone": "M19-patches-0-18",
+      "task": "P-payout-reference",
+      "track": "p-payout-reference",
+      "commit": "1e89881",
+      "reviewer": "claude-opus-5-5 subagent, read-only (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 4,
+        "info": 1
+      },
+      "summary": "PASS with notes. 074 is strictly looser (pending and failed branches identical; a paid NULL passes, blank refused), runs in a transaction, and the scan is trivial. The v0.18.0 and v0.15.4 backends read a NULL reference safely. Every released admin schema since v0.14.0 has transferReference z.string().nullable() (early-exit object too). Idempotency hash and receipts are safe; no client surface shows it. LOW-1: the plan's UQ-2 says remove the field, but the lane keeps it optional (maintainer to decide). LOW-2: older admin builds show 'Awaiting transfer confirmation' on a paid payout with no reference; no double record. LOW-3: DEPLOY.md lacks two rollback cases (a new APK against an old backend gets 400; a held body is unreadable after an admin-web rollback). LOW-4: the frozen-schema test covers only the maturity list, not the early-exit read. Info: reverses a 2026-09 security-review rule, as DEC-61 decided.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T11:10:24.931Z"
+    },
+    {
+      "id": "review-45",
+      "milestone": "M19-patches-0-18",
+      "task": "P-erasure-phones",
+      "track": "p-erasure-phones",
+      "commit": "7201d4b",
+      "reviewer": "claude-opus-5-5 subagent, read-only (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 1,
+        "low": 6
+      },
+      "summary": "PASS with notes. Forward erasure replaces only the client's own 10 digits in their national forms, within digit boundaries, in text and free-text JSON. Digit-only strings and numbers are untouched; one transaction. The re-scrub dry run is truly read-only, --apply is idempotent, the production refusal holds in any flag order, and output prints no values. Tests fail without each change. M1: the re-scrub's any-Indian-mobile pattern also rewrites account numbers, UTRs, paise amounts and ranges in erased clients' notes; the doc names only other people's phones and offers no query to inspect rows before --apply. L1: the pre-flight counts every erasure, not only pre-DEC-66 ones. L2: no durable record of a run. L3: receipt scope by client id. L4: forms that survive under DEC-66. L5: doc inaccuracies. L6: plan entry is the coordinator's. Production at v0.15.4 has no erasure, so a direct deploy has nothing to re-scrub.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T11:20:19.403Z"
+    },
+    {
+      "id": "review-46",
+      "milestone": "M19-patches-0-18",
+      "task": "P-whats-new",
+      "track": "p-whats-new",
+      "commit": "7dda191",
+      "reviewer": "claude-opus-5-5 subagent, read-only (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 2,
+        "low": 6
+      },
+      "summary": "PASS with notes. Every close path marks the notes seen, and there is no reopen loop (string deps, per-run copy). The key is per user, survives sign-out and triggers no cross-tab session logic. Account shows principal data only, with no API call. Copy matches the approved draft; tests fail without their behaviour. MEDIUM F1: one Escape closes every stacked Sheet, because each has its own document listener as well as the overlay stack's, so What's new can be marked seen under MaturityDuePrompt (pre-existing primitive defect). MEDIUM F2: the admin Fixed lines need the three sibling lanes in 0.18.1. LOW: top bar title squeeze at 360/390 (no truncate or nowrap); terminal accounts see the sheet on /profile/support; an open sheet paints above LockScreen on resume; bundle split relies on tree-shaking; the Escape test does not assert open; aria-current nit.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T11:23:49.668Z"
+    },
+    {
+      "id": "review-47",
+      "milestone": "M19-patches-0-18",
+      "task": "P-whats-new",
+      "track": "p-whats-new",
+      "commit": "701a45c",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Follow-up 701a45c closes review-46 F1, F3, F4, F6 and F7. Sheet drops its own document Escape listener; only Modal renders Sheet, so the overlay stack's listener closes the top entry alone (new stacked-Escape test, red ed98fcb4). ADMIN_TITLE truncates; actions are flex-none and nowrap. The sheet opens only for accountState active. Each shell passes its own notes, so the bundle split no longer relies on tree-shaking (both dists grepped). The Escape test asserts open first. Checks d99fdcf2, 0bb05197 and dff6c73d are green. Runtime of the top bar at 390 and stacked Escape is still to be checked.",
+      "follows": "review-46",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T11:29:32.459Z"
+    },
+    {
+      "id": "review-48",
+      "milestone": "M19-patches-0-18",
+      "task": "P-erasure-phones",
+      "track": "p-erasure-phones",
+      "commit": "43765c6",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Docs-only follow-up 43765c6 (release_manager/docs/client-erasure.md) closes review-45 M1, L1, L2 and L5. It names the re-scrub's false matches by shape, with no literal account or UTR digits (DEC-25), and adds a read-only query to inspect the named rows before --apply. It limits the pre-flight to erasures before the DEC-66 deploy and states that production on v0.15.4 has no erasure, so a direct jump needs no re-scrub. It says to keep the --apply report, and corrects the stale lines. git diff --check is clean; no code changed.",
+      "follows": "review-45",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T11:29:32.731Z"
+    },
+    {
+      "id": "review-49",
+      "milestone": "M19-patches-0-18",
+      "task": "P-whats-new",
+      "track": "p-whats-new",
+      "commit": "0be1d2a",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Copy-only follow-up 0be1d2a: one line in features/whats-new/adminNotes.ts now reads \"Payouts no longer ask for a transfer reference.\", per the maintainer's DEC-69. Frontend check d85f1954 is green (457 tests). Nothing else changed.",
+      "follows": "review-47",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T11:57:13.878Z"
+    },
+    {
+      "id": "review-50",
+      "milestone": "M19-patches-0-18",
+      "task": "P-payout-reference",
+      "track": "p-payout-reference",
+      "commit": "e30bdef",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "DEC-69 follow-up e30bdef. The panel has no reference input: Paid confirms \"This records that the transfer has completed.\" and sends {state, expectedVersion} only. Failed keeps its required, pattern-checked code. The card shows no reference for paid payouts, including stored ones. A held body from the previous build that carries a reference loads and resends unchanged with the same key (rule 6). The HeldWriteNotice label is removed. Server, contract and 074 are unchanged. DEPLOY.md now covers the new admin APK against a pre-074 backend (400 on every Paid) and a held body after an admin-web rollback, closing review-44 LOW-3. New tests have red controls b1e6b923 and 21d6a6e4; checks bb92d0f5, 058433fe and bef3484d are green. No paid date is shown, since the response has none (finding-14). Browser check of the new form is pending.",
+      "follows": "review-44",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T12:00:14.840Z"
+    },
+    {
+      "id": "review-51",
+      "milestone": "M19-patches-0-18",
+      "task": "P-csrf-stable",
+      "track": "p-csrf-stable",
+      "commit": "acf2dcd",
+      "reviewer": "claude-opus-5-5 subagent, read-only security review (not the builder)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "low": 6
+      },
+      "summary": "PASS with notes; nothing CRITICAL, HIGH or MEDIUM. Tokens are HMAC-SHA256 under REFRESH_HMAC_KEY with an unambiguous input, bound to session and generation, stored hashed and compared in constant time. Cross-site reads are refused (Sec-Fetch, Origin, CORS, HttpOnly Lax). Grace and family revoke outside the grace are intact; finding-50/57 behaviour is unchanged. Blocking F2: the retired test's principal assertion is lost; no test checks the read returns the user. F1: within the 30 s grace, the old refresh cookie plus rotationId now suffice without the old token (accepted trade-off, record it). F3: an upper-case rotationId repairs on every read (lower-case it). F4: simultaneous refreshes in two tabs still revoke the family (cross-tab lock, separate lane). F5: commit body lacks evidence. F6: stale comments say reads re-issue.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:35:06.292Z"
+    },
+    {
+      "id": "review-52",
+      "milestone": "M19-patches-0-18",
+      "task": "P-app-version",
+      "track": "p-app-version",
+      "commit": "111234f",
+      "reviewer": "claude-opus-5-5 subagent, read-only (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 7
+      },
+      "summary": "PASS with notes; no lock-out path. The vite check equals the server AppVersion pattern on main, v0.17.0 and v0.15.4. Every script label (stable semver, dev X.Y.Z-dev.N.g<hex>[.dirty], 0.0.0-dev) passes. x-app-version has no server reader, and appVersion is never stored. The update check is unchanged (native versionCode and versionName). Released APKs keep 0.1.0. LOW: the pattern is copied four times (import AppVersion from contracts instead); export.sh does not assert the Dockerfile declares the version ARG; the \"Version\" label is ambiguous above the \"Version X\" headings; docs omit +label; buildVersion() is undefined under Vitest; a failed native read silently shows the build version; plain builds get 0.0.0-dev, VERSION reaching bundles only through the scripts.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:35:22.558Z"
+    },
+    {
+      "id": "review-53",
+      "milestone": "M19-patches-0-18",
+      "task": "P-app-version",
+      "track": "p-app-version",
+      "commit": "43dcf5a",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Follow-up 43dcf5a closes review-52 F1 to F5. vite.config validates with the contracts AppVersion schema, read through NativeAuthHeaders.shape[\"x-app-version\"] from the built contracts dist (the entry does not re-export AppVersion), so there is one source. export.sh fails when the Dockerfile lacks ARG VITE_BEO_APP_VERSION. The label reads \"App version\" on Account and What's new. The +label wording is fixed, and the Vitest env sets 0.0.0-dev. Frontend check, builds with and without the version, shell tests, malformed refusal and Docker build are green (runs 2788971 to 2822679).",
+      "follows": "review-52",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:41:28.875Z"
+    },
+    {
+      "id": "review-54",
+      "milestone": "M19-patches-0-18",
+      "task": "P-terms-version",
+      "track": "p-terms-version",
+      "commit": "5c58cf0",
+      "reviewer": "claude-opus-5-5 subagent, read-only (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 6,
+        "info": 1
+      },
+      "summary": "PASS with notes. The check runs after the fund-row lock in the same read-committed transaction: two publishes from one version give one 201 and one 409. The query is hashed only when sent; old receipts replay, and an accepted stale request replays its 201. No released app sends a query; released envelopes accept fields. Keep the query parameter (a body key, a header or If-Match all break or misfire against older backends). LOW: the form sends the newest version while the server compares the current pointer (equal today); a publish Not confirmed across a rollback stays unresolved (document it); the concurrency test does not assert which 409; released apps stay unguarded until the floor rises; DEPLOY.md conflicts with main's 074 paragraph; outside the lane, fund lifecycle ignores If-Match. Info: admin-fund-aum.ts is at 788 lines.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:45:10.894Z"
+    },
+    {
+      "id": "review-55",
+      "milestone": "M19-patches-0-18",
+      "task": "P-payout-dates",
+      "track": "p-payout-dates",
+      "commit": "d1fcf9a",
+      "reviewer": "claude-opus-5-5 subagent, read-only (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 4
+      },
+      "summary": "PASS with notes. The read is scoped to the client via a bound user_id, uses exactly the payout list's read permissions, and is tested for support 403 and no session 401. paid_at and failed_at come from the same table for both kinds, and the 074 shape check rules out a wrong label. The OpenAPI diff only adds; frozen v0.18.0 schemas parse; an old backend's 404 does not retry and leaves the page and form working. One request per page. LOW: the item state is unused, so a stale cache after a reload shows a false \"unavailable\"; the 100-row cap spans both kinds; the hand-off names the wrong idempotency check for the 2099 clock (the clock itself is sound); the commit body has no evidence.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:46:46.382Z"
+    },
+    {
+      "id": "review-56",
+      "milestone": "M19-patches-0-18",
+      "task": "P-csrf-stable",
+      "track": "p-csrf-stable",
+      "commit": "ed8d674",
+      "reviewer": "claude-opus-5-5 subagent, read-only security review (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 3
+      },
+      "summary": "Follow-up ed8d674 closes F1, F2, F3, F5 and F6. The shared isPreviousRefreshInGrace helper matches the old inline grace exactly; family revoke on refresh_reuse is unchanged. The new 401 on a read with a stale used cookie cannot sign out a legitimate tab in normal use (one tab, two tabs, lost reply within 30 s and the deploy repair all succeed). Lower-casing collapses only equal uuids, and all grace conditions still apply. RC-E to RC-H each map to a catching test. LOW: N1, a read can be refused if two rotations finish mid-flight (only under the concurrent-refresh race F4); N2, a stale cookie with an inactive user now gets 401 SESSION_INVALID instead of 403 (both mean session ended); N3, stale-cookie reads refuse without revoking, by design.",
+      "follows": "review-51",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:46:57.840Z"
+    },
+    {
+      "id": "review-57",
+      "milestone": "M19-patches-0-18",
+      "task": "P-terms-version",
+      "track": "p-terms-version",
+      "commit": "e66c866",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Follow-up e66c866 closes review-54 F1 to F3. The publish form starts from fund.currentVersion and sends it as expectedVersion, matching the server; a fund with versions but no current pointer reads as unreadable, which createFund cannot produce (new test, red 4f5aeabd). DEPLOY.md now says a publish that reached the server and was left Not confirmed across a rollback stays Not confirmed. The concurrency test asserts the loser's fields.expectedVersion and the winner's terms. Frontend check cba2048e and the integration file 8ae5be0b are green. The rebase onto main (DEPLOY.md and generated contract files) is still to come, after p-payout-dates lands.",
+      "follows": "review-54",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:49:29.244Z"
+    },
+    {
+      "id": "review-58",
+      "milestone": "M19-patches-0-18",
+      "task": "P-payout-dates",
+      "track": "p-payout-dates",
+      "commit": "24c84c9",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Follow-up 24c84c9 closes review-55 F1, F3 and F4. A card whose cached outcome state differs from its own shows nothing until the read is current, and a real read failure still shows the unavailable line (rule 4). Both reload paths also refresh the outcomes query (useReloadPayoutOutcomes). New mismatch test, red db0c8edc. The hand-off names idempotency_records_expiry, and the commit body carries d1fcf9a's run ids. Frontend check 8b4840b4 (474 tests) and builds 9c1a3117 and 7f6f0dc4 are green.",
+      "follows": "review-55",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:50:51.418Z"
+    },
+    {
+      "id": "review-59",
+      "milestone": "M19-patches-0-18",
+      "task": "P-lows",
+      "track": "p-lows",
+      "commit": "b05574b",
+      "reviewer": "claude-opus-5-5 subagent, read-only (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 7
+      },
+      "summary": "PASS with notes. The overlay stack is sound (layout-effect registration, StrictMode-safe, ref order, every Modal unregisters), and early Escape is closed. finding-55 is closed: one restore per Try again, the online listener fires once and never while signed out. The 429 code and unknown state are kept; dropping \"Request a new link\" on reset is safe; the email cooldown starts only with the server's Retry-After. The registry clears on unmount, is per tab and ignores other admins' holds. Each commit stands alone. LOW: a missing-investor link still remounts on the first key; b61aa91's subject is 75 characters; the online retry rarely recovers visibly (splash does not re-probe); \"a few minutes\" is wrong for the 15-minute and 60-second limits; the lock is visual only (focus, Escape, inert); siblings left (blocking screens under dialogs, three cause-naming 429 lines, What's new over held writes, two permission-code lines); the invited-account lifecycle card can be empty.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:54:44.346Z"
+    },
+    {
+      "id": "review-60",
+      "milestone": "M19-patches-0-18",
+      "task": "P-terms-version",
+      "track": "p-terms-version",
+      "commit": "dda0ab4",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Rebase only. 5c58cf0 and e66c866 are now d64daca and dda0ab4 on main 24c84c9. The DEPLOY.md conflict was resolved keeping all paragraphs (074, payout dates, terms expectedVersion). The regenerated OpenAPI matches the merge byte for byte and differs from main only by the query parameter; frontend generated operations are unchanged. Full checks on dda0ab4 are green: contracts 47d88a81, backend 6bd6f65c, integration bc10b3f8 (609), frontend 642d7389 (476), builds 587ffa46 and 59361f6a.",
+      "follows": "review-57",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:59:54.590Z"
+    },
+    {
+      "id": "review-61",
+      "milestone": "M19-patches-0-18",
+      "task": "P-lows",
+      "track": "p-lows",
+      "commit": "8a111a2",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Follow-up 8a111a2 closes review-59 F1 and F3 to F7. While locked: #root is inert, focus moves into the lock panel and returns on unlock; the overlay Escape listener checks isDeviceLocked(); Sheet takes an inert prop and skips focus when inert (red controls 7132f438, a4f94649, 442e6d2d, 8de4375b). Maintenance and mandatory-update render at body level. What's new waits for unsettled admin holds (registry passed from AdminFrame, admin code kept out of the client bundle). 429 copy uses Retry-After when present. The splash re-probes on online, the missing-link search no longer remounts, and the invited card has a line. Frontend 547c7e60 (475 tests) and builds e90baba2 and 43ad8ad1 are green. Left: a CA-23 sweep of about ten other admin screens; b61aa91's 75-character subject.",
+      "follows": "review-59",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T15:06:08.040Z"
+    },
+    {
+      "id": "review-62",
+      "milestone": "M19-patches-0-18",
+      "task": "P-flaky-heldwrites",
+      "track": "p-flaky-heldwrites",
+      "commit": "c0ed509",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Test-only, 3 lines in the publishAdminAppConfig row: wait until \"Publish this configuration\" is enabled before pressing it. Root cause, shown with timer and DOM logging: AppConfigBuilderScreen fills its draft in a useEffect, so the first loaded render shows Publish disabled for one scheduler task. The row's Loading-text wait passes early, and under load the press hits the disabled button, so no dialog opens. The earlier timeout bumps (2a11725) misread it. Under stress (12 copies plus 6 CPU hogs): 4 of 96 failed before, 0 of 192 after (71e75e0b, 12e97d2b, c39eb161, 1e9a724d); red bc3f7786, green f0f72f00. Checks a8b44214, 0cdda449 (476), bee7cd3b, 62e89689 are green. Closes finding-65.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T15:51:55.657Z"
+    },
+    {
+      "id": "review-63",
+      "milestone": "M19-patches-0-18",
+      "task": "P-session-hardening",
+      "track": "p-session-hardening",
+      "commit": "ff0b682",
+      "reviewer": "claude-opus-5-5 subagent, read-only security review (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 4
+      },
+      "summary": "PASS with notes; land the three commits together (526ee9a alone has the rule-4 defect ff0b682 fixes). The finding-50/57 user checks hold on every path, including the skip, which stores only the user-checked token. Locks are bounded (each step at most 3 requests of 20 s), release on error or tab close, cannot re-enter or deadlock, and are FIFO across tabs. The skip is taken only on a successful no-store session read via the access cookie, and 401/403 fall through to refresh. Native lower-casing is correct; released frontends mint lower-case ids, so they are byte-identical. LOW: N1, waiting for the lock has no timeout; N2, the skip keeps the old principal; N3, a tab closing mid-refresh still loses the rotation (pre-existing); N4, restore reads sit outside the lock (harmless with DEC-70).",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T15:56:58.145Z"
+    },
+    {
+      "id": "review-64",
+      "milestone": "M19-patches-0-18",
+      "task": "P-session-hardening",
+      "track": "p-session-hardening",
+      "commit": "2f251fb",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Follow-up 2f251fb closes review-63 N1, N2 and the test gaps. The lock wait aborts after 20 s via an AbortController whose timer is cleared once the lock is granted, so only the wait can time out; it maps to the transport's timeout error and keeps session and holds. The skip stores a fresh principal (admin from the session read, client from the user-checked CSRF read) only after the user check. A CSRF_INVALID recovery queued behind another tab's refresh is tested, and admin_native gets the upper-case case. Checks 868a66c8 (490), 9ec3e94c, 5d60bdf9, 97ed9a6d, 8e758d02 (613) are green; red RC-G, RC-I, RC-H, RC-A2 and RC-E2 recorded. Land all four commits together; browser check pending.",
+      "follows": "review-63",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T16:11:04.090Z"
+    },
+    {
+      "id": "review-65",
+      "milestone": "M19-patches-0-18",
+      "task": "P-whatsnew-entries",
+      "track": "p-whatsnew-entries",
+      "commit": "a0dc478",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 1
+      },
+      "summary": "unseenEntries follows the notes' order: no record gives all; a seen id gives the newer entries or none; an unknown id gives only the newest. The sheet snapshots its entries on open and marks notes[0] seen on close. Several entries get \"Versions X to Y\" with per-entry h3 and h4 headings; a single entry is unchanged. Gating, storage and the Profile and Account pages are unchanged; WORKFLOW.md says to keep earlier entries in order. A new array each render re-runs the arming effect without looping (it opens, then canShow goes false). Red controls 4481, 9802 and 13875; checks 4168423, 4175546 (487), 4190354 and 4191826 are green. Nit: `forPlatform =(` lost a space (formatting only).",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T16:24:17.289Z"
+    },
+    {
+      "id": "review-66",
+      "milestone": "M19-patches-0-18",
+      "task": "P-copy-sweep",
+      "track": "p-copy-sweep",
+      "commit": "b78c01e",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 1
+      },
+      "summary": "Copy only, 20 files. 18 admin lines that named permission codes now say plainly what the role cannot do (CA-23); gates and disabled states are unchanged, and a grep finds no permission code in visible strings. The client Profile Notifications hint and empty state no longer mention payment confirmations; they list what notifications actually cover, checked against backend kinds (DEC-14/22). No API, permission or stored-key change. Checks dffdd531, cd7c3307 (484), 6fa0c696 and 4194a222 are green; no copy tests (rule 10). Doubtful client copy is listed; the payments-path items stay parked under finding-27 and DEC-14. Follow-up asked for: the team-recorded activity label \"Payment recorded\" to read \"Investment recorded\".",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T16:24:17.808Z"
+    },
+    {
+      "id": "review-67",
+      "milestone": "M19-patches-0-18",
+      "task": "P-copy-sweep",
+      "track": "p-copy-sweep",
+      "commit": "808ed65",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Copy-only follow-up 808ed65: the team-recorded Activity entry reads \"Investment recorded\" instead of \"Payment recorded\". No test asserted the old label. Frontend check 740db890 (484) and builds 2ba27434 and 69dc0ffd are green.",
+      "follows": "review-66",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T16:26:55.790Z"
+    },
+    {
+      "id": "review-68",
+      "milestone": "M19-patches-0-18",
+      "task": "P-lifecycle-version",
+      "track": "p-lifecycle-version",
+      "commit": "87b9574",
+      "reviewer": "claude-opus-5-5 subagent, read-only (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 6
+      },
+      "summary": "PASS with notes. Every released admin app since v0.14.7 sends one strong quoted If-Match of funds.version, the column compared; only lifecycle changes and terms publishes bump it, so a 409 means a real change. The hash stays {fundId, status} (correct: hashing the always-sent header would break replays across deploy). Accepted changes replay 200; the check sits after the row lock under READ COMMITTED (one 200, one 409 tested). CORS already allowed if-match. LOW: v0.15.4–v0.17.1 say \"It has been reloaded\" but do not reload, so a retry is refused again (document it); a terms publish also triggers the 409 (document it); `*`, weak tags and lists get 400 (unreachable from released apps, but a proxy rewrite would break them); the STATE_CONFLICT envelope schema lacks fields (pre-existing, later contract lane); R4 tripped on copy and press-time capture is untested; hand-off line counts.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T16:44:01.629Z"
+    },
+    {
+      "id": "review-69",
+      "milestone": "M19-patches-0-18",
+      "task": "P-lifecycle-version",
+      "track": "p-lifecycle-version",
+      "commit": "393f892",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Follow-up 393f892 closes review-68 notes 1, 2, 3 and 5. The server checks only a single \"n\" or W/\"n\"; *, lists, bare numbers and other values mean no check (never 400), and the contract declares a plain optional string. DEPLOY.md documents the older apps' false \"reloaded\" line and v0.18.0's missing reload button, and that a terms publish also triggers the refusal. New tests cover the weak tag, unchecked values and press-time capture (the version sent stays 7 when the fund reloads to 8 mid-dialog). Red R5 to R9 recorded; full integration 624, backend 1209, frontend 486, contracts and both builds are green.",
+      "follows": "review-68",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T16:51:34.753Z"
+    },
+    {
+      "id": "review-70",
+      "milestone": "M19-patches-0-18",
+      "task": "P-held-nav-guard",
+      "track": "p-held-nav-guard",
+      "commit": "dd113bc",
+      "reviewer": "claude-opus-5-5 subagent, read-only (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 6,
+        "info": 1
+      },
+      "summary": "PASS with notes. Moving the admin shell to createBrowserRouter with a catch-all route showed no regression on static reading: guards, redirects, back policy, deep links and queries, lazy routes, 404, navigate and Link, the module-level router, and the RouteErrorBoundary (main.tsx had none before). Read against the React Router 7.18.2 source. The client tree is equivalent. The guard blocks only signed in, with an unsettled hold, on a path change to a non-public route; sign-out and session end are exempt via /login. LOW: frame-level maturity-dialog holds trigger the guard with false page-only wording and re-ask on every Back; \"saved on this device\" should be \"in this tab\"; a hold settling while the dialog is open silently cancels the navigation; FundCreate's own \"Check the fund list\" now asks; no shell-render or payment-sheet registry test; the Request stub is not restored (file-scoped, safe).",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T16:55:00.468Z"
+    },
+    {
+      "id": "review-71",
+      "milestone": "M19-patches-0-18",
+      "task": "P-held-nav-guard",
+      "track": "p-held-nav-guard",
+      "commit": "5c5f9ce",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 1
+      },
+      "summary": "Follow-up 5c5f9ce closes review-70 F1 to F6. A SurvivingHeldWriteScope around MaturityDuePrompt makes frame holds ignored by the guard and its wording, while still holding back the prompts. The saved wording says \"in this tab\". A settle while the dialog is open proceeds when still signed in. A LEAVE_HELD_WRITE state lets the held notice's own \"Check the fund list\" pass. New tests: a real AdminShellRoot data-router render and a payment-sheet held row; the Request stub moved to beforeAll and afterAll. Red RC-7 to RC-11; frontend e4a90aac (492), builds a6fbefb4 and 92c9f27b, contracts 99e58272 are green. Watch: one unreproduced full-suite failure before commit (13 reruns pass); the shell test got a 15 s budget.",
+      "follows": "review-70",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T17:10:15.649Z"
+    },
+    {
+      "id": "review-72",
+      "milestone": "M19-patches-0-18",
+      "task": "P-docs-0181",
+      "track": "p-docs-0181",
+      "commit": "cc3a986",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 0
+      },
+      "summary": "Docs and copy only. The plan gets an updated status line, Q-013 answered by DEC-65, the Phase I phone note answered by DEC-66, the stage A Left line corrected (finding-56 and CSRF rotation fixed), and a new section 8 entry for the 16 M19 lanes with runtime, migration 074, rollback (finding-64) and parked items. The UI overhaul plan header now says approved by DEC-61, with node24 checks and UQ-2 built as DEC-69. export.sh drops the wrong FACTS_VS_PLAN pointer (finding-28). What's new 0.18.1 gains the five admin and two client lines exactly as specified. Frontend (511), builds and release tooling are green; no behaviour change.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T19:27:25.998Z"
     }
   ]
 }

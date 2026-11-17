@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "track": "p-csrf-tabs",
+  "current": {
+    "task": "P-csrf-tabs",
+    "from": "claude-opus-5-5 builder p-csrf-tabs",
+    "track": "p-csrf-tabs",
+    "at": "2026-11-17T10:52:17.764Z",
+    "lines": [
+      "P-csrf-tabs (finding-63): built, one commit 43f9ecb on track/p-csrf-tabs, not pushed or landed.",
+      "Cause (STATIC): every GET /v1/auth/web/csrf and /v1/auth/client/web/csrf runs webRecoverCsrf, and rotateWebCsrf overwrites the session's csrf_token_hash with no previous-token grace (authSessionRepository.ts:314-335). The cookie session is shared by all tabs. Each tab holds the token in its own in-memory tokenStore, hydrated from localStorage once at start. So a second tab's restore leaves the first tab's token stale, and its writes get 403 CSRF_INVALID (webAuth.ts:472-478).",
+      "Fix, frontend only, no API change: http.ts sendWithAuthRecovery handles a 403 CSRF_INVALID on a signed-in, non-GET, non-unauthenticated request. It calls csrfRecovery.refreshOnce once (a RefreshCoordinator, so concurrent refusals in a tab share one read), then resends with sendOnce: same options, same Idempotency-Key and body, new x-csrf-token.",
+      "Outcomes: 'replaced' (the recovery names another user than the tab holds) ends the session as revoked and sends nothing. 'unauthenticated' (the recovery is refused) and a second refusal on the resend throw the original CSRF_INVALID: today's outcome, so a held write's Check again stays unknown (isUnknownRetryOutcome). An outage or 429 on the recovery is rethrown as not retryable (fx-outage-502 rule): the session and holds are kept and the write is unknown.",
+      "Runtimes: adminRuntime.ts and clientRuntime.ts each gain recoverCsrfToken. It calls getWebCsrf or getClientWebCsrf through bareClient, checks holdsUser as executeCookieRefresh does (finding-50), then sets only csrfToken. Native shells pass no csrfRecovery, so the bearer channels are unchanged.",
+      "New createRecoveryQueue (api/session/refresh.ts) runs the cookie refresh and the CSRF recovery one at a time per tab. Without it, a recovery could rotate the token between a refresh's CSRF read and its webRefresh; webRefresh then sees the current refresh token with a stale CSRF and revokes the whole session family (webAuth.ts:552-607).",
+      "Compatibility (rule 11): no backend, contract, route, cookie, header or error-code change. Released APKs use bearer tokens and do not call this path. The previous release keeps today's behaviour against the same backend. No migration, no in-flight state touched.",
+      "Tests: new src/shells/webCsrfRecovery.test.ts, 10 cases, admin web and client web for each: (1) a refused write re-reads once and resends with the same key and the recovered token; (2) a recovery naming another user ends the session as revoked without resending; (3) a resend refused again sends nothing more and stays unknown on Check again; (4) a 502 page on the recovery keeps the session and leaves the write unknown, one write and the transport's 3 bounded CSRF GETs; (5) with a refresh under way, the recovery reads only after REFRESH.",
+      "Red controls (TESTED, each restored and cmp-identical): A, fix reverted: 10/10 failed, c5ccd975. B, user check removed: 2/10 (case 2), 951ec6df. C, resend loops back through recovery: 2/10 (case 3), 3fdfb12a. D, queue bypassed: 2/10 (case 5), 37f75325. E, outage treated as a refusal: 2/10 (case 4), 44952389.",
+      "Checks at 43f9ecb, clean tree, Node 24 container (TESTED): contracts npm ci && npm run build green 2508069b. Frontend npm ci && npm run check green 290a4352: 47 files, 457 tests, bundle boots with 7 chunks. build:client green ed2e0f7b. build:admin green 27641aa2. Backend untouched, so its check and integration tests were not run.",
+      "Runtime step for the coordinator (UNVERIFIED, local stack only):",
+      "R1 admin web. Sign in as admin A in tab 1. Open a second tab on the admin console and let it finish restoring. Without reloading tab 1, make a keyed write there (archive or save an FAQ, or any held-write form).",
+      "R1 expected, in DevTools Network: the write answers 403 CSRF_INVALID, then GET /v1/auth/web/csrf 200, then the same write again with the same Idempotency-Key and a new x-csrf-token answers 2xx. The screen shows success, not Not confirmed. Only one row or audit entry is applied.",
+      "R2: make a write in tab 2. It shows the same 403, csrf, resend pattern; the tabs take turns.",
+      "R3: in tab 2, sign out and sign in as admin B. In tab 1, make a write. Expected: tab 1 ends on the signed-out screen (by the storage listener, or by the recovery naming B), the write is not resent, and nothing is applied or audited as B.",
+      "R4: repeat R1 on client web with two investor tabs and a client write, for example withdrawing a nominee request or changing the phone. Expected: GET /v1/auth/client/web/csrf, then the resend with the same key.",
+      "Doubtful or left: (a) Tabs writing in turn each pay one extra GET, and every recovery rotates the token again for the other tabs. (b) Accepted residue, cross-tab: tab 1's recovery landing between tab 2's refresh CSRF read and its webRefresh still revokes the family. The refresh had this risk with a second tab's restore before this change. The queue closes only the in-tab case.",
+      "(b, continued) The full fix is backend: keep one CSRF token per session instead of rotating on every read, or accept the previous CSRF within the grace in webRefresh. Both are additive and need a backend lane.",
+      "(c) Like the refresh (finding-57 N4), a recovery that meets another user's cookies rotates that user's CSRF token once. (d) A 401 on the resend after a recovery is not refreshed again (once per request), so it stays unknown on Check again.",
+      "(e) Plan section 8 and finding-63's status are the coordinator's to update; the plan was not edited (rule-50)."
+    ]
+  },
+  "history": []
+}

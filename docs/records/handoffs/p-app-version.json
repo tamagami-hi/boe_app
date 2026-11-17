@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "track": "p-app-version",
+  "current": {
+    "task": "P-app-version",
+    "from": "claude-opus-5-5 builder p-app-version",
+    "track": "p-app-version",
+    "at": "2026-11-17T14:40:56.508Z",
+    "lines": [
+      "Commits: 111234f feat(version): build the release version into the web and APK bundles; 43dcf5a fix(version): take the version pattern from contracts; guard the ARG (review-52 notes). Track/p-app-version, on 0b337a0, not landed; merge-tree against main is clean.",
+      "WHAT (111234f): VITE_BEO_APP_VERSION is defined into both bundles by vite.config.ts; unset or empty gives 0.0.0-dev; malformed fails the build. nativeDevice.ts APP_VERSION = buildVersion() (was 0.1.0), so x-app-version and device.appVersion carry the label.",
+      "Dockerfile ARG + ENV VITE_BEO_APP_VERSION; export.sh passes --build-arg VITE_BEO_APP_VERSION=$VERSION to both SPA images; boe_update.sh exports VITE_BEO_APP_VERSION=$BUILD_LABEL, the label it also gives the APK versionName.",
+      "UI: the version row shows on every platform (build version on web; native versionName in the APK, or the build version if the plugin read fails). Admin Account and What's new (client and admin) are the same shared row. DEPLOY.md has one paragraph after 'Version labelling'.",
+      "43dcf5a (review-52): F1 vite.config.ts parses with the contracts schema, not a hand copy. The contracts index does not re-export AppVersion and package.json exports only '.', so it uses NativeAuthHeaders.shape['x-app-version'], which is that same AppVersion object. Contracts dist is built before the frontend in the Dockerfile and in checks; the image build proves it.",
+      "F2: export.sh refuses an export whose frontend Dockerfile lacks ARG VITE_BEO_APP_VERSION, in a block next to the VITE_BEO_APP_TARGET check. F3: the row label is 'App version' on What's new and admin Account. F4: the Vite error and DEPLOY.md say 'X.Y.Z, X.Y.Z-label or X.Y.Z+label'. F5: vitest.config.ts test.env VITE_BEO_APP_VERSION=0.0.0-dev.",
+      "SERVER READERS (STATIC): client and admin native login validate device.appVersion with the same pattern (nativeAuthRoutes.ts:32, adminNativeAuthRoutes.ts:47), never store or compare it. x-app-version has no backend reader (CORS allow lists, OpenAPI only).",
+      "GET /v1/app/update orders on the native versionCode and checks minimumSupportedVersion against the native versionName (unchanged). POST /v1/client/app-version is never called by the frontend. No DB column holds an app version.",
+      "COMPAT (rule 11): no API, contract, schema or backend change. Released APKs still send 0.1.0, which is accepted. v0.15.4 and v0.17.0 have the same pattern, so the new labels pass there too.",
+      "TEST: src/platform/nativeDevice.test.ts (2 cases). Red control 20261117T123138Z-2074116 (2/2 failed with nativeDevice.ts reverted; restored, cmp identical). The test is unchanged in 43dcf5a.",
+      "RUNS on 43dcf5a, clean tree: frontend npm ci && check 20261117T143747Z-2788971 (51 files, 471 tests).",
+      "build:client + build:admin without version -> 0.0.0-dev, no 0.18.0, no 0.1.0: 20261117T143859Z-2808921. With 0.18.0 -> 0.18.0, no 0.0.0-dev, no 0.1.0: 20261117T143910Z-2811421.",
+      "Release tooling (bash -n, runtime_contract, hermetic_branding 13, apk_logging_policy 12, release_tag_contract) plus the ARG check: its grep matches the Dockerfile and refuses a copy without the ARG: 20261117T143937Z-2820099.",
+      "Malformed labels refused through the contracts schema: 20261117T143938Z-2821175. Docker image build, client and admin, build arg 0.18.0, exported locally: 20261117T143940Z-2822679.",
+      "RUNS on 111234f (still valid for the unchanged parts): contracts 20261117T122800Z-1951257; backend check 20261117T122848Z-1964186 (102 files, 1209 tests); first frontend check 20261117T122848Z-1964747. Ignore 20261117T123102Z-2033772: its sample 0.18.0+abc was valid.",
+      "RUNTIME STEPS (coordinator): serve with VITE_BEO_APP_VERSION=0.18.0, or with no variable for 0.0.0-dev. Admin web Account shows 'App version 0.18.0'; client web Profile > What's new shows the 'App version 0.18.0' card above the notes; admin What's new shows it too.",
+      "x-app-version goes only on native calls (client APK login/logout; admin APK login/refresh/logout); web never sent it. The network-log step needs an APK sign-in; on web the unit test covers it.",
+      "Left: finding-28 (export.sh points to the wrong FACTS_VS_PLAN item) untouched; frontend package.json 0.1.0 unused and untouched. export.sh dev labels bump the patch while a standalone boe_update.sh label does not (existing).",
+      "UNVERIFIED: no browser runtime check; no APK or emulator run; export.sh and boe_update.sh read, not run; plan and records not edited."
+    ]
+  },
+  "history": [
+    {
+      "task": "P-app-version",
+      "from": "claude-opus-5-5 builder p-app-version",
+      "track": "p-app-version",
+      "at": "2026-11-17T12:34:57.324Z",
+      "lines": [
+        "Commit: 111234f feat(version): build the release version into the web and APK bundles (one commit on track/p-app-version, on 0b337a0; not landed).",
+        "WHAT: vite.config.ts reads VITE_BEO_APP_VERSION, validates it against the server's AppVersion pattern (^X.Y.Z([+-][A-Za-z0-9.-]+)?$) and defines import.meta.env.VITE_BEO_APP_VERSION; unset or empty -> 0.0.0-dev (no guess from VERSION); malformed -> the build fails.",
+        "lib/env.ts buildVersion(); platform/nativeDevice.ts APP_VERSION = buildVersion() (was \"0.1.0\"), so x-app-version and device.appVersion carry the build label.",
+        "Dockerfile: ARG + ENV VITE_BEO_APP_VERSION in the builder stage. export.sh passes --build-arg VITE_BEO_APP_VERSION=$VERSION to both SPA images. boe_update.sh exports VITE_BEO_APP_VERSION=$BUILD_LABEL, the same label it passes as -PboeVersionName, so native and JS agree.",
+        "UI: InstalledVersionRow now renders on every platform: web -> build version at once; APK -> 'Checking', then native versionName; empty or failed plugin read -> build version. Admin Account label 'App version' -> 'Version'; What's new card label 'Installed version' -> 'Version'; isNative() gates removed. WhatsNewScreen is shared, so admin What's new shows it too. No new layout.",
+        "DEPLOY.md: one paragraph after 'Version labelling' on the build arg and env variable.",
+        "SERVER READERS (STATIC, all read): (1) POST /v1/auth/native/login deviceSchema regex nativeAuthRoutes.ts:32; (2) admin native login adminNativeAuthRoutes.ts:47, same regex; DeviceInput.appVersion (nativeAuth.ts:46) is never stored or compared, only installationId is hashed.",
+        "(3) x-app-version has no backend reader: only CORS allow lists (cors.ts:33, release_manager/nginx/*.conf) and the contract NativeCompatibilityHeaders (OpenAPI only). (4) GET /v1/app/update orders on query versionCode and checks mandatory with query version vs minimumSupportedVersion.android; appUpdateQuery.ts sends the native plugin's versionCode/versionName; unchanged.",
+        "(5) POST /v1/client/app-version (reportAppVersion) uses versionName/versionCode from the body; the frontend never calls it. (6) No DB column holds an app version. No semver comparison or minimum touches APP_VERSION.",
+        "COMPAT (rule 11): no API, contract, schema or backend change. Released APKs keep sending 0.1.0, which the unchanged regex accepts. Same regex in v0.15.4 (production) and v0.17.0 (rollback target), checked with git grep, so new labels (0.18.0, 0.18.1-dev.N.gSHA[.dirty], 0.0.0-dev) pass there too.",
+        "TEST: frontend_stack_ts/src/platform/nativeDevice.test.ts (it.each, 2 cases: 0.18.0 and a dev label): stubs VITE_BEO_APP_VERSION, re-imports nativeDevice, asserts header and client/admin device.appVersion equal it, are not 0.1.0, and pass the contract NativeAuthHeaders / NativeLoginBody.device.",
+        "RED CONTROL: 20261117T123138Z-2074116 (nativeDevice.ts reverted to HEAD~1: 2/2 failed, expected '0.1.0' to be ...); restored, cmp identical, tree clean.",
+        "CHECKS (Node 24 container, committed head 111234f, clean tree): contracts npm ci && build 20261117T122800Z-1951257; backend npm ci && check 20261117T122848Z-1964186 (102 files, 1209 tests); frontend npm ci && check 20261117T122848Z-1964747 (51 files, 471 tests, typecheck, lint, drift, build, boot, phonepe guard).",
+        "BUILDS: build:client + build:admin with no version -> dist has \"0.0.0-dev\", no \"0.18.0\", no \"0.1.0\": 20261117T123010Z-1997858. With 0.18.0: 20261117T123029Z-2006106. With 0.18.0-dev.5.g111234f: 20261117T123040Z-2009751.",
+        "Malformed labels (0.18.0-dev+abc, v0.18.0, 0.18, '0.18.0 dev') refuse the Vite build: 20261117T123121Z-2060108. Run 20261117T123102Z-2033772 failed only because my first sample 0.18.0+abc is valid under the pattern; ignore it.",
+        "Docker: frontend Dockerfile built for client and admin with --build-arg VITE_BEO_APP_VERSION=0.18.0, exported with --output type=local (no container run, no tag): both bundles carry 0.18.0, no 0.0.0-dev: 20261117T123202Z-2088242.",
+        "Release tooling: bash -n on both scripts plus runtime_contract, hermetic_branding (13), apk_logging_policy (12), release_tag_contract: 20261117T123359Z-2131174. export.sh and boe_update.sh were read, not run (no export, no device).",
+        "RUNTIME STEPS (coordinator): build or serve with VITE_BEO_APP_VERSION=0.18.0 (or no variable -> 0.0.0-dev). Admin web Account shows a 'Version  0.18.0' row; client web Profile > What's new shows a card 'Version  0.18.0' above the notes; admin What's new shows it too.",
+        "x-app-version is sent only on native calls: client APK login/logout, admin APK login/refresh/logout. Web requests never carried it and still do not, so the network-log step needs an APK sign-in (expect x-app-version and device.appVersion = the APK's build label); on web it is covered by the unit test.",
+        "DOUBTS: the vite error text and DEPLOY.md say 'X.Y.Z or X.Y.Z-label', but the pattern also allows X.Y.Z+label; no script emits '+'. A one-word fix if wanted.",
+        "Label choice 'Version' (not 'Installed version') because 'installed' is wrong on web; the What's new card then reads like the per-release 'Version X' headings below it. Coordinator may prefer another label.",
+        "The 'This device did not report it' state is gone: a failed native read now shows the build version, as the brief asks.",
+        "Left: finding-28 (export.sh points to the wrong FACTS_VS_PLAN item) untouched. frontend package.json version 0.1.0 untouched and unused. export.sh dev labels bump the patch (0.18.1-dev...) while a standalone boe_update.sh dev label does not (0.18.0-dev...); this is existing behaviour, and native and JS agree within each script.",
+        "UNVERIFIED: no browser runtime check, no APK or emulator run (not permitted); plan/records not edited (coordinator)."
+      ]
+    }
+  ]
+}

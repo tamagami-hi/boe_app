@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "track": "p-self-lockout",
+  "current": {
+    "task": "P-self-lockout",
+    "from": "claude-opus-5-5 builder p-self-lockout",
+    "track": "p-self-lockout",
+    "at": "2026-11-17T10:51:54.008Z",
+    "lines": [
+      "P-self-lockout (DEC-65, answers Q-45 / carried Q-013): built on track/p-self-lockout, one commit d2f02f3 'fix(admin-users): refuse an admin suspending or closing themselves'. Not pushed, rebased or landed.",
+      "SERVER: backend_controller/src/domain/admin/selfLockout.ts (new, refuseSelfLockout) is called in adminOversightRoutes.ts changeUserState after auth, permission and param/body parsing, before mutate(): so a refusal opens no transaction and writes no user, session, audit or idempotency row.",
+      "Refusal: 403 AUTHORIZATION_DENIED, message 'You cannot suspend or close your own account. Another admin can do this.' Applies to suspend and close only; reinstate unchanged (a suspended admin cannot sign in anyway).",
+      "Ids compared lower-cased: Postgres matches an upper-case uuid to the same row, and the red control below proved a case-sensitive compare let an admin suspend/close themselves via an upper-case id.",
+      "Other paths: none. Client erasure already refuses staff accounts (staff_account blocker); contact release needs an already-closed client account; seedAuth is an operator CLI, not an app path.",
+      "ADMIN APP: UserLifecyclePanel.tsx hides Suspend and Close when session principal.userId equals the record (case-insensitive) and shows one plain line 'You cannot suspend or close your own account. Another admin can do this.' (no permission codes). Reinstate and the existing no-permission line are unchanged.",
+      "CODE CHOICE: AUTHORIZATION_DENIED over STATE_CONFLICT: already in these ops' contract errorCodes (ADMIN_AUTH_ERRORS), not retryable (STATE_CONFLICT is marked retryable), precedent clientNomineeRoutes. No new enum/code/key (finding-14), no contract, permission, role (DEC-36) or migration change.",
+      "COMPAT (rule 11): released admin apps v0.15.4 (UserDetailScreen), v0.16.1, v0.17.1, v0.18.0 (UserLifecyclePanel) show any non-5xx, non-idempotency ApiError's server message under 'Nothing changed', so an old build that still offers Suspend/Close on its own record shows the refusal text. Previous release backend (rollback) simply lacks the guard; no data or schema involved.",
+      "TESTS: backend_controller/test/integration/adminSelfLockout.integration.test.ts (4): own suspend/close refused 403 with same key twice and with upper-case id, users row/active sessions/audit_events total/idempotency_records total unchanged, admin still signed in; another admin's suspend/close still 200, sessions revoked, audited as the actor.",
+      "TESTS: frontend_stack_ts/src/features/admin/users/UserLifecyclePanel.test.tsx (2): own record hides Suspend/Close and shows the line with no users.* code; another admin's record shows both.",
+      "RED CONTROLS (all restored, cmp identical, tree clean after): fc1ee0c9 guard call removed (2 failed/2 passed, own suspend/close returned 200); 5c8a7195 case-sensitive compare (2 failed/2 passed, upper-case id suspended/closed self); 203cc42c panel at pre-change version (1 failed/1 passed).",
+      "GREEN on d2f02f3, clean tree, Node 24 container: eab6b659 contracts npm ci && build; 985e2cdf backend npm ci && check (101 files/1204 tests, coverage 81.85/84.92/86.63/81.85); 02b20dab backend test:integration --coverage.enabled=false (74 files/593 tests); aabcaa2f frontend npm ci && check (47 files/449 tests); 4756371a build:client; 5ec83988 build:admin.",
+      "RUNTIME STEPS (UNVERIFIED, not run): sign in to the admin app as a superadmin, open /users/<own user id>: Account lifecycle shows no Suspend or Close, and the one line above. Open another admin's /users/<id>: Suspend and Close are shown and work through the confirm.",
+      "RUNTIME API: POST /v1/admin/users/<own id>/suspend (and /close) with the admin cookie + x-csrf-token -> 403 error.code AUTHORIZATION_DENIED with the message; GET /v1/admin/users/<own id>/detail still 200 accountState active; audit log has no user.suspended/user.closed row for it.",
+      "LEFT / DOUBTFUL: plans/admin-improvements.md line 7 still says Q-013 is carried as Q-45 and DEC-65 is 'decided, not built' in tally; the coordinator records it built. The pre-existing no-permission line in the panel still names users.suspend/users.close codes (CA-23 era, out of this lane)."
+    ]
+  },
+  "history": []
+}

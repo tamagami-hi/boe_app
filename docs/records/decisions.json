@@ -606,10 +606,10 @@
       "group": "admin-improvements",
       "text": "The UI overhaul fix plan docs/ui-overhaul/plan.md (U5) is approved with its seven questions as recommended: UQ-1 no market-risk line on admin screens (they keep source and freshness lines); UQ-2 the maturity payout's bank transfer reference becomes optional in its own small expand-only lane (rule-18), unchanged until then; UQ-3 no permission change, one plain notice; UQ-4 fix the CC-01 back arrow in ClientFrame.tsx only, with the existing back resolver; UQ-5 admin phone bottom bar Overview, Users, Client values, Support; UQ-6 the fix lanes land after the Node 24 release is cut; UQ-7 local stack and browser allowed for each lane's screenshot pass.",
       "since": "2026-11-16",
-      "status": "In force. Stage A landed on main at 2a11725 after the v0.17.1 cut (fx-shell, fx-ui-recipes, fx-paging, fx-admin-held, fx-session-guard, fx-outage-502, fx-admin-values, fx-admin-funds), with browser passes on the landing tree; ships in v0.18.0. Stage B (client web, admin web, admin phone lanes) is next.",
+      "status": "In force. Stage A was released in v0.18.0. UQ-2 was built as DEC-69 in the November patches (0.18.1). Stage B (plan 4.2) and the later surface lanes are planned for the December minor, 0.19.0, scoped with user and admin feedback (DEC-67).",
       "state": "in force",
       "by": "operator",
-      "on": "2026-11-17T10:03:33.588Z"
+      "on": "2026-11-17T19:32:16.050Z"
     },
     {
       "id": "DEC-62",
@@ -646,20 +646,20 @@
       "group": "admin-improvements",
       "text": "The app refuses when an admin tries to suspend or close their own account: the server refuses the request and the admin app hides those actions on the admin's own record. This prevents the sole-admin lockout that today needs a manual database fix (Q-45, carried Q-013). It is a business rule, not a permission or role change (DEC-36), and needs no migration.",
       "since": "2026-11-17",
-      "status": "Decided, not built: a small backend and admin lane, not yet planned",
-      "state": "decided, not built",
+      "status": "Built; on main at d2f02f3 (lane p-self-lockout, review-42, runtime 4ae75397); ships in 0.18.1.",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-17T04:04:52.887Z"
+      "on": "2026-11-17T11:55:32.740Z"
     },
     {
       "id": "DEC-66",
       "group": "admin-improvements",
       "text": "Client erasure also replaces the erased client's own known phone numbers in their national forms (for example 98765 43210) inside stored JSON such as idempotency receipts, but only in free-text string values that contain letters or spaces, never in digit-only values such as amounts or ids. Applies to future erasures, plus a one-off re-scrub of already erased accounts if any exist (Q-46, DEC-29).",
       "since": "2026-11-17",
-      "status": "Decided, not built: a small backend lane, not yet planned",
-      "state": "decided, not built",
+      "status": "Built; on main at b2c0970 (lane p-erasure-phones, review-45/48, runtime c0639a1d); ships in 0.18.1. Production from v0.15.4 has no erasures, so no re-scrub is needed there.",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-17T04:04:53.215Z"
+      "on": "2026-11-17T11:55:33.155Z"
     },
     {
       "id": "DEC-67",
@@ -670,6 +670,46 @@
       "state": "in force",
       "by": "operator",
       "on": "2026-11-17T10:18:42.597Z"
+    },
+    {
+      "id": "DEC-68",
+      "group": "admin-improvements",
+      "text": "Both apps get What's new release notes. Client notes cover only what clients see, briefly, in a developer's-note voice; admin notes follow the same style with nothing technical. Notes are bundled in each build, one file per audience, keyed by release version, newest first, with no API, schema or contract change. A sheet shows a release's notes once per user on each device or browser: after an APK update, or at the first signed-in web visit after a deploy (sign-in or session restore). It waits behind other dialogs, the device lock and maintenance, and is remembered when closed; a user with no record sees it. A release with nothing for an audience adds no entry. The notes stay available in Profile > What's new for clients, and on a new admin Account screen opened from the top bar (name, email, role, app version, What's new). Copy has no figures and nothing about payments, AutoPay, bank details or references (DEC-14, DEC-22, DEC-25, DEC-13).",
+      "since": "2026-11-17",
+      "status": "Built; on main at 0b337a0 (lane p-whats-new, reviews 46, 47, 49, runtime 73487af8 and 090981e2); first entry 0.18.1 for both audiences.",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-17T12:16:11.083Z"
+    },
+    {
+      "id": "DEC-69",
+      "group": "admin-improvements",
+      "text": "The payout outcome form no longer asks for or shows a bank transfer reference, completing UQ-2 as the overhaul plan recommended (field removed) under rule-18: transfers happen outside the app, so the bank holds the reference. The app generates no reference number of its own. The server still accepts and stores a reference that a released admin app sends (rule 11), and references already stored stay in the database; new builds neither ask for nor display them. A payout channel category (in-app payment or outside transfer) is parked until the maintainer resumes payments (DEC-14, DEC-22); when it comes, existing rows are marked outside transfer.",
+      "since": "2026-11-17",
+      "status": "Built; on main at 44a54d4 (lane p-payout-reference, reviews 44 and 50, runtime bf103023 and ca1ed9f1); payout channel category parked; ships in 0.18.1.",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-17T12:26:31.592Z"
+    },
+    {
+      "id": "DEC-70",
+      "group": "admin-improvements",
+      "text": "The web channels (web and client_web) keep one CSRF token per session: it is issued at sign-in and on refresh rotation, and a CSRF read returns the session's current token instead of replacing it. Reads keep confirming the signed-in user (finding-50). The frontend's one-time CSRF_INVALID recovery from finding-63 stays as a safety net. No API, contract or cookie change; native bearer channels are unchanged.",
+      "since": "2026-11-17",
+      "status": "Built; on main at 623b377 (lane p-csrf-stable, reviews 51 and 56, runtime 9262caf7); cross-tab refresh lock parked to lane p-session-hardening; ships in 0.18.1.",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-17T15:24:10.261Z"
+    },
+    {
+      "id": "DEC-71",
+      "group": "admin-improvements",
+      "text": "Every build knows its release version. The root VERSION is built into the web bundles and the APK's JavaScript at build time, sent as the x-app-version header and device.appVersion instead of the hard-coded 0.1.0, and shown on the admin Account screen and the client What's new page on every platform. The APK's native versionName stays as set by the release scripts.",
+      "since": "2026-11-17",
+      "status": "Built; on main at 6f495e1 (lane p-app-version, reviews 52 and 53, runtime 08565373 and b9db256d); ships in 0.18.1.",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-17T15:20:42.884Z"
     }
   ],
   "replaced": [

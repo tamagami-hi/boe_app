@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "track": "p-whatsnew-entries",
+  "current": {
+    "task": "P-whatsnew-entries",
+    "from": "claude-opus-5-5 builder p-whatsnew-entries",
+    "track": "p-whatsnew-entries",
+    "at": "2026-11-17T16:22:50.349Z",
+    "lines": [
+      "P-whatsnew-entries (DEC-68 follow-up) on track/p-whatsnew-entries is one commit: a0dc478 fix(whats-new): show every unseen release in the sheet, newest first. Changes are in frontend features/whats-new plus three lines of WORKFLOW.md, and nothing else.",
+      "WHAT: unseenEntries(notes, lastSeenId) in whatsNewEntry.ts. With no record it returns every entry. With a stored id in the notes it returns the entries before that id in array order (newest first, no version parsing), or null when the stored id is the newest. With a stored id not in the notes (rollback or corrupt value) it returns only notes[0].",
+      "WhatsNewPrompt captures the unseen entries in state when the sheet opens, so another tab closing its own sheet cannot empty an open one. Close (Done, X, Escape, backdrop, Back) still marks notes[0].id seen.",
+      "SHEET: one entry reads 'Version X' with no inner heading, so it looks as before. For several entries the description reads 'Versions <oldest> to <newest>' and each entry has an h3 'Version X'; its New/Improved/Fixed headings render as h4 (new optional headingLevel prop on WhatsNewNotes, default h3, so the Profile and Account screens are unchanged). New recipes RELEASES/RELEASE/RELEASE_HEADING sit in whatsNew.recipe.ts. The panel already scrolls (max-h 88dvh, overflow-y-auto).",
+      "Unchanged: the gating (authenticated, active account, overlay depth 0, unlocked, no unsettled admin held write, two-render arming), the platform filter, the storage key and value format, ClientFrame/AdminFrame wiring, and WhatsNewScreen.",
+      "WORKFLOW.md Release step 1 now asks to keep earlier entries in place and in order, because a user whose last-seen entry is removed sees only the newest.",
+      "COMPATIBILITY (rule 11): frontend only. No API, contract, schema, header, cookie or token change, and no new request. The localStorage key boe.<scope>.whatsNew.<userId> and its value (the last closed entry id) are unchanged, so records written by 0.18.1 work as-is. On an images-only rollback the previous build compares the stored id with its own newest (old behaviour) and can show its newest entry once more. That is harmless and was already the case.",
+      "TESTS (rule 10), WhatsNewPrompt.test.tsx, now 11 tests. New: (a) two entries with no record show both h3 headings in order and both items, and Done stores 0.18.2; (b) with 0.18.1 stored, only 0.18.2 shows; (c) with an unknown stored id, only the newest shows.",
+      "RED CONTROLS, each restored and cmp-identical to a saved copy:",
+      "20261117T162149Z-4481: WhatsNewPrompt.tsx reverted to 9e166fc (newest only). Test (a) fails, 1 of 11.",
+      "20261117T162158Z-9802: slice(0, seenAt + 1) (the seen entry is shown again). Test (b) fails, along with 5 older tests (6 of 11).",
+      "20261117T162208Z-13875: an unknown id returns all entries. Test (c) fails, 1 of 11.",
+      "GREEN on a0dc478, clean tree:",
+      "20261117T161948Z-4168423: contracts npm ci + build.",
+      "20261117T162028Z-4175546: frontend npm ci + npm run check (55 files, 487 tests; typecheck, lint, generate:api:check, build, boot and phonepe checks).",
+      "20261117T162122Z-4190354: build:client (android dist 17 assets, 960902 bytes; boot check passed).",
+      "20261117T162127Z-4191826: build:admin (boot check passed).",
+      "RUNTIME STEPS for the coordinator (UNVERIFIED, nothing run in a browser):",
+      "1. Add a temporary first entry to clientNotes.ts, for example id 0.18.2 with one Fixed line. Run the client dev build.",
+      "2. Sign in as a client and delete localStorage boe.client.whatsNew.<userId>. Reload: the sheet description reads 'Versions 0.18.1 to 0.18.2', with a 'Version 0.18.2' block above a 'Version 0.18.1' block.",
+      "3. Press Done: the key reads 0.18.2, and a reload shows no sheet.",
+      "4. Set the key to 0.18.1 and reload: the sheet shows only 'Version 0.18.2' in its description, with no inner heading.",
+      "5. Set the key to a bogus value and reload: the sheet shows only 0.18.2.",
+      "6. Profile > What's new still lists both. Discard the temporary entry afterwards. The existing What's new checks otherwise stand.",
+      "DOUBTFUL / LEFT:",
+      "(1) An entry with nothing for the current platform (all items tagged for the other platform) shows its 'Version X' heading with no items in a multi-entry sheet. The same entry alone gives an empty sheet body, which is pre-existing. No such entry exists today.",
+      "(2) No Android run and no APK.",
+      "(3) No independent code review was run in this lane."
+    ]
+  },
+  "history": []
+}

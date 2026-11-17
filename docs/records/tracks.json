@@ -683,6 +683,349 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       }
+    },
+    {
+      "name": "p-self-lockout",
+      "branch": "track/p-self-lockout",
+      "worktree": ".temp/worktrees/p-self-lockout",
+      "purpose": "DEC-65: the server refuses an admin suspending or closing their own account; the admin app hides those actions on the admin's own record. No migration, no permission change.",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T10:37:17.377Z",
+      "closedAt": "2026-11-17T13:11:23.732Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T12:11:23.038Z"
+    },
+    {
+      "name": "p-erasure-phones",
+      "branch": "track/p-erasure-phones",
+      "worktree": ".temp/worktrees/p-erasure-phones",
+      "purpose": "DEC-66: erasure replaces the client's own national-format phones in free-text JSON string values (never digit-only values), for future erasures, plus a one-off re-scrub of already erased accounts.",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T10:37:17.789Z",
+      "closedAt": "2026-11-17T13:11:23.732Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T12:11:23.725Z"
+    },
+    {
+      "name": "p-payout-reference",
+      "branch": "track/p-payout-reference",
+      "worktree": ".temp/worktrees/p-payout-reference",
+      "purpose": "DEC-61 UQ-2: the maturity payout's bank transfer reference becomes optional, expand-only (rule 11, finding-14): released admin APKs keep working.",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T10:37:18.275Z",
+      "closedAt": "2026-11-17T13:26:32.133Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T12:26:30.354Z"
+    },
+    {
+      "name": "p-csrf-tabs",
+      "branch": "track/p-csrf-tabs",
+      "worktree": ".temp/worktrees/p-csrf-tabs",
+      "purpose": "finding-63: a second admin tab rotating the CSRF token no longer leaves the first tab's writes failing CSRF_INVALID until reload; a refused-before-processing write recovers once with the same key and the same user.",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T10:37:18.700Z",
+      "closedAt": "2026-11-17T13:11:23.732Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T12:11:23.367Z"
+    },
+    {
+      "name": "p-whats-new",
+      "branch": "track/p-whats-new",
+      "worktree": ".temp/worktrees/p-whats-new",
+      "purpose": "DEC-68: What's new release notes for clients and admins, a once-per-user sheet, Profile > What's new and an admin Account screen",
+      "paths": [
+        "frontend_stack_ts",
+        "WORKFLOW.md",
+        "release_manager/README.md"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T10:52:16.529Z",
+      "closedAt": "2026-11-17T13:16:05.846Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T12:16:04.322Z"
+    },
+    {
+      "name": "p-lows",
+      "branch": "track/p-lows",
+      "worktree": ".temp/worktrees/p-lows",
+      "purpose": "Leftover LOW fixes: finding-60 LOWs, finding-62 429 wording, finding-55 deep-URL spinner, review-42 panel nits, overlays above the lock screen",
+      "paths": [
+        "frontend_stack_ts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T12:17:23.683Z",
+      "closedAt": "2026-11-17T17:14:02.363Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T16:14:01.655Z"
+    },
+    {
+      "name": "p-terms-version",
+      "branch": "track/p-terms-version",
+      "worktree": ".temp/worktrees/p-terms-version",
+      "purpose": "finding-56: an optional expected version on publishing fund terms, refused when stale",
+      "paths": [
+        "packages/contracts",
+        "backend_controller",
+        "frontend_stack_ts",
+        "DEPLOY.md"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T12:17:24.112Z",
+      "closedAt": "2026-11-17T17:04:58.169Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T16:04:57.038Z"
+    },
+    {
+      "name": "p-csrf-stable",
+      "branch": "track/p-csrf-stable",
+      "worktree": ".temp/worktrees/p-csrf-stable",
+      "purpose": "DEC-70: one CSRF token per web session; reads stop rotating it",
+      "paths": [
+        "backend_controller",
+        "frontend_stack_ts",
+        "DEPLOY.md"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T12:17:24.531Z",
+      "closedAt": "2026-11-17T16:24:11.146Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T15:24:09.453Z"
+    },
+    {
+      "name": "p-app-version",
+      "branch": "track/p-app-version",
+      "worktree": ".temp/worktrees/p-app-version",
+      "purpose": "DEC-71: the release version built into every bundle, sent in x-app-version and shown in the apps",
+      "paths": [
+        "frontend_stack_ts",
+        "release_manager",
+        "emu",
+        "DEPLOY.md",
+        "backend_controller"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T12:17:24.964Z",
+      "closedAt": "2026-11-17T16:20:43.105Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T15:20:42.091Z"
+    },
+    {
+      "name": "p-payout-dates",
+      "branch": "track/p-payout-dates",
+      "worktree": ".temp/worktrees/p-payout-dates",
+      "purpose": "Show a payout's paid or failed date on the admin card through a new outcomes read, leaving existing responses unchanged",
+      "paths": [
+        "packages/contracts",
+        "backend_controller",
+        "frontend_stack_ts",
+        "DEPLOY.md"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T12:26:31.932Z",
+      "closedAt": "2026-11-17T16:16:10.983Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T15:16:10.432Z"
+    },
+    {
+      "name": "p-flaky-heldwrites",
+      "branch": "track/p-flaky-heldwrites",
+      "worktree": ".temp/worktrees/p-flaky-heldwrites",
+      "purpose": "finding-65: make the publishAdminAppConfig held-write test deterministic under CPU load",
+      "paths": [
+        "frontend_stack_ts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T15:21:36.721Z",
+      "closedAt": "2026-11-17T16:53:57.826Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T15:53:57.404Z"
+    },
+    {
+      "name": "p-session-hardening",
+      "branch": "track/p-session-hardening",
+      "worktree": ".temp/worktrees/p-session-hardening",
+      "purpose": "Cross-tab refresh lock so two tabs refreshing together do not revoke the session; native rotationId lower-cased like web",
+      "paths": [
+        "frontend_stack_ts",
+        "backend_controller"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T15:22:33.792Z",
+      "closedAt": "2026-11-17T18:43:32.618Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T17:43:30.670Z"
+    },
+    {
+      "name": "p-lifecycle-version",
+      "branch": "track/p-lifecycle-version",
+      "worktree": ".temp/worktrees/p-lifecycle-version",
+      "purpose": "finding-66: honour the version on fund pause, resume and archive so a stale change is refused, without refusing released apps",
+      "paths": [
+        "packages/contracts",
+        "backend_controller",
+        "frontend_stack_ts",
+        "DEPLOY.md"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T16:14:01.999Z",
+      "closedAt": "2026-11-17T18:43:32.618Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T17:43:31.554Z"
+    },
+    {
+      "name": "p-copy-sweep",
+      "branch": "track/p-copy-sweep",
+      "worktree": ".temp/worktrees/p-copy-sweep",
+      "purpose": "CA-23 permission codes out of admin copy; payment-hinting client copy replaced (DEC-14, DEC-22)",
+      "paths": [
+        "frontend_stack_ts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T16:14:02.476Z",
+      "closedAt": "2026-11-17T18:43:32.618Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T17:43:31.258Z"
+    },
+    {
+      "name": "p-held-nav-guard",
+      "branch": "track/p-held-nav-guard",
+      "worktree": ".temp/worktrees/p-held-nav-guard",
+      "purpose": "Block in-app navigation away from an admin screen with an unsettled held write, with a plain confirm",
+      "paths": [
+        "frontend_stack_ts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T16:14:02.888Z",
+      "closedAt": "2026-11-17T18:43:32.618Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T17:43:31.828Z"
+    },
+    {
+      "name": "p-whatsnew-entries",
+      "branch": "track/p-whatsnew-entries",
+      "worktree": ".temp/worktrees/p-whatsnew-entries",
+      "purpose": "What's new shows every unseen entry, newest first, so users who skip releases miss nothing",
+      "paths": [
+        "frontend_stack_ts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T16:14:03.268Z",
+      "closedAt": "2026-11-17T18:43:32.618Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T17:43:30.956Z"
+    },
+    {
+      "name": "p-docs-0181",
+      "branch": "track/p-docs-0181",
+      "worktree": ".temp/worktrees/p-docs-0181",
+      "purpose": "Docs pass for 0.18.1: plan status and section 8, the stale UI overhaul plan header, finding-28's export.sh pointer, and the What's new lines for the late lanes",
+      "paths": [
+        "plans",
+        "docs/ui-overhaul",
+        "release_manager/export.sh",
+        "frontend_stack_ts/src/features/whats-new"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T17:44:27.623Z"
     }
   ]
 }

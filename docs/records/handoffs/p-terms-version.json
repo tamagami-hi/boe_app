@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "track": "p-terms-version",
+  "current": {
+    "task": "P-terms-version",
+    "from": "claude-opus-5-5 builder p-terms-version",
+    "track": "p-terms-version",
+    "at": "2026-11-17T14:59:18.973Z",
+    "lines": [
+      "P-terms-version (finding-56). Rebased once onto main 24c84c9, after p-payout-dates landed, under the coordinator's one-time authorisation. Two commits on track/p-terms-version, not landed or pushed:",
+      "- d64daca fix(admin-funds): refuse terms published from a stale version (was 5c58cf0).",
+      "- dda0ab4 fix(admin-funds): start new terms from the fund's current version (was e66c866, review-54 F1 to F3). Head: dda0ab4.",
+      "REBASE: DEPLOY.md conflicted in d64daca and was resolved by keeping every paragraph. Order: main's migration 074 paragraph and its bullets, main's payout outcome dates paragraph, then this lane's fund terms expectedVersion paragraph; dda0ab4's added clause applied cleanly.",
+      "Generated files: regenerated with npm run generate in packages/contracts. The output was byte-identical to the merged files, and the only change against main is the expectedVersion query parameter, so it stays folded into d64daca. The frontend generate:api output (202 operations) did not change. Each commit stands alone; dda0ab4 changes no contract.",
+      "WHAT: publishAdminFundVersion takes an optional expectedVersion as a QUERY parameter (convention-12): POST /v1/admin/funds/{fundId}/versions?expectedVersion=N. Released backends ignore the query, so a newer admin APK keeps publishing after a rollback.",
+      "The backend locks the fund row, compares the value with fund.currentVersion, and refuses a mismatch with 409 STATE_CONFLICT plus fields.expectedVersion. This runs inside the idempotent transaction, so a refusal writes nothing, and an accepted key resent later replays. Without the query, the publish and its request hash are unchanged. The response is unchanged.",
+      "Admin app: the form starts from, and sends, the version the fund points to. A stale refusal shows a plain 'Not published' line with Reload the fund, and Check again keeps the same key and query.",
+      "DEPLOY.md: the rollback behaviour of the query parameter, plus the Not confirmed clause for a publish that reached the server across a rollback or roll-forward.",
+      "TESTS: the integration file adminFundTermsVersion.integration.test.ts, 4 cases (stale refusal, released app without the field, replay of an accepted key, concurrency with the loser's fields and the winner's terms). heldWrites.test.tsx has 3 publish cases.",
+      "RED CONTROLS, run before the rebase: on 5c58cf0, 6bf1c488, 847f88b9, d533bf4e, b0c1bceb and 6b946894; on e66c866, 4f5aeabd (F1). The rebase did not change the lane's code; the only conflict was DEPLOY.md.",
+      "GREEN on dda0ab4, clean tree:",
+      "- contracts npm ci + build + check: 47d88a81, 98 tests.",
+      "- backend npm ci + check: 6bd6f65c, 1209 tests.",
+      "- backend full integration, coverage off: bc10b3f8, 609 tests.",
+      "- frontend npm ci + check: 642d7389, 476 tests.",
+      "- build:client 587ffa46; build:admin 59361f6a.",
+      "Known flake (finding-65): heldWrites publishAdminAppConfig under CPU load. The checks above ran one at a time and passed.",
+      "RUNTIME STEPS (not run here): two admin tabs on one fund; publish in tab 2, then in tab 1. Tab 1 is refused, usually by its own re-read with nothing sent, and the published terms are tab 2's.",
+      "To reach the server refusal: replay the POST with the old ?expectedVersion=N and a new Idempotency-Key. Expect 409 STATE_CONFLICT with fields.expectedVersion and no new fund_versions or audit row.",
+      "LEFT for the coordinator: the plan's 'Left' line (plans/admin-improvements.md) still names finding-56. Suggested What's new 0.18.1 Fixed line, not added: 'Publishing new terms is refused if someone published newer terms first.' DEPLOY.md may still overlap lane p-app-version."
+    ]
+  },
+  "history": [
+    {
+      "task": "P-terms-version",
+      "from": "claude-opus-5-5 builder p-terms-version",
+      "track": "p-terms-version",
+      "at": "2026-11-17T14:31:03.213Z",
+      "lines": [
+        "P-terms-version (finding-56), one commit 5c58cf0 fix(admin-funds): refuse terms published from a stale version, on track/p-terms-version. Not landed, not pushed.",
+        "WHAT: publishAdminFundVersion takes an optional expectedVersion. The backend takes the fund row lock (the same select ... for update the publish already used), reads the fund's current terms version (fund.currentVersion), and refuses a mismatch with 409 STATE_CONFLICT before any write. The error carries fields.expectedVersion and a plain message.",
+        "WHERE IT TRAVELS: a QUERY parameter, POST /v1/admin/funds/{fundId}/versions?expectedVersion=N, not a body key. Every released backend (v0.15.4, v0.17.0, v0.18.0) parses this body with .strict(), so a body key would be refused with 400 VALIDATION_FAILED. But the publish route never reads request.query, so the query is ignored there. Rule 11 and step 5: the new admin app keeps publishing against the previous backend. The name matches the other operations' expectedVersion.",
+        "Contract: AdminFundVersionPublishQuery (strict, coerce int > 0, optional) in admin-fund-aum.ts (788 lines). OpenAPI regenerated. No new error code: STATE_CONFLICT was already in this operation's errorCodes, is how the other expected-version checks refuse (VERSION_CONFLICT maps to it, as does the app-config publish), and is shown as a plain 'Not published' refusal by the v0.15.4 and v0.18.0 admin screens. Response shape unchanged.",
+        "Atomic: the check runs inside runAdminMutation's transaction, after the idempotency claim and the lock. A refusal rolls back and writes no version, disclosure, audit row or idempotency receipt. Resending an accepted request with its key replays it (201) instead of refusing it as stale.",
+        "Released apps (rule 11, finding-14): they send no query, so the publish runs as before. The request hash adds expectedVersion only when it is present, so receipts stored before the deploy still replay. A strict query means a stray query key on this route is now 400; no client sends one.",
+        "Admin app: PublishTermsSection sends the start.version the form was built on, when start.kind is found. For kind none (a fund with no terms, which createFund cannot produce) nothing is sent and the server does not check. The held body includes expectedVersion, so Check again resends the same key and the same query, and an unknown outcome stays Not confirmed (FX-4, the existing ROWS test compares the full options).",
+        "On the refusal it shows 'Not published': 'Newer terms were published for this fund after this form was opened, so nothing was published. Reload the fund to see them; your edits stay in the form.', with a Reload the fund button. After the reload, the existing 'A newer version was published' alert takes over, prefixed 'Nothing was published.', with 'Start again from version N', which also resets the refusal. The archived-fund STATE_CONFLICT keeps its old text. The screen-side re-read before sending is kept: it is the only check against an older backend.",
+        "DEPLOY.md: one paragraph under Database rollback semantics. From 0.18.1 the version travels as a query parameter. After an images-only rollback a newer admin APK still publishes, checked only by its own re-read, as in 0.18.0.",
+        "TESTS (rule 10). New file backend_controller/test/integration/adminFundTermsVersion.integration.test.ts, 4 tests: (1) a stale version is refused with nothing changed and no receipt, then the current version publishes; (2) a request without the field still publishes (released apps); (3) a resend of an accepted key replays rather than being refused; (4) concurrency: a held fund lock, then two publishes from the same version, gives exactly one 201 and one 409, with one new version and one new audit row.",
+        "Frontend heldWrites.test.tsx: the publish carries query {expectedVersion: 2}; a server stale refusal shows the line, and Reload leads to 'Start again from version 3' with the edits kept and nothing resent.",
+        "RED CONTROLS (each restored, cmp identical): no-check (call removed) 6bf1c488, 2 of 4 fail (stale and concurrency); required (undefined treated as a mismatch) 847f88b9, 1 of 4 fail (released apps); before-lock (check moved before the lock) d533bf4e, 1 of 4 fail (concurrency); outside-tx (check moved before mutate) b0c1bceb, 2 of 4 fail (replay and concurrency); frontend no-send (submit without expectedVersion) 6b946894, 2 of 25 fail.",
+        "GREEN on 5c58cf0, clean tree: contracts npm ci + build + check 9b8beb01 (98 tests); backend npm ci + check 7b8ee388 (1209 tests); backend full integration with coverage off ded174ac (76 files, 600 tests); frontend npm ci + check 0916120c (470 tests); build:client 1db5de99; build:admin aa706841.",
+        "Also recorded: frontend check 04f6ee21 exited 1 (469 of 470) while the backend check ran beside it. The failure was the heldWrites ROWS case publishAdminAppConfig: its confirm dialog did not open within 3 s. That row is untouched by this lane and the same timing flake as 2a11725. It passed on the solo rerun 0916120c.",
+        "RUNTIME STEPS for the coordinator (not run here): open two admin tabs on the same fund's workspace. In tab 2, change a field and Publish version. In tab 1, change a field and Publish version. Usually tab 1's own re-read catches it first, with nothing sent: 'A newer version was published' / 'Nothing was published. This form started from version N...'. The published terms are tab 2's.",
+        "To reach the server refusal itself: in tab 1's devtools, replay the publish POST with ?expectedVersion set to the old N and a new Idempotency-Key. Expect 409 STATE_CONFLICT with error.fields.expectedVersion, no new row in fund_versions, and no fund.version_published audit row. Without the query the same POST publishes (released-app path).",
+        "DOUBTFUL or LEFT: the plan's 'Left' line (plans/admin-improvements.md, about line 1261) still lists finding-56; the coordinator owns the plan edit. A suggested adminNotes 0.18.1 Fixed line: 'Publishing new terms is refused if someone published newer terms first.' (not added). The query design differs from the body convention on purpose (rollback); say if a body key is wanted instead. Stale result folders from the interrupted first runs were removed; no container of this lane is left running."
+      ]
+    },
+    {
+      "task": "P-terms-version",
+      "from": "claude-opus-5-5 builder p-terms-version",
+      "track": "p-terms-version",
+      "at": "2026-11-17T14:48:46.218Z",
+      "lines": [
+        "P-terms-version (finding-56). Two commits on track/p-terms-version, not rebased, landed or pushed: 5c58cf0 fix(admin-funds): refuse terms published from a stale version; e66c866 fix(admin-funds): start new terms from the fund's current version (review-54 notes F1 to F3).",
+        "REBASE PENDING: once p-payout-dates has landed, the coordinator asks for a rebase onto main. DEPLOY.md overlaps p-app-version and p-payout-dates. Regenerate packages/contracts/generated (npm run generate), never hand-merge it.",
+        "WHAT: publishAdminFundVersion takes an optional expectedVersion as a QUERY parameter (convention-12): POST /v1/admin/funds/{fundId}/versions?expectedVersion=N. Released backends parse the body strictly but ignore the query, so a newer admin APK keeps publishing after a rollback.",
+        "The backend locks the fund row, reads fund.currentVersion (the version current_published_version_id points to), and refuses a mismatch with 409 STATE_CONFLICT plus fields.expectedVersion. This runs inside the idempotent transaction, so a refusal writes nothing, and an accepted key resent later replays.",
+        "Compatibility: without the query, the publish and its request hash are unchanged (released apps and stored receipts). The response is unchanged. No new error code.",
+        "Admin app (after e66c866): the form starts from the version the fund points to, not the newest entry of versions, and sends that version. A fund with versions but no current pointer reads as unreadable, and the form is hidden; createFund cannot make one. Check again keeps the same key and query.",
+        "On a stale refusal it shows 'Not published: Newer terms were published for this fund after this form was opened...' with Reload the fund. After the reload, the existing 'A newer version was published' notice offers 'Start again from version N'.",
+        "DEPLOY.md, under Database rollback semantics: the query parameter and the rollback behaviour. A publish that reached the server and was left Not confirmed across a rollback or roll-forward stays Not confirmed on Check again (the request hashes differ), so check the fund's versions by hand.",
+        "TESTS: backend_controller/test/integration/adminFundTermsVersion.integration.test.ts, 4 cases: a stale version is refused with nothing written; a request without the field still publishes; a resent key replays; concurrency gives exactly one 201 and one 409. The 409 carries fields.expectedVersion and the current terms are the winner's (F3).",
+        "Frontend heldWrites.test.tsx, 3 publish cases: the query is sent; the version sent is the current one even when a newer non-current version exists (F1); a stale refusal shows the line and the reload.",
+        "RED CONTROLS on 5c58cf0 (each restored, cmp identical): no-check 6bf1c488; required 847f88b9; before-lock d533bf4e; outside-tx b0c1bceb; frontend no-send 6b946894. On e66c866: F1, latestTerms.ts reverted to newest-version, 4f5aeabd, 1 of 26 fail.",
+        "GREEN on 5c58cf0: contracts check 9b8beb01 (98 tests); backend check 7b8ee388 (1209); full integration with coverage off ded174ac (600); frontend check 0916120c (470); build:client 1db5de99; build:admin aa706841.",
+        "GREEN on e66c866 (as asked: the integration file and the frontend check): frontend npm ci + check cba2048e (471 tests); the integration file 8ae5be0b (4 tests). e66c866 changes no backend source or contract.",
+        "Known flake (finding-65): the heldWrites ROWS case publishAdminAppConfig fails its 3 s dialog wait under CPU load. Run 04f6ee21 hit it; run frontend checks alone.",
+        "RUNTIME STEPS (not run here): two admin tabs on one fund; publish in tab 2, then in tab 1. Tab 1's re-read usually refuses first with nothing sent, and the published terms are tab 2's.",
+        "To reach the server refusal: replay tab 1's POST from devtools with the old ?expectedVersion=N and a new Idempotency-Key. Expect 409 STATE_CONFLICT with fields.expectedVersion and no new fund_versions or audit row.",
+        "LEFT for the coordinator: the plan's 'Left' line (plans/admin-improvements.md, about line 1261) still names finding-56. Suggested What's new 0.18.1 Fixed line, not added: 'Publishing new terms is refused if someone published newer terms first.'"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "track": "p-docs-0181",
+  "current": {
+    "task": "P-docs-0181",
+    "from": "claude-opus-5-5 builder p-docs-0181",
+    "track": "p-docs-0181",
+    "at": "2026-11-17T19:26:31.495Z",
+    "lines": [
+      "COMMITS on track/p-docs-0181, on main cd30e3e (not pushed, rebased or landed): e4ed0f2 fix(release): drop the wrong FACTS_VS_PLAN pointer from export.sh; 60e1bca fix(whats-new): add 0.18.1 notes for the lanes after the draft; cc3a986 docs(plan): record the November patches (M19) for 0.18.1.",
+      "Facts checked against git log v0.18.0..main (35 lane commits, 16 lanes), board_get M19, review_list (review-42 to review-71), evidence_list M19 (kind evidence), decision_list DEC-61, DEC-65 to DEC-71, question_list Q-45/Q-46, context finding-27/28/55/56/60/62/63/64/65/66, convention-12, howto-4, and the p-app-version/p-lows hand-offs and commit bodies.",
+      "PLAN plans/admin-improvements.md, changed lines:",
+      "- L3 status: 'The rest of November ships as 0.18.x ... Production runs v0.15.4' became: the November patches (M19, section 8) are on main and make up 0.18.1, the single patch the maintainer tests once on the dev stack before production; v0.19.0 is the December session; production runs v0.15.4, so the next production deploy jumps from it; finding-64 gives v0.17.0 as the safer rollback target. DEC-67 monthly-cycle sentence kept verbatim.",
+      "- L7: Q-013 'is carried as tally question Q-45' -> 'was carried as Q-45 and is answered by DEC-65: the app refuses it (lane p-self-lockout, section 8)'.",
+      "- L1212 (Phase I close, For the maintainer, phones in receipts): appended 'Answered by DEC-66 (Q-46) and built in lane p-erasure-phones'.",
+      "- L1261 (stage A): 'Left:' -> 'Left at v0.18.0:'; '(stage B aw-values)' -> '(aw-values, in the overhaul plan's admin web group, not stage B)'; adds that every CSRF read issued a new token, then a sentence naming what the patches closed: nav guard (p-held-nav-guard, data router), terms check finding-56 (p-terms-version), spinner, 429 wording and four of finding-60's five LOWs (p-lows), lost-refresh grace (p-csrf-stable), second tab (p-csrf-tabs; DEC-70 reads no longer rotate). Still open: returns screen user id (aw-values) and finding-60's growth Check again key order.",
+      "- L1265-1295 new '### November patches (M19) on main (2026-11-17)': intro (16 lanes, tally landing queue, after a033b3b, ending cd30e3e, reviews review-42 to review-71); one bullet per lane in landing order with landed hashes and decision/finding exactly as the brief's table; a Docs pass bullet (no hash); Runtime (verify-m19, verify-payout, verify-w2, verify-w3, verify-w4 and re-check, all PASS, first-run script failures re-run, ids in tally); Migrations 074 expand-only, not a boundary; Rollback notes -> DEPLOY.md 'Database rollback semantics' and v0.17.0 per finding-64; Left and parked (finding-27/DEC-14 payment copy, DEC-69 payout channel, review-63 N3, contract redesign and stage B for 0.19.0); Release 0.18.1 by the maintainer; Not verified.",
+      "UI PLAN docs/ui-overhaul/plan.md, changed lines:",
+      "- L3 header: 'Status: proposed, not approved ... a recommendation in section 8 is not an answer' -> approved as DEC-61 (2026-11-16), UQ-1 to UQ-7 as recommended; stage A (4.1 plus fx-session-guard, fx-outage-502) landed after the v0.17.1 cut and is in v0.18.0; the remaining lanes are the December plan (v0.19.0, DEC-67); note that later records say 'stage B' for every lane after stage A, while here stage B is 4.2 and aw-values is in the admin web group (4.5).",
+      "- L170 section 7: tools/node22-container/run.sh -> tools/node24-container/run.sh (tally howto-4; node22 only for checkouts of Node 22 releases).",
+      "- L177 section 8 intro: appended 'DEC-61 answered all seven as recommended on 2026-11-16.'",
+      "- L182 UQ-2 'Default meanwhile' cell: 'The field stays as built; no UI lane touches it.' -> 'Built as DEC-69 in lane p-payout-reference (migration 074, on main for 0.18.1): the form field is removed, and the server still accepts and stores a reference that a released admin app sends.' Everything else in the plan untouched.",
+      "NOTES (entry 0.18.1, existing lines and order kept):",
+      "- adminNotes.ts New, new last line L32: 'Account. Your name, role and app version, with these notes, from the top bar.'",
+      "- adminNotes.ts Improved, after 'Payout cards show the paid date.': L44 'Leaving a page with an unconfirmed save asks first.'; L45-47 'Publishing terms, or pausing, resuming or archiving a fund, is refused if another admin changed it first.' (wrapped object, over 120 chars).",
+      "- adminNotes.ts Fixed, new last lines L57-58: 'Too-many-requests messages say how long to wait.'; 'Screens say plainly what your role cannot do.'",
+      "- clientNotes.ts Fixed, new last lines L42-43: 'Too-many-requests messages say how long to wait.'; 'The lock screen covers any open dialog.' with platform: \"android\".",
+      "EXPORT.SH (finding-28): removed L215 err \"\" and L216 err \"See release_manager/FACTS_VS_PLAN.md §6 item 7.\" from the missing ARG VITE_BEO_APP_TARGET block; it now ends at the ENV line then exit 1, like the VITE_BEO_APP_VERSION block. Grep, exit code and flow unchanged.",
+      "COMPAT (rule 11): no API, contract, schema, migration, stored key or behaviour change. The notes are bundled copy; the What's new seen key and entry id stay 0.18.1, so a user who already closed the 0.18.1 sheet on a dev build will not get it again for the new lines (production has never shown it). export.sh change is message text only.",
+      "TESTS: none added or changed (copy and docs only, rule 10); no red control applies.",
+      "CHECKS (Node 24 container, committed head cc3a986, clean tree): contracts npm ci + build 20261117T192410Z-1223869; frontend npm ci + check 20261117T192425Z-1225619 (58 files, 511 tests, typecheck, lint, drift, build, 7 chunks boot, phonepe guard); build:client 20261117T192527Z-1239919 (android dist 17 assets 962029 bytes, cross-target none, boot); build:admin 20261117T192538Z-1241573 (boot).",
+      "Release tooling (host bash) 20261117T192448Z-1227708: bash -n export.sh ok; runtime_contract, release_tag_contract, apk_ship PASS; hermetic_branding 13 PASS; apk_logging_policy 12 PASS. Unrecorded sanity: admin dist contains the new admin lines and not the client Android line.",
+      "git diff --check clean. Backend not touched, not run.",
+      "RUNTIME STEPS (coordinator, UNVERIFIED here): admin web Account > What's new (or a fresh admin user's sheet) shows 0.18.1 with New ending 'Account. ...', Improved ending with the two new lines after 'Payout cards show the paid date.', Fixed ending with the two new lines. Client web Profile > What's new: Fixed ends with 'Too-many-requests ...' and does not show the lock line; the client APK shows the lock line too. export.sh: optional, run its ARG guard against a Dockerfile copy without ARG VITE_BEO_APP_TARGET; the message ends at the ENV line with no FACTS_VS_PLAN pointer.",
+      "DOUBTFUL: (1) 'the contract redesign' has no tally record or document; written as the brief gave it; record it or reword. (2) The status line says production jumps from v0.15.4 while finding-64 recommends deploying v0.17.0 first; both are stated, the choice is the maintainer's. (3) 'the remaining lanes are the December plan' (UI plan) is the brief's wording; DEC-67 scopes v0.19.0 by user and admin feedback. (4) DEC-61's own status says 'Stage B (client web, admin web, admin phone lanes) is next'; only an operator can reword it; the UI plan header now explains the naming.",
+      "LEFT for the coordinator (rule-50): retire finding-28; finding-60 stays open for the growth key-order LOW and the returns screen user id; README current-documents line not updated (not in the brief); records not committed."
+    ]
+  },
+  "history": []
+}

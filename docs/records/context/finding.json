@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 64,
+  "nextNumber": 68,
   "entries": [
     {
       "id": "finding-1",
@@ -645,7 +645,9 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "at": "2026-11-16T12:55:16.066Z"
+      "at": "2026-11-16T12:55:16.066Z",
+      "retiredAt": "2026-11-17T19:32:15.045Z",
+      "retiredWhy": "Fixed by the p-docs-0181 lane: export.sh no longer points to FACTS_VS_PLAN.md section 6 item 7 in the VITE_BEO_APP_TARGET ARG message; message text only, bash -n and the release-tooling tests pass."
     },
     {
       "id": "finding-29",
@@ -1420,7 +1422,9 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "at": "2026-11-17T03:02:06.355Z"
+      "at": "2026-11-17T03:02:06.355Z",
+      "retiredAt": "2026-11-17T17:43:32.549Z",
+      "retiredWhy": "Fixed in p-lows (landed 9e166fc): RequireSession shows an error with Try again when a deep-URL restore meets an outage, SessionProvider retries on online, and the splash re-probes on online. Runtime-verified in verify-w3 L2."
     },
     {
       "id": "finding-56",
@@ -1446,7 +1450,9 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "at": "2026-11-17T03:05:07.280Z"
+      "at": "2026-11-17T03:05:07.280Z",
+      "retiredAt": "2026-11-17T17:43:33.134Z",
+      "retiredWhy": "Fixed for 0.18.1+ admin apps by p-terms-version (7670b84): publish carries ?expectedVersion and the server refuses a stale publish under the fund lock (verify-w3 T). Released admin apps send no version and stay unguarded until the admin minimumSupportedVersion reaches 0.18.1; convention-12 records that."
     },
     {
       "id": "finding-57",
@@ -1623,7 +1629,9 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-17T09:20:02.129Z",
-      "replaces": "finding-61"
+      "replaces": "finding-61",
+      "retiredAt": "2026-11-17T17:43:32.822Z",
+      "retiredWhy": "Item 1 was already noted unreachable. Item 2 is fixed in p-lows: 429 copy is true for both limits and uses Retry-After when the server sends it (verify-w3 L1). Item 3 is answered and fixed in p-csrf-stable: a lost-reply refresh retried within the 30 s grace keeps the session (integration test 3, verify-w2 K4)."
     },
     {
       "id": "finding-63",
@@ -1651,7 +1659,114 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "at": "2026-11-17T09:24:25.120Z"
+      "at": "2026-11-17T09:24:25.120Z",
+      "retiredAt": "2026-11-17T17:43:32.164Z",
+      "retiredWhy": "Fixed: the frontend recovers a CSRF_INVALID once (89b2ffc, p-csrf-tabs), and the cause is removed by DEC-70's stable per-session token (623b377, p-csrf-stable). A cross-tab refresh lock was added in e339af2 (p-session-hardening). Runtime-verified in rounds verify-m19 C, verify-w2 K and verify-w4 H."
+    },
+    {
+      "id": "finding-64",
+      "kind": "finding",
+      "title": "Rolling back from 0.18.x straight to v0.15.4 degrades and partly breaks; v0.17.0 is the safer rollback target",
+      "text": "Static research (claude-pro, .temp/main/delegate/r-rollback-0154.out.md, 2026-11-17), not rehearsed. With the database at 073 and images rolled back to v0.15.4: migrate and sessions are fine and Node 24 data reads under Node 22. But for any client with an SIP early exit, the admin payout list fails, because the v0.15.4 contract requires maturityId as a uuid and 073 made it nullable; that client's payouts cannot be marked. Queued mail of the four new templates dead-letters (finding-26). SIP-month links and maturity schedules drift and risk double recording after roll-forward. Recording money for erased clients is accepted again, and the payments-off guards are gone. A 0.18.x admin app cannot publish app config, because v0.15.4's strict body rejects expectedVersion. The rollback script does not restore APKs. Recommendation: deploy v0.17.0 to production first, the same backend as 0.18.0 on the same Node 22 image, then 0.18.x a day later, so `rollback.sh --prod --to 0.17.0` exists. Pre-deploy read-only checks and a dev rehearsal plan are in the report.",
+      "paths": [
+        "release_manager",
+        "DEPLOY.md",
+        "backend_controller/db/migrations"
+      ],
+      "tags": [
+        "release",
+        "rollback",
+        "rule-11",
+        "production"
+      ],
+      "refs": [
+        "DEC-57",
+        "DEC-59",
+        "finding-26",
+        "DEC-67"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T11:00:02.122Z"
+    },
+    {
+      "id": "finding-65",
+      "kind": "finding",
+      "title": "heldWrites.test.tsx publishAdminAppConfig confirm wait flakes under CPU load (3 times on 2026-11-17)",
+      "text": "frontend_stack_ts/src/features/admin/funds/heldWrites.test.tsx, row publishAdminAppConfig: confirmIn's findByRole(\"dialog\", {}, { timeout: 3000 }) times out when the frontend check runs beside another heavy job. The suite takes about 2.6 s solo and over 5 s under load. Seen in landing b56910f2 (p-csrf-tabs, while bundles were rebuilt), in p-terms-version check 04f6ee21 (beside the backend check), and the same confirmIn wait failed twice earlier this month (commits 9353e85, 2a11725 raised it from 1,020 ms). Each solo rerun passes. Not a product bug, but it fails landings at random. Fix: find what makes the app-config confirm slow to mount (the JSON builder render?) and make the test wait on a deterministic signal or render less; a longer timeout is only a stopgap. Because landings check every commit, the fix must sit at the base of its track.",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/funds/heldWrites.test.tsx",
+        "frontend_stack_ts/src/features/admin/app-config"
+      ],
+      "tags": [
+        "test",
+        "flaky",
+        "landing"
+      ],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:32:13.281Z",
+      "retiredAt": "2026-11-17T15:54:04.730Z",
+      "retiredWhy": "Fixed at the cause by 5fafe0d (lane p-flaky-heldwrites, review-62). The row pressed Publish during the one-task window before AppConfigBuilderScreen's useEffect enabled it; it now waits for the button to be enabled. Under stress, 0 of 192 failed after against 4 of 96 before."
+    },
+    {
+      "id": "finding-66",
+      "kind": "finding",
+      "title": "Fund lifecycle change ignores the If-Match version the admin app sends",
+      "text": "From review of p-terms-version (2026-11-17), static. The admin app sends If-Match on fund lifecycle changes (fundQueries.ts:59), but patchFundState in backend_controller/src/routes/adminCatalogRoutes.ts:685-723 never reads it: parseIfMatchVersion in adminRouteKit.ts:88 has no caller, and the contract does not declare the header. So a stale Pause can apply on top of another admin's Resume. Impact is bounded by ALLOWED_TRANSITIONS. A fix needs an optional, compatible check: released admin apps already send If-Match, so check what they send and whether honouring it could refuse their requests (rule 11).",
+      "paths": [
+        "backend_controller/src/routes/adminCatalogRoutes.ts",
+        "backend_controller/src/routes/adminRouteKit.ts",
+        "frontend_stack_ts/src/features/admin/funds/fundQueries.ts"
+      ],
+      "tags": [
+        "admin",
+        "funds",
+        "concurrency"
+      ],
+      "refs": [
+        "finding-56"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T14:45:11.220Z",
+      "retiredAt": "2026-11-17T17:43:33.434Z",
+      "retiredWhy": "Fixed by p-lifecycle-version (56aa1e1): patchFundState honours a single strong or weak If-Match of funds.version under the fund lock (409 STATE_CONFLICT when stale), and treats unreadable values as no check. Released admin apps already send it, so they are protected too. Runtime-verified in verify-w4 F."
+    },
+    {
+      "id": "finding-67",
+      "kind": "finding",
+      "title": "Planned for 0.19.0: forward-tolerant client parsing and one source for API validation",
+      "text": "The maintainer asked on 2026-11-17 to fix the API's evolution cost, \"even if I have to redesign the API contracts\". Two items are planned for the December minor (0.19.0, DEC-67), not built:\n(1) Released apps reject unknown response keys, enum values and unexpected nulls (finding-14). Make client schemas tolerant: strip unknown keys, map unknown enum values to an explicit \"unknown\" state shown plainly, and add optional fields (for example on the STATE_CONFLICT error envelope, review-68 note 4). Then raise minimumSupportedVersion once those apps are the oldest supported, so later API changes stop depending on the oldest APK.\n(2) Backend routes declare validation separately from packages/contracts. Validate routes with the contracts' own schemas, plus a guard test that every route uses its contract. Fold in a guard that every web write resolves the principal before any side effect (review-43 F4).\nAlso for 0.19.0: UI overhaul stage B (docs/ui-overhaul/plan.md 4.2), scoped with user and admin feedback.",
+      "paths": [
+        "packages/contracts",
+        "backend_controller/src/routes",
+        "frontend_stack_ts/src/api"
+      ],
+      "tags": [
+        "contracts",
+        "compatibility",
+        "0.19.0",
+        "planned"
+      ],
+      "refs": [
+        "finding-14",
+        "DEC-67",
+        "review-43",
+        "review-68"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T19:32:15.364Z"
     }
   ]
 }

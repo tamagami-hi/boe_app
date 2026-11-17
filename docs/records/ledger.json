@@ -1874,6 +1874,355 @@
           "brief": "DEC-60, after the lanes land: client-erasure.md status line; archive the four UI briefs, existing-client-impl/ and the previous plan with link updates in README, DEPLOY and the plan; README current-documents and the tally line; RULES.md edits for decisions in tally alone and docs/<programme>/; reword tally rule-48."
         }
       ]
+    },
+    {
+      "id": "M19-patches-0-18",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "November 0.18.x patches: decided items, fixes and What's new (DEC-67)",
+      "track": "all",
+      "weight": 2,
+      "delivers": [
+        {
+          "id": "P-DEC65",
+          "what": "An admin cannot suspend or close their own account (DEC-65)"
+        },
+        {
+          "id": "P-DEC66",
+          "what": "Erasure scrubs the client's national-format phones in free-text JSON, plus a one-off re-scrub (DEC-66)"
+        },
+        {
+          "id": "P-UQ2",
+          "what": "The maturity payout's bank transfer reference is optional, expand-only (DEC-61 UQ-2)"
+        },
+        {
+          "id": "P-CSRF",
+          "what": "A second admin tab no longer breaks the first tab's writes (finding-63)"
+        },
+        {
+          "id": "P-LOWS",
+          "what": "Copy and LOW fixes from finding-60 and finding-62"
+        },
+        {
+          "id": "P-NEWS",
+          "what": "What's new release notes for clients and admins, shown once and kept in Profile"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "P-self-lockout",
+          "track": "p-self-lockout",
+          "status": "landed",
+          "commit": "d2f02f3",
+          "also": [],
+          "brief": "DEC-65: the server refuses an admin suspending or closing their own account with an error code released admin apps already show as a refusal; the admin app hides suspend and close on the admin's own user record. No migration, no permission or role change (DEC-36). Integration tests with red controls.",
+          "paths": [
+            "backend_controller/src",
+            "frontend_stack_ts/src/features/admin/users"
+          ],
+          "covers": [
+            "P-DEC65"
+          ],
+          "landedAt": "2026-11-17T11:50:09.718Z"
+        },
+        {
+          "id": "P-erasure-phones",
+          "track": "p-erasure-phones",
+          "status": "landed",
+          "commit": "b2c0970",
+          "also": [
+            "b69602d"
+          ],
+          "brief": "DEC-66: client erasure also replaces the client's own known phone numbers in their national forms inside stored JSON (idempotency receipts and similar), only in free-text string values containing letters or spaces, never in digit-only values. For future erasures, plus a one-off, idempotent re-scrub of already erased accounts run by the maintainer. Integration tests with red controls.",
+          "paths": [
+            "backend_controller/src",
+            "backend_controller/db",
+            "release_manager/docs/client-erasure.md"
+          ],
+          "covers": [
+            "P-DEC66"
+          ],
+          "landedAt": "2026-11-17T11:55:19.887Z"
+        },
+        {
+          "id": "P-payout-reference",
+          "track": "p-payout-reference",
+          "status": "landed",
+          "commit": "44a54d4",
+          "also": [
+            "a00b3ce"
+          ],
+          "brief": "DEC-61 UQ-2: the maturity payout's bank transfer reference becomes optional when the admin records a successful transfer outcome. Expand-only (rule 11): released admin APKs that still send it, and that read payouts, keep working (finding-14: they reject unknown keys, enum values and unexpected nulls). Contract, backend route, admin payout panel; tests with red controls.",
+          "paths": [
+            "packages/contracts/src",
+            "backend_controller/src",
+            "frontend_stack_ts/src/features/admin/client-values",
+            "frontend_stack_ts/src/api/generated"
+          ],
+          "covers": [
+            "P-UQ2"
+          ],
+          "deferred": [
+            {
+              "what": "Payout channel category (in-app payment or outside transfer), existing rows marked outside transfer",
+              "parked": {
+                "why": "Payouts have one channel until the maintainer resumes payments; DEC-69 parks it",
+                "decision": "DEC-69",
+                "owner": "maintainer"
+              }
+            }
+          ],
+          "landedAt": "2026-11-17T12:25:42.657Z"
+        },
+        {
+          "id": "P-csrf-tabs",
+          "track": "p-csrf-tabs",
+          "status": "landed",
+          "commit": "89b2ffc",
+          "also": [],
+          "brief": "finding-63: when a signed-in request is refused 403 CSRF_INVALID because another tab rotated the token, recover once: re-read the CSRF token (checking it is still the same user, as the refresh does, finding-50) and resend the same request with the same Idempotency-Key; otherwise keep today's behaviour (held write stays unknown). Prefer a frontend-only fix; no API change unless unavoidable. Tests with red controls.",
+          "paths": [
+            "frontend_stack_ts/src/api",
+            "frontend_stack_ts/src/shells"
+          ],
+          "covers": [
+            "P-CSRF"
+          ],
+          "landedAt": "2026-11-17T12:11:08.312Z"
+        },
+        {
+          "id": "P-whats-new",
+          "track": "p-whats-new",
+          "status": "landed",
+          "commit": "0b337a0",
+          "also": [
+            "3729d33",
+            "90c1a8b"
+          ],
+          "brief": "DEC-68: bundled What's new notes per audience, a once-per-user sheet in both frames, client Profile > What's new, and an admin Account screen from the top bar with What's new.",
+          "paths": [
+            "frontend_stack_ts/src/features/whats-new",
+            "frontend_stack_ts/src/features/profile/ProfileScreen.tsx",
+            "frontend_stack_ts/src/shells/client/ClientFrame.tsx",
+            "frontend_stack_ts/src/shells/admin/AdminFrame.tsx",
+            "frontend_stack_ts/src/app/routing/clientRoutes.ts",
+            "frontend_stack_ts/src/app/routing/adminRoutes.ts"
+          ],
+          "landedAt": "2026-11-17T12:15:48.424Z"
+        },
+        {
+          "id": "P-lows",
+          "track": "p-lows",
+          "status": "landed",
+          "commit": "9e166fc",
+          "also": [
+            "3c3c820",
+            "6dd6c2a",
+            "71d83a4",
+            "8e8a383"
+          ],
+          "brief": "finding-60 LOWs, finding-62 429 wording, finding-55 deep-URL spinner, review-42 panel nits, overlays painting above the lock screen, and Escape right after a dialog opens.",
+          "paths": [
+            "frontend_stack_ts/src"
+          ],
+          "landedAt": "2026-11-17T16:13:43.047Z"
+        },
+        {
+          "id": "P-terms-version",
+          "track": "p-terms-version",
+          "status": "landed",
+          "commit": "7670b84",
+          "also": [
+            "4c31d6c"
+          ],
+          "brief": "finding-56: optional expected version on the fund terms publish request; the server refuses a stale publish; the admin app sends it.",
+          "paths": [
+            "packages/contracts/src/operations",
+            "backend_controller/src",
+            "frontend_stack_ts/src/features/admin/funds"
+          ],
+          "landedAt": "2026-11-17T16:04:36.802Z"
+        },
+        {
+          "id": "P-csrf-stable",
+          "track": "p-csrf-stable",
+          "status": "landed",
+          "commit": "623b377",
+          "also": [
+            "aa1cdc0"
+          ],
+          "brief": "DEC-70: one CSRF token per web session; reads return the current token; refresh grace checked (finding-62 item 3).",
+          "paths": [
+            "backend_controller/src/domain/auth",
+            "backend_controller/src/repositories/authSessionRepository.ts",
+            "backend_controller/src/routes"
+          ],
+          "deferred": [
+            {
+              "what": "Cross-tab refresh lock (Web Locks) so two tabs refreshing in the same round trip do not revoke the session family",
+              "parked": {
+                "why": "Pre-existing race, not caused by reads; needs its own frontend lane (review-51 F4)",
+                "decision": "DEC-70",
+                "owner": "coordinator"
+              }
+            }
+          ],
+          "landedAt": "2026-11-17T15:23:51.717Z"
+        },
+        {
+          "id": "P-app-version",
+          "track": "p-app-version",
+          "status": "landed",
+          "commit": "6f495e1",
+          "also": [
+            "ac436f3"
+          ],
+          "brief": "DEC-71: VERSION built into web and APK JavaScript, sent as x-app-version and device.appVersion, shown on Account and What's new.",
+          "paths": [
+            "frontend_stack_ts/vite.config.ts",
+            "frontend_stack_ts/Dockerfile",
+            "frontend_stack_ts/src/platform",
+            "release_manager/export.sh",
+            "emu/boe_update.sh"
+          ],
+          "landedAt": "2026-11-17T15:20:25.644Z"
+        },
+        {
+          "id": "P-payout-dates",
+          "track": "p-payout-dates",
+          "status": "landed",
+          "commit": "24c84c9",
+          "also": [
+            "d1fcf9a"
+          ],
+          "brief": "A new admin read of a client's payout outcomes (paid or failed date) for maturity and SIP early-exit payouts; the payout card shows the date; existing responses unchanged (rule 11, finding-14).",
+          "paths": [
+            "packages/contracts/src/operations/admin-maturity.ts",
+            "backend_controller/src/routes/adminMaturityRoutes.ts",
+            "backend_controller/src/repositories/maturityRepository.ts",
+            "frontend_stack_ts/src/features/admin/client-values/WithdrawalPayoutPanel.tsx"
+          ],
+          "landedAt": "2026-11-17T14:53:56.947Z"
+        },
+        {
+          "id": "P-flaky-heldwrites",
+          "track": "p-flaky-heldwrites",
+          "status": "landed",
+          "commit": "5fafe0d",
+          "also": [],
+          "brief": "finding-65: find why the app-config confirm in heldWrites.test.tsx mounts slowly under load and make the test wait on a deterministic signal, or render less; no timeout bump as the fix.",
+          "paths": [
+            "frontend_stack_ts/src/features/admin/funds/heldWrites.test.tsx",
+            "frontend_stack_ts/src/features/admin/app-config"
+          ],
+          "landedAt": "2026-11-17T15:53:42.432Z"
+        },
+        {
+          "id": "P-session-hardening",
+          "track": "p-session-hardening",
+          "status": "landed",
+          "commit": "e339af2",
+          "also": [
+            "3de4d4b",
+            "53b5668",
+            "c5e1306"
+          ],
+          "brief": "review-51 F4: a cross-tab lock around the web cookie refresh (Web Locks, with a safe fallback) so simultaneous refreshes in two tabs no longer revoke the session family; native refresh lower-cases rotationId as web now does.",
+          "paths": [
+            "frontend_stack_ts/src/api/session",
+            "frontend_stack_ts/src/shells/admin/adminRuntime.ts",
+            "frontend_stack_ts/src/shells/client/clientRuntime.ts",
+            "backend_controller/src/domain/auth"
+          ],
+          "deferred": [
+            {
+              "what": "A tab closing mid-refresh after the server rotated still signs the user out (pending rotationId not shared across tabs)",
+              "parked": {
+                "why": "Pre-existing, rare; possible follow-up in a later session-hardening lane (review-63 N3)",
+                "decision": "DEC-70",
+                "owner": "coordinator"
+              }
+            }
+          ],
+          "landedAt": "2026-11-17T17:29:42.842Z"
+        },
+        {
+          "id": "P-lifecycle-version",
+          "track": "p-lifecycle-version",
+          "status": "landed",
+          "commit": "56aa1e1",
+          "also": [
+            "3a68401"
+          ],
+          "brief": "finding-66: honour If-Match (the fund version) on lifecycle changes when released apps send it compatibly; refuse stale under the fund lock; screen refusal with reload.",
+          "paths": [
+            "backend_controller/src/routes/adminCatalogRoutes.ts",
+            "frontend_stack_ts/src/features/admin/funds"
+          ],
+          "landedAt": "2026-11-17T17:39:31.093Z"
+        },
+        {
+          "id": "P-copy-sweep",
+          "track": "p-copy-sweep",
+          "status": "landed",
+          "commit": "c29a422",
+          "also": [
+            "5ebc6da",
+            "afee885"
+          ],
+          "brief": "CA-23: no permission codes in admin copy; Profile 'Payment confirmations' and other payment-hinting client copy replaced (DEC-14, DEC-22).",
+          "paths": [
+            "frontend_stack_ts/src/features"
+          ],
+          "landedAt": "2026-11-17T17:36:15.024Z"
+        },
+        {
+          "id": "P-held-nav-guard",
+          "track": "p-held-nav-guard",
+          "status": "landed",
+          "commit": "cd30e3e",
+          "also": [
+            "0b89ee7"
+          ],
+          "brief": "Stage A leftover: block in-app navigation (and Android Back) away from an admin screen with an unsettled held write, with a plain Stay or Leave confirm.",
+          "paths": [
+            "frontend_stack_ts/src/app",
+            "frontend_stack_ts/src/features/admin/shared"
+          ],
+          "landedAt": "2026-11-17T17:42:43.201Z"
+        },
+        {
+          "id": "P-whatsnew-entries",
+          "track": "p-whatsnew-entries",
+          "status": "landed",
+          "commit": "4eb2c22",
+          "also": [],
+          "brief": "What's new sheet shows every unseen entry newest first; unknown stored id shows only the newest.",
+          "paths": [
+            "frontend_stack_ts/src/features/whats-new"
+          ],
+          "landedAt": "2026-11-17T17:31:26.851Z"
+        },
+        {
+          "id": "P-docs-0181",
+          "track": "p-docs-0181",
+          "status": "landed",
+          "commit": "cc3a986",
+          "also": [
+            "60e1bca",
+            "e4ed0f2"
+          ],
+          "brief": "Docs pass for 0.18.1: plan status line and section 8 entry for M19, stale lines (Q-013, finding-56, rotation on read), docs/ui-overhaul/plan.md header, node24 and UQ-2, finding-28 export.sh pointer, What's new lines for the late lanes.",
+          "paths": [
+            "plans/admin-improvements.md",
+            "docs/ui-overhaul/plan.md",
+            "release_manager/export.sh",
+            "frontend_stack_ts/src/features/whats-new/adminNotes.ts",
+            "frontend_stack_ts/src/features/whats-new/clientNotes.ts"
+          ],
+          "landedAt": "2026-11-17T19:31:59.956Z"
+        }
+      ]
     }
   ],
   "other": [
