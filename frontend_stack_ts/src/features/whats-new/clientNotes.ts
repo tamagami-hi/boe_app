@@ -39,6 +39,8 @@ export const CLIENT_NOTES: WhatsNewNotes = [
           { text: "A brief server outage no longer signs you out." },
           { text: "A screen that fails to load shows Try again instead of loading forever." },
           { text: "A half-filled form is kept when your account refreshes." },
+          { text: "Too-many-requests messages say how long to wait." },
+          { text: "The lock screen covers any open dialog.", platform: "android" },
         ],
       },
     ],

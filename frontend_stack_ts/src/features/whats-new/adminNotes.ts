@@ -29,6 +29,7 @@ export const ADMIN_NOTES: WhatsNewNotes = [
           { text: "Exports. Balances as of a date, and contributions by month." },
           { text: "Contact correction for invitees, and releasing contacts on closed accounts." },
           { text: "Client erasure, for superadmins." },
+          { text: "Account. Your name, role and app version, with these notes, from the top bar." },
         ],
       },
       {
@@ -40,6 +41,10 @@ export const ADMIN_NOTES: WhatsNewNotes = [
           { text: "Fund amounts are entered in rupees." },
           { text: "Overview tiles open filtered lists." },
           { text: "Payout cards show the paid date." },
+          { text: "Leaving a page with an unconfirmed save asks first." },
+          {
+            text: "Publishing terms, or pausing, resuming or archiving a fund, is refused if another admin changed it first.",
+          },
         ],
       },
       {
@@ -49,6 +54,8 @@ export const ADMIN_NOTES: WhatsNewNotes = [
           { text: "Payouts no longer ask for a transfer reference." },
           { text: "Opening a second tab no longer stops the first tab from saving." },
           { text: "A brief server outage no longer signs you out." },
+          { text: "Too-many-requests messages say how long to wait." },
+          { text: "Screens say plainly what your role cannot do." },
         ],
       },
     ],
