@@ -101,7 +101,8 @@ export const createClientRuntime = (): ClientRuntime => {
       })
       rotationId.value = crypto.randomUUID()
       return "rotated"
-    } catch {
+    } catch (error) {
+      if (isOutage(error)) throw error
       return "unauthenticated"
     }
   }
@@ -134,7 +135,8 @@ export const createClientRuntime = (): ClientRuntime => {
       })
       rotationId.value = crypto.randomUUID()
       return "rotated"
-    } catch {
+    } catch (error) {
+      if (isOutage(error)) throw error
       return "unauthenticated"
     }
   }

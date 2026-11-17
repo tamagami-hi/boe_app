@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
+import { isUnknownWriteOutcome } from "~/api/errors"
 import { submitClientReview } from "~/api/generated/operations"
 import { heldUserId } from "~/api/session/refresh"
 import { SESSION_INVALIDATED_EVENT } from "~/api/session/scope"
@@ -435,5 +436,21 @@ describe("client cookie refresh after another client signs in to the browser", (
     expect(sent.at(-1)?.headers.get("x-csrf-token")).toBe(`rotated-csrf-of-${INVESTOR.userId}`)
     expect(ended()).toEqual([])
     expect(JSON.parse(runtime.tokenStore.read("client", "principal") ?? "null")).toMatchObject({ userId: INVESTOR.userId })
+  })
+
+  it("keeps the tab's session and fails the write with the outage when the CSRF recovery meets a proxy's 502 page", async () => {
+    const sent = routeFetch({ [REVIEW]: [EXPIRED, SUBMITTED], [CSRF]: [[502, PROXY_502_PAGE]] })
+    const ended = listenForSessionEnd()
+    const runtime = signedInTab()
+
+    const failure = await submitReview(runtime).catch((error: unknown) => error)
+
+    expect(failure).toMatchObject({ status: 502 })
+    expect(isUnknownWriteOutcome(failure)).toBe(true)
+    expect(sent.filter(({ route }) => route === REVIEW)).toHaveLength(1)
+    expect(sent.some(({ route }) => route === REFRESH)).toBe(false)
+    expect(ended()).toEqual([])
+    expect(heldUserId(runtime.tokenStore, "client")).toBe(INVESTOR.userId)
+    expect(runtime.tokenStore.read("client", "csrfToken")).toBe("csrf-of-the-tab")
   })
 })

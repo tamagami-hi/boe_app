@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
+import { isUnknownWriteOutcome } from "~/api/errors"
 import { archiveAdminFaq, getAdminSession } from "~/api/generated/operations"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { heldUserId } from "~/api/session/refresh"
@@ -524,6 +525,78 @@ describe("admin cookie refresh after another admin signs in to the browser", () 
     expect(writes[1]?.headers.get("x-csrf-token")).toBe(`rotated-csrf-of-${OPERATOR.userId}`)
     expect(ended()).toEqual([])
     expect(JSON.parse(runtime.tokenStore.read("admin", "principal") ?? "null")).toMatchObject({ userId: OPERATOR.userId })
+  })
+})
+
+const NATIVE_REFRESH = "POST /v1/auth/admin/native/refresh"
+
+const NATIVE_REFRESHED = {
+  ok: true,
+  data: {
+    accessToken: "b".repeat(120),
+    accessTokenExpiresAt: "2026-01-01T00:00:00.000Z",
+    refreshToken: "s".repeat(43),
+    refreshTokenExpiresAt: "2026-02-01T00:00:00.000Z",
+    sessionId: "00000000-0000-4000-8000-000000000004",
+  },
+  error: null,
+  meta: META,
+}
+
+const signedInApk = (): AdminRuntime => {
+  asNative()
+  const runtime = createAdminRuntime()
+  runtime.tokenStore.update("admin", { accessToken: "a".repeat(120), refreshToken: "r".repeat(43), principal: JSON.stringify(OPERATOR) })
+  return runtime
+}
+
+describe("admin refresh that meets an outage while a held write is checked again", () => {
+  const originalFetch = globalThis.fetch
+
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    delete window.__BOE_API_BASE__
+    sessionStorage.clear()
+  })
+
+  it.each([
+    {
+      way: "the browser's CSRF recovery",
+      start: signedInTab,
+      refresh: {
+        [CSRF]: [[502, PROXY_502_PAGE], [502, PROXY_502_PAGE], [502, PROXY_502_PAGE], [200, csrfFor(OPERATOR)]],
+        [REFRESH]: [[200, refreshedAs(OPERATOR)]],
+      },
+    },
+    {
+      way: "the admin APK's refresh",
+      start: signedInApk,
+      refresh: { [NATIVE_REFRESH]: [[502, PROXY_502_PAGE], [200, NATIVE_REFRESHED]] },
+    },
+  ] as const)("keeps the admin and the held writes, and the write unknown under its key, when $way meets a proxy's 502 page", async ({ start, refresh }) => {
+    holdClientWrites()
+    const expired = [401, failure("AUTHENTICATION_REQUIRED")] as const
+    const sent = routeFetch({ [ARCHIVE]: [expired, expired, [200, ARCHIVED]], ...refresh })
+    const ended = listenForSessionEnd()
+    const runtime = start()
+
+    const first = await archiveFaq(runtime).catch((error: unknown) => error)
+
+    expect(first).toMatchObject({ status: 502 })
+    expect(isUnknownWriteOutcome(first)).toBe(true)
+    expect(ended()).toEqual([])
+    expect(heldUserId(runtime.tokenStore, "admin")).toBe(OPERATOR.userId)
+    expect(heldWritesInTab()).toBe(2)
+
+    const { data } = await archiveFaq(runtime)
+
+    expect(data.faq.id).toBe(FAQ_ID)
+    const writes = sent.filter(({ route }) => route === ARCHIVE)
+    expect(writes.map(({ headers }) => headers.get("idempotency-key"))).toEqual([WRITE_KEY, WRITE_KEY, WRITE_KEY])
   })
 })
 
