@@ -550,6 +550,7 @@ export const nativeRefresh = async <TPrincipal>(
   scope: NativeAuthScope<TPrincipal>,
   input: NativeRefreshInput,
 ): Promise<NativeRefreshOutcome> => {
+  const rotationId = input.rotationId.toLowerCase()
   const presentedHash = hashToken(input.refreshToken)
   const locked = await deps.authSessionRepository.lockByRefreshTokenHash(tx, presentedHash)
   // Unknown token or an already-inactive session: nothing to persist, so a throw
@@ -580,7 +581,7 @@ export const nativeRefresh = async <TPrincipal>(
   // Current token (unused, unrevoked): perform the rotation.
   if (presented.used_at === null && presented.revoked_at === null) {
     const successorGeneration = Number(presented.generation) + 1
-    const successorRaw = deriveRefreshToken(deps.refreshKey, session.id, successorGeneration, input.rotationId)
+    const successorRaw = deriveRefreshToken(deps.refreshKey, session.id, successorGeneration, rotationId)
     await deps.authSessionRepository.rotateRefresh(tx, {
       sessionId: session.id,
       userId: session.user_id,
@@ -590,7 +591,7 @@ export const nativeRefresh = async <TPrincipal>(
       successorGeneration,
       successorHash: hashToken(successorRaw),
       refreshKeyVersion: deps.refreshKeyVersion,
-      rotationId: input.rotationId,
+      rotationId,
       previousValidUntil: new Date(now.getTime() + REFRESH_GRACE_MS),
       refreshExpiresAt: new Date(now.getTime() + REFRESH_IDLE_MS),
       now,
@@ -605,8 +606,8 @@ export const nativeRefresh = async <TPrincipal>(
       : Buffer.from(session.previous_refresh_token_hash as unknown as Uint8Array)
   const graceUntil = session.previous_refresh_valid_until
   const withinGrace = graceUntil !== null && new Date(graceUntil).getTime() > now.getTime()
-  if (bufferEquals(presentedHash, previousHash) && withinGrace && session.last_rotation_id === input.rotationId) {
-    const successorRaw = deriveRefreshToken(deps.refreshKey, session.id, Number(session.generation), input.rotationId)
+  if (bufferEquals(presentedHash, previousHash) && withinGrace && session.last_rotation_id === rotationId) {
+    const successorRaw = deriveRefreshToken(deps.refreshKey, session.id, Number(session.generation), rotationId)
     return issue(successorRaw)
   }
 

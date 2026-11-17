@@ -179,6 +179,35 @@ describe("native authentication (integration)", () => {
     expect(afterRevoke.statusCode).toBe(401)
   })
 
+  test("an upper-case rotationId replays within the grace and does not revoke the family", async () => {
+    const login = await app.inject({
+      method: "POST",
+      url: "/v1/auth/native/login",
+      payload: { email: "activate@example.com", password: PASSWORD, device: DEVICE },
+    })
+    const original = dataOf<NativeResult>(login)
+    const rotationId = randomUUID().toUpperCase()
+    const refresh = (refreshToken: string, id: string) =>
+      app.inject({ method: "POST", url: "/v1/auth/native/refresh", payload: { refreshToken, rotationId: id } })
+
+    const rotated = await refresh(original.refreshToken, rotationId)
+    expect(rotated.statusCode).toBe(200)
+    const successor = dataOf<NativeResult>(rotated)
+
+    const retried = await refresh(original.refreshToken, rotationId)
+    expect(retried.statusCode).toBe(200)
+    expect(dataOf<NativeResult>(retried).refreshToken).toBe(successor.refreshToken)
+
+    const session = await pool.query<{ state: string; revocation_reason: string | null }>(
+      "select state, revocation_reason from auth_sessions where id = $1",
+      [original.sessionId],
+    )
+    expect(session.rows[0]).toEqual({ state: "active", revocation_reason: null })
+
+    const next = await refresh(successor.refreshToken, randomUUID())
+    expect(next.statusCode).toBe(200)
+  })
+
   test("logout revokes the session with a valid bearer and rejects a missing one", async () => {
     const login = await app.inject({
       method: "POST",
