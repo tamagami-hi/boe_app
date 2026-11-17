@@ -5446,6 +5446,1415 @@
         "bytes": 2361
       },
       "note": "committed head 0268706: build:admin"
+    },
+    {
+      "id": "898af36c-d4aa-44e5-8248-b181d6329e98",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 verifier fx-admin-pair",
+      "kind": "other",
+      "command": [
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds/.temp/fx-admin-funds/verify-pair/scripts/passValues.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T06:28:22Z",
+      "seconds": 1299,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T062822Z-3559715-red.log",
+        "sha256": "a52d55e2c76d0ca67c91e0dea4e0af67ea9a76b61adcde97124d2423b9b437e8",
+        "bytes": 15508
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; Runtime pass of the values steps on the pair build 9516df6 (track/fx-admin-funds), served from the funds worktree; local stack only",
+      "head": "24330eaac11b1d6780a2408ccbc4d0e7ad34fa57",
+      "dirty": false
+    },
+    {
+      "id": "7448d8c6-568b-4105-b120-6d5c3fe6b45f",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 verifier fx-admin-pair",
+      "kind": "other",
+      "command": [
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds/.temp/fx-admin-funds/verify-pair/scripts/passFunds.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T06:50:11Z",
+      "seconds": 599,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T065011Z-3643835-red.log",
+        "sha256": "caacf94cc5ff34c20272c9106daab4aa3ed3c48ae41dbb3583a79d377909932f",
+        "bytes": 6731
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; Joint runtime pass of the funds steps, the six regressions, held-write binding and session end, and the public sign-in and reset flows on 9516df6; local stack only",
+      "head": "9516df6c012b4157c210d9c4e63b8458f1fc3a1f",
+      "dirty": false
+    },
+    {
+      "id": "1d382f5e-c12a-43c6-8bff-db6e2340c514",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/client-values/heldMoneyWrites.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values/frontend_stack_ts",
+      "started": "2026-11-17T07:08:47Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T070847Z-3770066-red.log",
+        "sha256": "7833cbed3da3f252731d5323de3f32e1c3f99945cbafa05e2b11ca4060132d6f",
+        "bytes": 10905
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 4,
+        "ignored": 0
+      },
+      "note": "red control: unreadable-hold lock reverted in LedgerEntries, MaturityPanel, WithdrawalPayoutPanel",
+      "head": "24330eaac11b1d6780a2408ccbc4d0e7ad34fa57",
+      "dirty": true
+    },
+    {
+      "id": "f3d43d05-eb65-4c97-b1c3-45d9c5952c76",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "other",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/packages/contracts",
+      "started": "2026-11-17T07:08:55Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T070855Z-3772984-other.log",
+        "sha256": "92812201500bbb68f10c3b33b07b9324f4800b8d4805b4d4d4920718be2f9c77",
+        "bytes": 897
+      },
+      "note": "setup: contracts install and build before edits",
+      "head": "3ce9be9d8f92f57fc868db9c5c96ed47adc72f01",
+      "dirty": false
+    },
+    {
+      "id": "c17a8f94-3bcf-45da-ad56-98b4514e91c1",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/payment-sheet/PaymentSheetScreen.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values/frontend_stack_ts",
+      "started": "2026-11-17T07:09:04Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T070904Z-3775076-red.log",
+        "sha256": "fd84f2ea2d19954f9a854467353a1a907a4f40140e175cc69a987e88c67381f5",
+        "bytes": 3374
+      },
+      "summary": {
+        "passed": 13,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: payment sheet unload guard removed",
+      "head": "24330eaac11b1d6780a2408ccbc4d0e7ad34fa57",
+      "dirty": true
+    },
+    {
+      "id": "eb9fb5f5-aefa-4569-9542-68bf421e511f",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "ci"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T07:09:07Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T070907Z-3776791-other.log",
+        "sha256": "d9f67a89f6fdba36cfac95cfa520116fe97ff452de95d5b8a1c2d83bf2064703",
+        "bytes": 1109
+      },
+      "note": "setup: frontend install before edits",
+      "head": "3ce9be9d8f92f57fc868db9c5c96ed47adc72f01",
+      "dirty": false
+    },
+    {
+      "id": "d44785dd-3932-4e9c-b218-2995c9224191",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values/packages/contracts",
+      "started": "2026-11-17T07:10:03Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T071003Z-3789006-green.log",
+        "sha256": "5343dd4bc902ff6732147a0d64aa59b698cb7ef5395b8af3b1cbb7dc0b04796a",
+        "bytes": 568
+      },
+      "note": "contracts npm ci && npm run build on 5af5cdd",
+      "head": "5af5cdd3fc6c0ac9a0801de3df497452f84273ff",
+      "dirty": false
+    },
+    {
+      "id": "beb66102-7932-4792-b040-250ea17373e6",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values/frontend_stack_ts",
+      "started": "2026-11-17T07:10:13Z",
+      "seconds": 39,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T071013Z-3792394-green.log",
+        "sha256": "55aa3558ff13aa69503108845750bd0ef94f353e0e43bde45fedd101f69ca742",
+        "bytes": 7416
+      },
+      "summary": {
+        "passed": 403,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci && npm run check on 5af5cdd",
+      "head": "5af5cdd3fc6c0ac9a0801de3df497452f84273ff",
+      "dirty": false
+    },
+    {
+      "id": "84531bb9-8366-4c4e-98aa-812a4f8df412",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values/frontend_stack_ts",
+      "started": "2026-11-17T07:10:57Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T071057Z-3802166-green.log",
+        "sha256": "a4c3d5f67c90357b07863768323bb0a427a832d4d53e558b8b688a21b18df254",
+        "bytes": 2133
+      },
+      "note": "frontend npm run build:client on 5af5cdd",
+      "head": "5af5cdd3fc6c0ac9a0801de3df497452f84273ff",
+      "dirty": false
+    },
+    {
+      "id": "684d7731-cd50-4322-a9b7-68dd66345ec0",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values/frontend_stack_ts",
+      "started": "2026-11-17T07:11:06Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T071106Z-3804171-green.log",
+        "sha256": "83570668aacba7d27ad19a0b54a50c65f0c963fe1b65d87c54162298070e4e89",
+        "bytes": 2361
+      },
+      "note": "frontend npm run build:admin on 5af5cdd",
+      "head": "5af5cdd3fc6c0ac9a0801de3df497452f84273ff",
+      "dirty": false
+    },
+    {
+      "id": "4f4b0e18-851d-49c5-b2ad-3959254ae4ec",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/http.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T07:11:14Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T071114Z-3805352-red.log",
+        "sha256": "a72ad06bb0a44c12c52a301a26c35ff577a8cb79cc6ac3652c86a4f910e9773f",
+        "bytes": 3665
+      },
+      "summary": {
+        "passed": 25,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: fix reverted in isolation (http.ts readBody line removed); src/api/http.test.ts",
+      "head": "3ce9be9d8f92f57fc868db9c5c96ed47adc72f01",
+      "dirty": true
+    },
+    {
+      "id": "82f42121-2dbd-4e28-90dc-e9c2988361c7",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T07:11:16Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T071116Z-3806478-red.log",
+        "sha256": "c568574ce3a72f967c6bf94e5f20fa425f9746f6f5cf75b4d0ea2c3cc123914a",
+        "bytes": 5795
+      },
+      "summary": {
+        "passed": 25,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control: fix reverted in isolation (http.ts readBody line removed); src/shells/admin/adminRuntime.test.ts",
+      "head": "3ce9be9d8f92f57fc868db9c5c96ed47adc72f01",
+      "dirty": true
+    },
+    {
+      "id": "b00e0394-bae8-4b85-bad9-0228d648ff05",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T07:11:18Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T071118Z-3807839-red.log",
+        "sha256": "a6164f460117f2231ccde6ad460df37de0cf916480fac61ebbbc32398fab7b37",
+        "bytes": 3634
+      },
+      "summary": {
+        "passed": 15,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: fix reverted in isolation (http.ts readBody line removed); src/shells/client/clientRuntime.test.ts",
+      "head": "3ce9be9d8f92f57fc868db9c5c96ed47adc72f01",
+      "dirty": true
+    },
+    {
+      "id": "743089d9-f7af-426a-974e-ed8c81482d6e",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/http.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:18:51Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T081851Z-3837629-red.log",
+        "sha256": "fa59e7183f9dd492e972dee21e9cfc3bd449dc501aa865c6f01593cc91012ed6",
+        "bytes": 3696
+      },
+      "summary": {
+        "passed": 25,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control (keyed write): fix kept, isUnknownWriteOutcome mutated so a 5xx counts as nothing applied; http.test.ts",
+      "head": "3ce9be9d8f92f57fc868db9c5c96ed47adc72f01",
+      "dirty": true
+    },
+    {
+      "id": "71e96d42-df48-4add-b2ce-c0bc39528b48",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/packages/contracts",
+      "started": "2026-11-17T08:19:35Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T081935Z-3849491-green.log",
+        "sha256": "9dd2d094fb6b59609ac9ba7a93cc9ff1f4e33ac37cb0bc18a1262e9d131b4763",
+        "bytes": 897
+      },
+      "note": "contracts npm ci && npm run build on 812b174, clean tree",
+      "head": "812b17430e063386324171ee71579c34a6e2bba1",
+      "dirty": false
+    },
+    {
+      "id": "cd5b5d22-8eaa-403f-9db5-fb77ee015df8",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:19:51Z",
+      "seconds": 41,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T081951Z-3852700-green.log",
+        "sha256": "8564ce84807ce5745fec1ef31a5099d86f99d00b35dee787a062dd94a9cb8f6d",
+        "bytes": 7961
+      },
+      "summary": {
+        "passed": 389,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci && npm run check on 812b174, clean tree",
+      "head": "812b17430e063386324171ee71579c34a6e2bba1",
+      "dirty": false
+    },
+    {
+      "id": "13f54d99-9cad-486f-b0c9-c3868649070b",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:20:39Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082039Z-3858360-green.log",
+        "sha256": "4c70c0563f9592ee7c5e49ea3d9bdc2bdb5c6b95f777c6e46262bd809f2dd1cc",
+        "bytes": 2133
+      },
+      "note": "frontend npm run build:client on 812b174, clean tree",
+      "head": "812b17430e063386324171ee71579c34a6e2bba1",
+      "dirty": false
+    },
+    {
+      "id": "d8236e27-7d0a-43e3-b7a0-a1caac4346b4",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:20:50Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082050Z-3860048-green.log",
+        "sha256": "23ddd679699263d6d512ff32f95fe01b7a6b80490f836d09ef55d351e937b39b",
+        "bytes": 2361
+      },
+      "note": "frontend npm run build:admin on 812b174, clean tree",
+      "head": "812b17430e063386324171ee71579c34a6e2bba1",
+      "dirty": false
+    },
+    {
+      "id": "986cf4f4-3589-4ba1-8aee-df2df26242d0",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/http.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:25:49Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082549Z-3899499-red.log",
+        "sha256": "4daaedb62033a20a518793cf8188fa753a24be010670b6188a75e757e4904b85",
+        "bytes": 4060
+      },
+      "summary": {
+        "passed": 28,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control 2: body-read fix reverted in isolation (http.ts at 812b174); src/api/http.test.ts",
+      "head": "812b17430e063386324171ee71579c34a6e2bba1",
+      "dirty": true
+    },
+    {
+      "id": "9a8fb95b-244d-40c1-a108-f189b334290e",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:25:51Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082551Z-3900686-red.log",
+        "sha256": "a4d216fab76ab29d1a965c6e7c3b983105108e239c554edbbbbc6fdd43132db2",
+        "bytes": 5098
+      },
+      "summary": {
+        "passed": 27,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control 2: body-read fix reverted in isolation (http.ts at 812b174); src/shells/admin/adminRuntime.test.ts",
+      "head": "812b17430e063386324171ee71579c34a6e2bba1",
+      "dirty": true
+    },
+    {
+      "id": "20d97f4c-94b6-4c24-988e-954cefea61b6",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/http.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:26:03Z",
+      "seconds": 3,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082603Z-3904522-red.log",
+        "sha256": "6798cc572cd6867f8570dc9c5abdc349bdb9d60a90e609ca9a08243bf3b8057c",
+        "bytes": 329
+      },
+      "summary": {
+        "passed": 29,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "recorded as other, not red: it exited 0; red control 2: fix kept but the caller-cancel guard removed from the body-read catch; http.test.ts",
+      "head": "812b17430e063386324171ee71579c34a6e2bba1",
+      "dirty": true
+    },
+    {
+      "id": "547a2ebc-0384-41a3-b563-1b1fcca7cd9b",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/http.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:26:23Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082623Z-3907186-red.log",
+        "sha256": "257a233871ff8480c86852bc763db5196afcfdf7b09e7081edd534316802a97a",
+        "bytes": 4370
+      },
+      "summary": {
+        "passed": 28,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control 2 (redo): fix kept, caller-cancel guard removed from the body-read catch only; http.test.ts",
+      "head": "812b17430e063386324171ee71579c34a6e2bba1",
+      "dirty": true
+    },
+    {
+      "id": "1194b348-69e2-4337-a814-f7e661a9d929",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/http.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:26:35Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082635Z-3909340-red.log",
+        "sha256": "5bae89dc6a6f33d34cbfbcf4439c1ab8c9e9c4242d317180ee9830ae89b35264",
+        "bytes": 4128
+      },
+      "summary": {
+        "passed": 28,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control 2 (keyed write): fix kept, isUnknownWriteOutcome mutated so an offline TransportError counts as nothing applied; http.test.ts",
+      "head": "812b17430e063386324171ee71579c34a6e2bba1",
+      "dirty": true
+    },
+    {
+      "id": "1b364b1e-7f42-499d-a58c-47a77b9f1863",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/packages/contracts",
+      "started": "2026-11-17T08:27:04Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082704Z-3914194-green.log",
+        "sha256": "9dd2d094fb6b59609ac9ba7a93cc9ff1f4e33ac37cb0bc18a1262e9d131b4763",
+        "bytes": 897
+      },
+      "note": "contracts npm ci && npm run build on 2909bbb, clean tree",
+      "head": "2909bbb9cba0937b2007b01ab9a4f3b07992b4ab",
+      "dirty": false
+    },
+    {
+      "id": "e956481b-c73a-4438-9436-bc37387cef03",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:27:14Z",
+      "seconds": 40,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082714Z-3914775-green.log",
+        "sha256": "f6b54138c0cac50cfea6d6da77d9d86b3c8aa8a7fb0e61b729a3a4cf970cb216",
+        "bytes": 7977
+      },
+      "summary": {
+        "passed": 393,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci && npm run check on 2909bbb, clean tree",
+      "head": "2909bbb9cba0937b2007b01ab9a4f3b07992b4ab",
+      "dirty": false
+    },
+    {
+      "id": "9d4f97fe-7736-4d3a-9c35-092f9fa3600d",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:28:02Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082802Z-3919886-green.log",
+        "sha256": "ef56ef196568a184dc7889a4f1c0de0309736a79d2383f2ca5f58db9f15307d2",
+        "bytes": 2133
+      },
+      "note": "frontend npm run build:client on 2909bbb, clean tree",
+      "head": "2909bbb9cba0937b2007b01ab9a4f3b07992b4ab",
+      "dirty": false
+    },
+    {
+      "id": "3ad53148-fb33-43a5-a175-9e3ebe69b890",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:28:07Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T082807Z-3920329-green.log",
+        "sha256": "de20b5c48dafe8626daa39f7063a5d9cc977f2d7c1e0351597483118cae7070e",
+        "bytes": 2361
+      },
+      "note": "frontend npm run build:admin on 2909bbb, clean tree",
+      "head": "2909bbb9cba0937b2007b01ab9a4f3b07992b4ab",
+      "dirty": false
+    },
+    {
+      "id": "3b1183b4-54bf-4dcc-a7f0-68a141fd3fcd",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:43:12Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T084312Z-4007261-red.log",
+        "sha256": "66bbe7df0895a807175669ef3af86f584d763276936f1cd3c4790ed8eee79ebd",
+        "bytes": 6196
+      },
+      "summary": {
+        "passed": 28,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control 3: admin refresh fix reverted in isolation (adminRuntime.ts at 2909bbb); adminRuntime.test.ts",
+      "head": "2909bbb9cba0937b2007b01ab9a4f3b07992b4ab",
+      "dirty": true
+    },
+    {
+      "id": "e3e876ac-aa8f-4a47-89fe-f975af5b98c7",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:43:19Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T084319Z-4009142-red.log",
+        "sha256": "08834a306b58586eb51fa75ef9f0b5a3bf8ee40e16801334232604cd2424883b",
+        "bytes": 4040
+      },
+      "summary": {
+        "passed": 16,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control 3: client refresh fix reverted in isolation (clientRuntime.ts at 2909bbb); clientRuntime.test.ts",
+      "head": "2909bbb9cba0937b2007b01ab9a4f3b07992b4ab",
+      "dirty": true
+    },
+    {
+      "id": "8502ead1-1722-4293-93e1-037d47431b34",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:43:32Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T084332Z-4012392-red.log",
+        "sha256": "81e7a07fa8eb243016b651746b0dae785d639c6cdbda0459f6414e97d1e54fe7",
+        "bytes": 5514
+      },
+      "summary": {
+        "passed": 29,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control 3 (refused refresh still ends): admin fix widened to rethrow every refresh failure, not only outages; adminRuntime.test.ts",
+      "head": "2909bbb9cba0937b2007b01ab9a4f3b07992b4ab",
+      "dirty": true
+    },
+    {
+      "id": "ad06f9b3-2772-4f43-b990-7907e9b30299",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/packages/contracts",
+      "started": "2026-11-17T08:44:44Z",
+      "seconds": 11,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T084444Z-4023412-green.log",
+        "sha256": "3d279bb94410af178c923bd21e70f58f00ddb63bf6c46f9f290e8e6968d17df4",
+        "bytes": 897
+      },
+      "note": "contracts npm ci && npm run build on 223718f, clean tree",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": false
+    },
+    {
+      "id": "8d0121ad-d825-47fb-a372-079ad9b87ebc",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:44:55Z",
+      "seconds": 43,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T084455Z-4024362-green.log",
+        "sha256": "6ea60fb60ad07900999490c2aa16e11c6b7b693e3fd43d83604112d204071e01",
+        "bytes": 8555
+      },
+      "summary": {
+        "passed": 396,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci && npm run check on 223718f, clean tree",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": false
+    },
+    {
+      "id": "8bc03f00-16f3-4b0b-a55e-781ef231f1a2",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:45:46Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T084546Z-4031330-green.log",
+        "sha256": "e7371fc1d70f36c83eb2893a143ab4fadf0e1bd8e7d90fa7960e17ee71e41490",
+        "bytes": 2133
+      },
+      "note": "frontend npm run build:client on 223718f, clean tree",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": false
+    },
+    {
+      "id": "2da44e1d-a622-43bb-8294-604408d872d9",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T08:45:51Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T084551Z-4032126-green.log",
+        "sha256": "45680bd5ed375d05435831d04e2deb2fa570fbcc30e678bfc3c69f6b2606d31e",
+        "bytes": 2361
+      },
+      "note": "frontend npm run build:admin on 223718f, clean tree",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": false
+    },
+    {
+      "id": "ae6c7cbb-77c0-4cd2-9479-9e91c11e962f",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/http.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T09:04:37Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090437Z-4130038-red.log",
+        "sha256": "eb81392618cc1a719b35ca87d063ae7d0fd8787fbb8746502387ca77b476b2c1",
+        "bytes": 4623
+      },
+      "summary": {
+        "passed": 29,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control 4 (F1 count): fix kept but a refresh failure no longer rethrown without retry; http.test.ts",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": true
+    },
+    {
+      "id": "37ba6432-a9b5-4f8a-a2fd-4c4d744f7a0e",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T09:04:50Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090450Z-4132512-red.log",
+        "sha256": "4c198e0a399d27f5012383cfce5d944cd2cc3aa39e49ea028398c17ed21a0993",
+        "bytes": 8165
+      },
+      "summary": {
+        "passed": 32,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "red control 4 (F2): admin refresh executors keep the session on an outage only, not on a 429; adminRuntime.test.ts",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": true
+    },
+    {
+      "id": "efbb470d-f23b-4686-8e55-4c2e834b2760",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T09:04:58Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090458Z-4133484-red.log",
+        "sha256": "95631a385f609eac85ced4fd1d213b8f7572424e66ec1ebc25279ae48340e9fd",
+        "bytes": 7755
+      },
+      "summary": {
+        "passed": 33,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control 4 (F2 nginx page): a non-JSON 429 no longer read as a 429 (stays malformed); adminRuntime.test.ts",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": true
+    },
+    {
+      "id": "a79598c0-1fe2-4de6-b503-9c97376e65a9",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T09:05:18Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090518Z-4136899-red.log",
+        "sha256": "bb69a923ee7b2b79120e65ab45888077e6ebc7e56ffde6b3b5ff678f2603f86e",
+        "bytes": 6453
+      },
+      "summary": {
+        "passed": 34,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control 4 (restore clear): admin cookie restore clears unless an outage again, so a 429 clears; adminRuntime.test.ts",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": true
+    },
+    {
+      "id": "ae6eaa1d-f021-477c-b58a-adeda748aa6f",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T09:05:26Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090526Z-4138045-red.log",
+        "sha256": "8b3dfa5383d3ad53aa3184295e9c2145e76d795d2293ab7021653c015fe79149",
+        "bytes": 9970
+      },
+      "summary": {
+        "passed": 29,
+        "failed": 6,
+        "ignored": 0
+      },
+      "note": "red control 4 (F3 restore 502 row): admin refresh executors back to treating every failure as unauthenticated; adminRuntime.test.ts",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": true
+    },
+    {
+      "id": "9d7e05ec-16fc-474b-b8ed-542e427235f0",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T09:05:45Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090545Z-4141062-red.log",
+        "sha256": "4aa0c44e0839dfc769c753483c90ff0eae634e5d4a8b40f0158de3aaa8fcb5ed",
+        "bytes": 6587
+      },
+      "summary": {
+        "passed": 34,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control 4 (F3 APK refused): admin native refresh executor rethrows every failure, so a 401 no longer ends the session; adminRuntime.test.ts",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": true
+    },
+    {
+      "id": "2c575256-491d-44df-8826-1ff99c54effa",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T09:05:53Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090553Z-4142294-red.log",
+        "sha256": "78e44c48ac10268517d07097c8c49c125ba50e8e296df383cc1c9eaf6510b86a",
+        "bytes": 4029
+      },
+      "summary": {
+        "passed": 17,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control 4 (F3 client refused): client cookie refresh executor rethrows every failure, so a 401 no longer ends the session; clientRuntime.test.ts",
+      "head": "223718fd6a4f9a9724ad931a074402d0582da5b3",
+      "dirty": true
+    },
+    {
+      "id": "8ae86866-1227-4328-b7df-f2dbbe5fad4b",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/packages/contracts",
+      "started": "2026-11-17T09:06:31Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090631Z-4147771-green.log",
+        "sha256": "92812201500bbb68f10c3b33b07b9324f4800b8d4805b4d4d4920718be2f9c77",
+        "bytes": 897
+      },
+      "note": "contracts npm ci && npm run build on a61f76f, clean tree",
+      "head": "a61f76ffa5aecc89a5c175f2caca2348fccc2b2a",
+      "dirty": false
+    },
+    {
+      "id": "2391ef76-3a12-4b99-94b0-9dd48dfd2af5",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T09:06:39Z",
+      "seconds": 43,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090639Z-4148394-green.log",
+        "sha256": "5b306b737bcff0e56bae63d41fdf02316a2d697f8b160b1af357c822ef589aa4",
+        "bytes": 8707
+      },
+      "summary": {
+        "passed": 404,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci && npm run check on a61f76f, clean tree",
+      "head": "a61f76ffa5aecc89a5c175f2caca2348fccc2b2a",
+      "dirty": false
+    },
+    {
+      "id": "45d1d2b3-e7d3-44a6-b26c-24067f61ddf4",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T09:07:22Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090722Z-4152687-green.log",
+        "sha256": "752735eb6ca8558ed1ec9a0eac1f289178bb480099e1126f6d691b01efd1aa2b",
+        "bytes": 2133
+      },
+      "note": "frontend npm run build:client on a61f76f, clean tree",
+      "head": "a61f76ffa5aecc89a5c175f2caca2348fccc2b2a",
+      "dirty": false
+    },
+    {
+      "id": "0eac5dee-900e-44d7-b7cf-b0aa08680c52",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 builder fx-outage-502",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502/frontend_stack_ts",
+      "started": "2026-11-17T09:07:27Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T090727Z-4153669-green.log",
+        "sha256": "2093cb531a0ee01e38fead8f6cb79a3416b92abfe16581fd29084a6397b86f5c",
+        "bytes": 2361
+      },
+      "note": "frontend npm run build:admin on a61f76f, clean tree",
+      "head": "a61f76ffa5aecc89a5c175f2caca2348fccc2b2a",
+      "dirty": false
+    },
+    {
+      "id": "f658cbf1-6f3a-471f-9248-4021b22dffa7",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 verifier fx-admin-pair",
+      "kind": "green",
+      "command": [
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds/.temp/fx-admin-funds/verify-pair/recheck-af0b46f/scripts/passValues.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T08:47:27Z",
+      "seconds": 1333,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T084727Z-4048351-green.log",
+        "sha256": "41f5d6034063b86e8d26509f8205b2f8909155908bc45094ae061aa967d3144d",
+        "bytes": 12388
+      },
+      "note": "Re-check on build af0b46f (fx-admin-funds worktree): A (unreadable lock and new-key send on reversal, mark, settle, payout; sheet unload guard) plus the full values suite; /client-values/returns raw user id counted as KNOWN (aw-values); local stack only",
+      "head": "995b92e0e85710c0afd930f16595bb6f8d6e9a10",
+      "dirty": false
+    },
+    {
+      "id": "9278a6da-8a17-4335-b273-6fef695b0533",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 verifier fx-admin-pair",
+      "kind": "green",
+      "command": [
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds/.temp/fx-admin-funds/verify-pair/recheck-af0b46f/scripts/passFunds.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T09:10:03Z",
+      "seconds": 605,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T091003Z-4171644-green.log",
+        "sha256": "88702ca6fd11df25d2d01391162bbaccc180c00e6daeaf227e0af36d9e3c39db",
+        "bytes": 6538
+      },
+      "note": "Re-check on af0b46f: full funds suite (B1-B6 at 1440 and 390, C1-C3, public sign-in and reset); local stack only",
+      "head": "af0b46ffa175c1ffa032c0b7c802515cbace4411",
+      "dirty": false
+    },
+    {
+      "id": "5cceefe7-f1ee-4be0-bc19-a751dc1b37f9",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 verifier fx-admin-pair",
+      "kind": "green",
+      "command": [
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds/.temp/fx-admin-funds/verify-pair/recheck-af0b46f/scripts/passOutage.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502",
+      "started": "2026-11-17T09:20:33Z",
+      "seconds": 103,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T092033Z-41494-green.log",
+        "sha256": "a3f5f8dcf34fe97bd9f5ce444c90f8cf2077d27ab64911d59fe2106e3128ad00",
+        "bytes": 848
+      },
+      "note": "Runtime B and C on build af0b46f (fx-admin-funds worktree, contains 812b174 and 2909bbb): nginx-style 502 HTML outage during admin and client restore, broken-off CSRF body, held-write replies cut mid-body; local stack only",
+      "head": "a61f76ffa5aecc89a5c175f2caca2348fccc2b2a",
+      "dirty": false
+    },
+    {
+      "id": "f7809a92-22e3-45b0-8da0-d67ad04f27bd",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "agent": "claude-opus-5-5 verifier fx-admin-pair",
+      "kind": "green",
+      "command": [
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds/.temp/fx-admin-funds/verify-pair/final-cb20de3/scripts/passFinal.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-outage-502",
+      "started": "2026-11-17T09:31:14Z",
+      "seconds": 165,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-outage-502/20261117T093114Z-137604-green.log",
+        "sha256": "5de1aeed15d47d4b978c0bae71cd95545e4901de496836a31f903296d558d6b3",
+        "bytes": 1424
+      },
+      "note": "Final R1-R5 on build cb20de3 (fx-admin-funds worktree; contains 812b174..a61f76f): refresh outage and 429 on a held Check again, request counts, client refresh, 502 HTML at reload, broken-off bodies; local stack only",
+      "head": "a61f76ffa5aecc89a5c175f2caca2348fccc2b2a",
+      "dirty": false
+    },
+    {
+      "id": "661c277a-4d76-418f-aa96-97c29a42051f",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 verifier fx-admin-pair",
+      "kind": "green",
+      "command": [
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds/.temp/fx-admin-funds/verify-pair/final-cb20de3/scripts/passValues.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T09:34:41Z",
+      "seconds": 673,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T093441Z-160806-green.log",
+        "sha256": "5b49b73f540020d03e896c696638c092173fb7957c0477bf703af63abd1b5db6",
+        "bytes": 6363
+      },
+      "note": "Final values suite at 1440 on build cb20de3 (fx-admin-funds worktree); /client-values/returns raw user id counted as KNOWN (aw-values); local stack only",
+      "head": "57dff671ff1f81526563dd88390ce996222965d1",
+      "dirty": false
+    },
+    {
+      "id": "01099b0e-3806-4610-bc94-2cd65f9c96f8",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 verifier fx-admin-pair",
+      "kind": "green",
+      "command": [
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds/.temp/fx-admin-funds/verify-pair/final-cb20de3/scripts/passFunds.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T09:46:29Z",
+      "seconds": 320,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T094629Z-263670-green.log",
+        "sha256": "51959ba5427ecfc83b5cc881c8869a292f611ce016ff47d6e9df53797db924ca",
+        "bytes": 3445
+      },
+      "note": "Final funds suite at 1440 on cb20de3 (B1-B6, C1-C3, public sign-in and reset); local stack only",
+      "head": "cb20de3c8c0afe1fd849c2d87a43a29d75b7b6f6",
+      "dirty": false
     }
   ]
 }

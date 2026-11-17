@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 60,
+  "nextNumber": 64,
   "entries": [
     {
       "id": "finding-1",
@@ -1533,6 +1533,125 @@
       },
       "at": "2026-11-17T03:28:03.702Z",
       "replaces": "finding-58"
+    },
+    {
+      "id": "finding-60",
+      "kind": "finding",
+      "title": "Admin pair runtime pass at 9516df6: two FAILs being fixed, one out of scope, four LOW leftovers",
+      "text": "Joint runtime pass of fx-admin-values + fx-admin-funds at 9516df6 (admin 1440 and 390, local stack; evidence 898af36c values, 7448d8c6 funds; report .temp/worktrees/fx-admin-funds/.temp/fx-admin-funds/verify-pair/RUNTIME-REPORT.md). No keyed write applied twice, every Check again sent the same key and body, no request went out as the wrong admin, C1 and C2 (sign-out clears holds; another admin's entries are ignored and deleted) pass.\nFAIL, being fixed: (1) unreadable holds leave reversal, mark matured, settle and payout editable (LedgerEntries.tsx:111, MaturityPanel.tsx:83, WithdrawalPayoutPanel.tsx:46 lock on held/pending only), fix on fx-admin-values; (3) C3: behind a proxy an outage answers 502 with an HTML body, http.ts readBody throws TransportError malformed, isOutage does not count it, so the admin and client restores clear the session and every hold; fix on new lane fx-outage-502 (lands before fx-admin-values). Doubtful, being fixed with (1): the payment sheet has no unload guard for a row it could not save.\nNot this lane: (2) /client-values/returns prints the user id beside every name (ReturnsDashboardScreen.tsx:69, since ba88063); the audit lists it under raw ids rendered (consistency-admin.md, UAW-08 copy), owner aw-values in stage B. The pass brief counted any user id as a FAIL; FX-8 covers failed or pending reads only.\nLOW leftovers: /client-values/individual Investor search clears the selection on the first key and remounts the form (key and focus lost); the console 'Maturities need your decision' prompt opened over a held 'Set a maturity date' form; growth Check again after a reload sends the body in another key order (server replayed it, one row); the opening-AUM card keeps its 'never confirmed' title above a refusal (review r-fx-admin-funds-3 F1). /users shows '₹0.00 No entry' for clients without entries, not 'No recorded investment'.",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/client-values",
+        "frontend_stack_ts/src/features/admin/client-returns",
+        "frontend_stack_ts/src/features/admin/payment-sheet",
+        "frontend_stack_ts/src/api/http.ts",
+        "frontend_stack_ts/src/api/errors.ts"
+      ],
+      "tags": [
+        "runtime",
+        "held-write",
+        "outage",
+        "ui-overhaul"
+      ],
+      "refs": [
+        "M16-ui-overhaul:FX-admin-values",
+        "M16-ui-overhaul:FX-admin-funds",
+        "M16-ui-overhaul:FX-outage-502",
+        "finding-57",
+        "DEC-61"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T07:05:14.258Z"
+    },
+    {
+      "id": "finding-61",
+      "kind": "finding",
+      "title": "Refresh refusals that are not 401/403: a missing user row answers 500, which the app now treats as an outage",
+      "text": "Since fx-outage-502 (223718f, a61f76f) the admin and client refresh keep the session on an outage (timeout, lost connection, broken-off body, any 5xx) or a 429, and end it only on everything else (401, 403, malformed, contract failure, another user). Reviews review-40 section 3 and the builder's hand-off note that backend webAuth.ts:529-533 uses executeTakeFirstOrThrow on the user row, so a refresh for a user whose row is gone would answer 500, not 401. The tab then stays signed in and every request fails as an outage until the user signs out; no data is served, and no request goes out as another user. Not reached by erasure as far as read (erasure revokes sessions first), not verified. Fix when convenient: the refresh answers 401 SESSION_INVALID when the session's user row is missing. Also unverified from the same reviews: whether a cookie refresh whose reply was lost gets the backend's 30-second same-rotationId grace or a family revoke (webRecoverCsrf not read).",
+      "paths": [
+        "backend_controller/src/routes/webAuth.ts",
+        "frontend_stack_ts/src/shells/admin/adminRuntime.ts",
+        "frontend_stack_ts/src/shells/client/clientRuntime.ts"
+      ],
+      "tags": [
+        "session",
+        "refresh",
+        "backend",
+        "outage"
+      ],
+      "refs": [
+        "M16-ui-overhaul:FX-outage-502",
+        "review-40",
+        "finding-50",
+        "finding-57"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T09:16:32.591Z",
+      "retiredAt": "2026-11-17T09:20:02.129Z",
+      "retiredWhy": "replaced by finding-62"
+    },
+    {
+      "id": "finding-62",
+      "kind": "finding",
+      "title": "After fx-outage-502: nginx 429 wording on four screens, lost cookie refresh grace unverified, 500 refusal not reachable",
+      "text": "Corrects finding-61 after review-41. (1) Not reachable: a refresh for a missing user row answering 500. auth_sessions.user_id references users ON DELETE RESTRICT (011_canonical_sessions.sql:17); webRefresh locks the session first and answers SESSION_INVALID 401 when it is gone (webAuth.ts:518-526); the CSRF read answers ACCOUNT_NOT_ACTIVE 403 for a missing or inactive user. A 5xx on the refresh now only means a real server fault: the tab keeps its session and holds and shows each read's error with Try again. (2) LOW, open: since a61f76f nginx's HTML 429 page (limit_req, general zone 20 r/s burst 40, likelier behind CGNAT) reads as RATE_LIMITED, so screens show their own rate-limit wording, some of which overstates an nginx refusal: reset link 'Too many attempts. Ask for a new link.' (domain/failure.ts:254, ResetPasswordScreen.tsx:111), change password 'Wait 15 minutes' (failure.ts:268), admin password link 'A link was sent moments ago' (PasswordLinkPanel.tsx:80), email code 'A code was sent recently' with a 60 s cooldown (EmailVerificationScreen.tsx:23-25,74-75). Keep the code RATE_LIMITED (it keeps Check again unknown, errors.ts:110); reword for owners of failure.ts and these screens. The APK never sees the page (no CORS headers on nginx's 429; reads as a lost connection). (3) Unverified: whether a cookie refresh whose reply was lost, with CSRF recovered first, gets the backend's 30-second same-rotationId grace or a family revoke (webRecoverCsrf not read).",
+      "paths": [
+        "frontend_stack_ts/src/domain/failure.ts",
+        "frontend_stack_ts/src/features/auth",
+        "frontend_stack_ts/src/features/admin/users/PasswordLinkPanel.tsx",
+        "backend_controller/src/routes/webAuth.ts"
+      ],
+      "tags": [
+        "session",
+        "refresh",
+        "rate-limit",
+        "copy"
+      ],
+      "refs": [
+        "M16-ui-overhaul:FX-outage-502",
+        "review-41",
+        "finding-50",
+        "finding-57"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T09:20:02.129Z",
+      "replaces": "finding-61"
+    },
+    {
+      "id": "finding-63",
+      "kind": "finding",
+      "title": "A second admin tab rotates the CSRF token; the first tab's writes then fail CSRF_INVALID until it reloads",
+      "text": "Seen in the runtime re-check at af0b46f (verify-pair/recheck-af0b46f). Opening a second admin tab in the same browser runs its restore, whose CSRF read issues a new token. The first tab still holds the old one, so its next write is refused 403 CSRF_INVALID ('The request failed a cross-site protection check'). Since fx-session-guard a held write refused that way stays Not confirmed (finding-50), and Check again keeps failing the same way until the first tab is reloaded; nothing applies twice. Before stage A the same refusal read as Nothing changed, so this is not a regression, but admins commonly work in several tabs. Possible fix for a later lane: on CSRF_INVALID for a request the server refused before processing, re-read the CSRF token once (checking the principal, as the refresh does, finding-50) and resend the same request with the same Idempotency-Key; or keep the CSRF token per session rather than rotating it on every read. Not changed in stage A.",
+      "paths": [
+        "frontend_stack_ts/src/api/http.ts",
+        "frontend_stack_ts/src/shells/admin/adminRuntime.ts",
+        "backend_controller/src/routes/webAuth.ts"
+      ],
+      "tags": [
+        "csrf",
+        "session",
+        "multi-tab",
+        "held-write"
+      ],
+      "refs": [
+        "finding-50",
+        "finding-57",
+        "finding-60",
+        "M16-ui-overhaul:FX-session-guard"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T09:24:25.120Z"
     }
   ]
 }

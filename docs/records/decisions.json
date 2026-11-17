@@ -566,10 +566,10 @@
       "group": "admin-improvements",
       "text": "Node 24 (E3) lands after Phase I is released and ships as its own release with no features, on dev for about a day before production.",
       "since": "2026-11-16",
-      "status": "In force: Phase I released as v0.17.0; E3 landed at 4d881e1 and is cut on its own as v0.17.1, dev about a day before production",
-      "state": "in force",
+      "status": "Built as decided: Phase I released as v0.17.0, then E3 alone as v0.17.1 (2b029c7, 2026-11-17); dev about a day before production is the maintainer's deploy step",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-17T04:29:57.734Z"
+      "on": "2026-11-17T04:35:41.278Z"
     },
     {
       "id": "DEC-58",
@@ -606,10 +606,10 @@
       "group": "admin-improvements",
       "text": "The UI overhaul fix plan docs/ui-overhaul/plan.md (U5) is approved with its seven questions as recommended: UQ-1 no market-risk line on admin screens (they keep source and freshness lines); UQ-2 the maturity payout's bank transfer reference becomes optional in its own small expand-only lane (rule-18), unchanged until then; UQ-3 no permission change, one plain notice; UQ-4 fix the CC-01 back arrow in ClientFrame.tsx only, with the existing back resolver; UQ-5 admin phone bottom bar Overview, Users, Client values, Support; UQ-6 the fix lanes land after the Node 24 release is cut; UQ-7 local stack and browser allowed for each lane's screenshot pass.",
       "since": "2026-11-16",
-      "status": "In force: the UI fix lanes are built on branches and land after the Node 24 release is cut (UQ-6)",
+      "status": "In force. Stage A landed on main at 2a11725 after the v0.17.1 cut (fx-shell, fx-ui-recipes, fx-paging, fx-admin-held, fx-session-guard, fx-outage-502, fx-admin-values, fx-admin-funds), with browser passes on the landing tree; ships in v0.18.0. Stage B (client web, admin web, admin phone lanes) is next.",
       "state": "in force",
       "by": "operator",
-      "on": "2026-11-16T13:56:17.352Z"
+      "on": "2026-11-17T10:03:33.588Z"
     },
     {
       "id": "DEC-62",
@@ -626,20 +626,20 @@
       "group": "admin-improvements",
       "text": "Small text that sits on the patterned sign-in background or a page gradient (the sign-in footnote, and the 'Values recorded by BeOnEdge ... Investments are subject to market risk.' source and risk line) uses the normal body grey there, so it reaches 4.5:1; the background stays as it is.",
       "since": "2026-11-17",
-      "status": "Decided, not built on main: built on lane fx-ui-recipes (c76b341), held until the Node 24 release (DEC-61)",
-      "state": "decided, not built",
+      "status": "Built and on main at 906055b (lane fx-ui-recipes); ships in v0.18.0.",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-16T22:51:27.171Z"
+      "on": "2026-11-17T09:38:40.082Z"
     },
     {
       "id": "DEC-64",
       "group": "admin-improvements",
       "text": "Body text is made slightly darker (about 8:1 on the page) so faint text, now at 4.5:1 or more, stays clearly quieter than body text; a small app-wide refinement of today's look under DEC-45.",
       "since": "2026-11-17",
-      "status": "Decided, not built on main: built on lane fx-ui-recipes (2b93206), held until the Node 24 release (DEC-61)",
-      "state": "decided, not built",
+      "status": "Built and on main at 906055b (lane fx-ui-recipes); ships in v0.18.0.",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-16T22:51:27.475Z"
+      "on": "2026-11-17T09:38:40.452Z"
     },
     {
       "id": "DEC-65",

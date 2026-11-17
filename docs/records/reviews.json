@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextId": 38,
+  "nextId": 42,
   "reviews": [
     {
       "id": "review-1",
@@ -825,6 +825,108 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-17T04:14:41.467Z"
+    },
+    {
+      "id": "review-38",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "commit": "5af5cdd",
+      "reviewer": "claude-pro opus xhigh (read-only)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "defects": 0,
+        "runtime-to-check": 2
+      },
+      "summary": "Review of 5af5cdd (runtime pass 9516df6 FAIL 1 and the sheet doubt). Closed: reversal, mark, settle and payout lock every input and action while their stored hold is unreadable; only 'I have checked the record' resets, and only that form's slot; the lock never spreads to another investor or payout (forms keyed by userId and payout id). All eight persisted slots now lock. Sheet: useUnloadGuard(recorder.unsaved.size > 0) means exactly 'held but not saved' and lifts on confirm. Red controls real: lock reverted 4/14 fail, guard removed 1/14 fail. Rules 9, 12, 14 and ownership clean. To check at runtime: the five re-check steps at 1440 and 390; rows never sent after a session end keep the sheet's guard on if the sheet stays mounted after sign-out (not read). Verdict land.",
+      "follows": "review-36",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-admin-values-3.out.md",
+        "sha256": "3a9a4ef498accba07b6566f831d2e379bf47927e8f5ef42192f61552dc2800cf",
+        "bytes": 6992
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T08:25:41.011Z"
+    },
+    {
+      "id": "review-39",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "commit": "2909bbb",
+      "reviewer": "claude-pro opus xhigh (read-only)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium-preexisting": 1,
+        "low": 3
+      },
+      "summary": "Review of 812b174 and 2909bbb. Closed: a proxy 502 page and a broken-off body are outages; admin and client restores keep principal and holds; keyed writes stay unknown; 2xx non-JSON stays malformed, 4xx unchanged; no gone session kept (backend ends sessions with JSON 401/403). F1 MEDIUM, predates the lane: the cookie refresh (adminRuntime.ts:188-190, clientRuntime.ts:137-139, http.ts:367-371) ends the session as expired on any failure, outage included, wiping held writes; coordinator chose to fix it as a third commit on this lane before the admin pair lands. F2 LOW: FundWorkspaceScreen 'Nothing was changed' on transport errors with a fresh key per publish; already replaced by useHeldWrite on fx-admin-funds. F3 LOW: 812b174 body understates GET retries (up to 9 with React Query, finding-49). F4 LOW: cancel test guards an unused option; keyed-write rows guarded by mutation controls only. Verdict land.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-outage-502.out.md",
+        "sha256": "7f7070e8e7fd854a4699af228b02aecbeed05590d4331242fa3dfaa31cfdfde1",
+        "bytes": 8548
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T08:37:36.490Z"
+    },
+    {
+      "id": "review-40",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "commit": "223718f",
+      "reviewer": "claude-pro opus xhigh (read-only)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 1,
+        "low": 3
+      },
+      "summary": "Review of 223718f. Closed review-39 F1: all four refresh executors rethrow isOutage errors; nothing ends or clears on an outage; 401/403 and 'replaced' still end; held writes stay unknown with their key; concurrent waiters share the rejection; no refresh loop. Rethrow over an 'unreachable' outcome judged sound; native restore rejecting is right. F1 MEDIUM new: the rethrown outage is retryable, so the transport and React Query re-run the whole refresh: up to 36 requests per read, about 9 minutes of loading when the CSRF read hangs (rule 4). F2 LOW: 429 or other non-outage refresh failures still end the session and wipe holds. F3 LOW: untested admin cookie restore 401 then refresh outage, refused refresh on admin APK and client, client APK. F4 LOW: commit body overstates the native retry splash and omits check counts. Coordinator is having F1 to F3 closed in a fourth commit. Verdict land.",
+      "follows": "review-39",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-outage-502-2.out.md",
+        "sha256": "9eec649edf20875a796b2b4f369f7f8899626ed11643b193ee869d2ccd78ddae",
+        "bytes": 8694
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T08:56:33.489Z"
+    },
+    {
+      "id": "review-41",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-outage-502",
+      "track": "fx-outage-502",
+      "commit": "a61f76f",
+      "reviewer": "claude-pro opus xhigh (read-only)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 2
+      },
+      "summary": "Review of a61f76f. Closed review-40 F1 (a failed refresh's error is a non-retryable copy; a read during an outage with an expired cookie now sends 1 GET + 3 CSRF = 4 requests, about 61 s if the CSRF read hangs, was 36 and 9 min), F2 (a 429 on the refresh or restore keeps the session; nginx's HTML 429 page is RATE_LIMITED; only nginx limit_req can produce it, so 'Nothing changed' is true), F3 mostly (client APK refresh untested, same line). Old retries unchanged. No session kept that should end: a missing user row answering 500 is not reachable (auth_sessions.user_id ON DELETE RESTRICT; refresh answers 401, CSRF read 403). LOW: nginx 429 now shows screens' rate-limit wording that can overstate (reset link, password change, admin password link, email code); record for domain/failure.ts owners. LOW: hand-off step D says 1 CSRF try for a DevTools block; it is 3. Verdict land.",
+      "follows": "review-40",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-outage-502-3.out.md",
+        "sha256": "a614ba90820a9ab468c23b8637045fd7185cfbdd41c8eeb5767016eb011dbcc4",
+        "bytes": 11342
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T09:20:01.800Z"
     }
   ]
 }

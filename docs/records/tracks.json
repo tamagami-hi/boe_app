@@ -540,7 +540,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-16T21:19:59.364Z"
+      "openedAt": "2026-11-16T21:19:59.364Z",
+      "closedAt": "2026-11-17T05:22:22.246Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
     },
     {
       "name": "fx-ui-recipes",
@@ -551,7 +556,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-16T21:19:59.812Z"
+      "openedAt": "2026-11-16T21:19:59.812Z",
+      "closedAt": "2026-11-17T05:22:25.359Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
     },
     {
       "name": "fx-paging",
@@ -562,7 +572,13 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-16T21:20:00.235Z"
+      "openedAt": "2026-11-16T21:20:00.235Z",
+      "closedAt": "2026-11-17T05:56:31.736Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-17T04:56:30.181Z"
     },
     {
       "name": "fx-admin-held",
@@ -573,7 +589,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-16T21:56:26.770Z"
+      "openedAt": "2026-11-16T21:56:26.770Z",
+      "closedAt": "2026-11-17T05:22:30.256Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
     },
     {
       "name": "c-carried-backend",
@@ -601,7 +622,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-16T22:57:05.424Z"
+      "openedAt": "2026-11-16T22:57:05.424Z",
+      "closedAt": "2026-11-17T05:22:31.667Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
     },
     {
       "name": "fx-admin-values",
@@ -612,7 +638,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-17T00:42:49.802Z"
+      "openedAt": "2026-11-17T00:42:49.802Z",
+      "closedAt": "2026-11-17T09:54:37.743Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
     },
     {
       "name": "fx-admin-funds",
@@ -623,7 +654,35 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-17T00:42:50.128Z"
+      "openedAt": "2026-11-17T00:42:50.128Z",
+      "closedAt": "2026-11-17T10:03:15.655Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
+    },
+    {
+      "name": "fx-outage-502",
+      "branch": "track/fx-outage-502",
+      "worktree": ".temp/worktrees/fx-outage-502",
+      "purpose": "Runtime pass 9516df6 C3: a 5xx reply with a non-JSON body (nginx 502 page) counts as an outage, so a session restore keeps held writes and a write meeting it stays unknown (admin and client runtimes). Lands before fx-admin-values.",
+      "paths": [
+        "frontend_stack_ts/src/api",
+        "frontend_stack_ts/src/shells/admin/adminRuntime.ts",
+        "frontend_stack_ts/src/shells/admin/adminRuntime.test.ts",
+        "frontend_stack_ts/src/shells/client/clientRuntime.ts",
+        "frontend_stack_ts/src/shells/client/clientRuntime.test.ts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T07:03:57.163Z",
+      "closedAt": "2026-11-17T09:54:36.036Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
     }
   ]
 }

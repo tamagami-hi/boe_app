@@ -1639,21 +1639,33 @@
         {
           "id": "FX-shell",
           "track": "fx-shell",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "fc63d64",
+          "also": [
+            "01c077c",
+            "2ea8cf3",
+            "a4fa855"
+          ],
           "brief": "docs/ui-overhaul/plan.md §4.1 fx-shell: FX-1 (stable client router, no remount on eligibility change), FX-3 (invest back arrow through the existing back resolver, ClientFrame.tsx only), FX-11 (no reset link on the admin sign-in). Held until the Node 24 release is cut (DEC-61).",
           "paths": [
             "frontend_stack_ts/src/shells",
             "frontend_stack_ts/src/app/routing/buildRouter.tsx",
             "frontend_stack_ts/src/features/profile/EmailVerificationStatus.tsx",
             "frontend_stack_ts/src/features/auth/LoginScreen.tsx"
-          ]
+          ],
+          "landedAt": "2026-11-17T04:42:20.414Z"
         },
         {
           "id": "FX-ui-recipes",
           "track": "fx-ui-recipes",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "906055b",
+          "also": [
+            "3493b1f",
+            "7aa6d8b",
+            "7ab7c04",
+            "e0d2659"
+          ],
           "brief": "docs/ui-overhaul/plan.md §4.1 fx-ui-recipes: FX-2 (detail rows respond to their container; erase explanation as prose), FX-7 (faint text at 4.5:1 or more). Held until the Node 24 release is cut (DEC-61).",
           "paths": [
             "frontend_stack_ts/src/ui/recipes",
@@ -1661,50 +1673,78 @@
             "frontend_stack_ts/src/ui/styles/base.css",
             "frontend_stack_ts/src/features/admin/overview/DailyTiles.tsx",
             "frontend_stack_ts/src/features/admin/users/ClientErasureNotices.tsx"
-          ]
+          ],
+          "landedAt": "2026-11-17T04:50:16.593Z"
         },
         {
           "id": "FX-paging",
           "track": "fx-paging",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "ae24ae5",
+          "also": [
+            "6a559fe",
+            "6dbb75c"
+          ],
           "brief": "docs/ui-overhaul/plan.md §4.1 fx-paging: FX-6 (inline error and Try again on a failed Show more, a stale notice on a failed refetch with data, no self re-fire), closing CL-11 and finding-25. Held until the Node 24 release is cut (DEC-61).",
           "paths": [
             "frontend_stack_ts/src/ui/patterns/LoadMore.tsx",
             "frontend_stack_ts/src/ui/patterns/AsyncBoundary.tsx",
             "frontend_stack_ts/src/api/paged.ts"
-          ]
+          ],
+          "landedAt": "2026-11-17T04:56:18.735Z"
         },
         {
           "id": "FX-admin-held",
           "track": "fx-admin-held",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "cf17c0d",
+          "also": [
+            "2746b5c",
+            "55781c2",
+            "64d88ab",
+            "eb145c8"
+          ],
           "brief": "docs/ui-overhaul/plan.md §4.1 fx-admin-held: move useHeldWrite and HeldWriteNotice to features/admin/shared with a reload-label prop and an optional persisted hold; write hooks out of adminQueries.ts and queries.ts into their feature modules; indiaToday in domain/dates.ts. Behaviour unchanged. Held until the Node 24 release is cut (DEC-61).",
           "paths": [
             "frontend_stack_ts/src/features/admin/shared",
             "frontend_stack_ts/src/api/idempotency.ts",
             "frontend_stack_ts/src/domain/dates.ts"
-          ]
+          ],
+          "landedAt": "2026-11-17T05:12:14.964Z"
         },
         {
           "id": "FX-session-guard",
           "track": "fx-session-guard",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "3ce9be9",
+          "also": [
+            "1b1263c",
+            "336e048",
+            "4e71fcf",
+            "a1789ef",
+            "bfae304",
+            "c0a82de"
+          ],
           "brief": "finding-50: an auth refresh that returns a different user than the tab's principal ends the session instead of resending (admin and client cookie runtimes, native if reachable); a held write's retry refused before processing (auth or CSRF) stays unknown, not Nothing changed. Tests with red controls. Based on fx-admin-held; lands before fx-admin-values.",
           "paths": [
             "frontend_stack_ts/src/api",
             "frontend_stack_ts/src/shells/admin/adminRuntime.ts",
             "frontend_stack_ts/src/shells/client/clientRuntime.ts",
             "frontend_stack_ts/src/features/admin/shared/useHeldWrite.ts"
-          ]
+          ],
+          "landedAt": "2026-11-17T05:22:01.171Z"
         },
         {
           "id": "FX-admin-values",
           "track": "fx-admin-values",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "57dff67",
+          "also": [
+            "4978151",
+            "b96207d",
+            "d0937d2",
+            "fff508c"
+          ],
           "brief": "FX-4, FX-5, FX-8 for client values, users, payment sheet, maturities, returns, reports: every admin write holds one Idempotency-Key until a definite answer, shows Not confirmed with Check again, locks inputs and refuses close while held; money writes confirm with figures; failed reads never show raw ids or a retry that cannot succeed. Also held-write F4 (unreadable entry surfaced) and F5 (expiry against the 24 h receipt) in features/admin/shared; carried CL-06, CL-13; finding-54 admin raw fund ids; MaturityPanel double notice.",
           "paths": [
             "frontend_stack_ts/src/features/admin/client-values/**",
@@ -1714,13 +1754,21 @@
             "frontend_stack_ts/src/features/admin/client-returns/**",
             "frontend_stack_ts/src/features/admin/reports/**",
             "frontend_stack_ts/src/features/admin/shared/**"
-          ]
+          ],
+          "landedAt": "2026-11-17T09:37:54.458Z"
         },
         {
           "id": "FX-admin-funds",
           "track": "fx-admin-funds",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "2a11725",
+          "also": [
+            "03deb25",
+            "2014c5e",
+            "4327e5f",
+            "7c957e3",
+            "9353e85"
+          ],
           "brief": "FX-4, FX-5, FX-8, FX-9, FX-10 for funds, AUM, FAQs, applications, app config, overview: held writes with one key until a definite answer; Archive and Pause confirm with danger; new terms prefilled from the latest version and disclosure; default dates IST; failed reads never show raw ids or a retry that cannot succeed.",
           "paths": [
             "frontend_stack_ts/src/features/admin/funds/**",
@@ -1730,7 +1778,26 @@
             "frontend_stack_ts/src/features/admin/app-config/**",
             "frontend_stack_ts/src/features/admin/support/supportPresentation.ts",
             "frontend_stack_ts/src/features/admin/overview/OverviewScreen.tsx"
-          ]
+          ],
+          "landedAt": "2026-11-17T10:02:49.054Z"
+        },
+        {
+          "id": "FX-outage-502",
+          "track": "fx-outage-502",
+          "status": "landed",
+          "commit": "a61f76f",
+          "also": [
+            "223718f",
+            "2909bbb",
+            "812b174"
+          ],
+          "brief": "Runtime pass at 9516df6, item C3: behind a proxy, an outage answers 502 with a non-JSON body; http.ts turns it into TransportError malformed, isOutage does not count it, and the admin and client restores clear the session and every held write. Make a 5xx reply with a non-JSON body an outage for the restore, keep a write that meets it unknown (never Nothing changed), and add tests with red controls.",
+          "paths": [
+            "frontend_stack_ts/src/api",
+            "frontend_stack_ts/src/shells/admin/adminRuntime.ts",
+            "frontend_stack_ts/src/shells/client/clientRuntime.ts"
+          ],
+          "landedAt": "2026-11-17T09:29:54.215Z"
         }
       ]
     },
@@ -1933,6 +2000,14 @@
     {
       "commit": "815dd79",
       "note": "Docs after the E3 landing: CLAUDE.md and the plan name Node 24 and its check container; section 8 records Node 24 on main and the Node 22 container's removal condition"
+    },
+    {
+      "commit": "2b029c7",
+      "note": "Release v0.17.1 (Node 24.22.3 runtime only, no features, DEC-57), cut by the maintainer with status.sh and pushed with tag v0.17.1"
+    },
+    {
+      "commit": "f774937",
+      "note": "Plan: section 8 entry for UI overhaul stage A on main (2a11725); status line, DEC-61, DEC-63, DEC-64 updated for v0.18.0."
     }
   ]
 }
