@@ -41,7 +41,7 @@ import { PaymentCard } from "./PaymentCard"
 const LABEL = {
   lump_sum: "One-off investment",
   sip_installment: "SIP instalment",
-  recorded_offline: "Payment recorded",
+  recorded_offline: "Investment recorded",
   gain_allocation: "Growth",
   adjustment: "Correction",
   withdrawal: "Withdrawal",
