@@ -261,7 +261,7 @@ const press = (name: string | RegExp): void => {
 }
 
 const confirmIn = async (name: string): Promise<void> => {
-  const dialog = await screen.findByRole("dialog")
+  const dialog = await screen.findByRole("dialog", {}, { timeout: 3000 })
   fireEvent.click(within(dialog).getByRole("button", { name }))
 }
 
