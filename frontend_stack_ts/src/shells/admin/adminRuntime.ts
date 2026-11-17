@@ -9,10 +9,12 @@ import {
   webLogout,
   webRefresh,
 } from "~/api/generated/operations"
+import { isOutage } from "~/api/errors"
 import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
+import { endSession } from "~/api/session/sessionEnd"
 import {
   createTokenStore,
   createWebPersistence,
@@ -294,6 +296,16 @@ export const createAdminRuntime = (): AdminRuntime => {
     }
   }
 
+  const readCookieSession = async (): Promise<Principal> => {
+    try {
+      const { data } = await http.request(getAdminSession, {})
+      return principalFrom(data)
+    } catch (error) {
+      if (!isOutage(error)) tokenStore.clear("admin")
+      throw error
+    }
+  }
+
   const cookieRestore = async (): Promise<Principal | null> => {
     try {
       const { data } = await http.request(getWebCsrf, { unauthenticated: true })
@@ -302,11 +314,15 @@ export const createAdminRuntime = (): AdminRuntime => {
         principal: JSON.stringify(principalFrom(data.user)),
       })
     } catch {
+      tokenStore.clear("admin")
       return null
     }
 
-    const { data } = await http.request(getAdminSession, {})
-    const principal = principalFrom(data)
+    const principal = await readCookieSession()
+    if (!holdsUser(tokenStore, "admin", principal.userId)) {
+      endSession(tokenStore, "admin", "revoked")
+      return null
+    }
     tokenStore.set("admin", "principal", JSON.stringify(principal))
     return principal
   }

@@ -130,7 +130,7 @@ describe("browser session recovery after a document load", () => {
     expect(localStorage.getItem(REFRESH_KEY)).toBeNull()
   })
 
-  it("resolves anonymous when the browser presents no cookie session", async () => {
+  it("resolves anonymous, holding no user, when the browser presents no cookie session", async () => {
     stubFetch(401, {
       ok: false,
       data: null,
@@ -144,10 +144,14 @@ describe("browser session recovery after a document load", () => {
         timestamp: "2026-01-01T00:00:00.000Z",
       },
     })
+    localStorage.setItem(PRINCIPAL_KEY, JSON.stringify(CSRF_RESPONSE.data.user))
     const runtime = createClientRuntime()
     await runtime.tokenStore.hydrate()
+    expect(runtime.tokenStore.read("client", "principal")).not.toBeNull()
 
     await expect(runtime.restore()).resolves.toBeNull()
+
+    expect(runtime.tokenStore.read("client", "principal")).toBeNull()
   })
 })
 

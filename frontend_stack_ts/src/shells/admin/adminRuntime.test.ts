@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { archiveAdminFaq, getAdminSession } from "~/api/generated/operations"
 import { mintIdempotencyKey } from "~/api/idempotency"
+import { heldUserId } from "~/api/session/refresh"
 import { SESSION_INVALIDATED_EVENT } from "~/api/session/scope"
 import { keepHeldRecording, loadHeldRecordings } from "~/features/admin/payment-sheet/heldRecordings"
 import { MONTHLY_REASON } from "~/features/admin/payment-sheet/recordingSheet"
@@ -519,5 +520,40 @@ describe("admin browser restore", () => {
     expect(sent.map(({ route }) => route)).toEqual([CSRF, ADMIN_SESSION, CSRF, REFRESH, ADMIN_SESSION])
     expect(ended()).toEqual([])
     expect(runtime.tokenStore.read("admin", "csrfToken")).toBe(`rotated-csrf-of-${OPERATOR.userId}`)
+  })
+
+  it("ends the restore as revoked when the session read names another admin than the CSRF recovery did", async () => {
+    const sent = routeFetch({
+      [CSRF]: [[200, csrfFor(OPERATOR)]],
+      [ADMIN_SESSION]: [[200, { ...SESSION_RESPONSE, data: OTHER_OPERATOR }]],
+    })
+    const ended = listenForSessionEnd()
+    const runtime = createAdminRuntime()
+
+    await expect(runtime.restore()).resolves.toBeNull()
+
+    expect(sent.map(({ route }) => route)).toEqual([CSRF, ADMIN_SESSION])
+    expect(ended()).toEqual([{ scope: "admin", reason: "revoked" }])
+    expect(runtime.tokenStore.read("admin", "principal")).toBeNull()
+    expect(runtime.tokenStore.read("admin", "csrfToken")).toBeNull()
+  })
+
+  it.each([
+    { way: "finds no cookie session", routes: { [CSRF]: [[401, failure("AUTHENTICATION_REQUIRED")]] }, settles: "resolves", holds: null, expectation: "holds no user" },
+    { way: "is refused the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[403, failure("AUTHORIZATION_DENIED")]] }, settles: "rejects", holds: null, expectation: "holds no user" },
+    { way: "meets an outage on the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[500, failure("INTERNAL_ERROR")]] }, settles: "rejects", holds: OPERATOR.userId, expectation: "keeps the admin to restore again" },
+  ] as const)("$expectation when a restore over a stored principal $way", async ({ routes, settles, holds }) => {
+    routeFetch(routes)
+    localStorage.setItem(PRINCIPAL_KEY, JSON.stringify(OTHER_OPERATOR))
+    const runtime = createAdminRuntime()
+    await runtime.tokenStore.hydrate()
+
+    const outcome = await runtime.restore().then(
+      () => "resolves",
+      () => "rejects",
+    )
+
+    expect(outcome).toBe(settles)
+    expect(heldUserId(runtime.tokenStore, "admin")).toBe(holds)
   })
 })

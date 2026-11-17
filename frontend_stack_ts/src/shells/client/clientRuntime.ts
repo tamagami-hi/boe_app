@@ -245,6 +245,7 @@ export const createClientRuntime = (): ClientRuntime => {
       })
       return principal
     } catch {
+      tokenStore.clear("client")
       return null
     }
   }

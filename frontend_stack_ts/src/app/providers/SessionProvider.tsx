@@ -96,9 +96,9 @@ export const SessionProvider = ({
       try {
         const principal = await restore()
         if (cancelled) return
-        setState(
+        setState((current) =>
           principal === null
-            ? { status: "anonymous", principal: null, error: null, endedReason: null }
+            ? { status: "anonymous", principal: null, error: null, endedReason: current.endedReason }
             : { status: "authenticated", principal, error: null, endedReason: null },
         )
       } catch (error) {
