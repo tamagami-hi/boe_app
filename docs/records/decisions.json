@@ -664,13 +664,21 @@
     {
       "id": "DEC-67",
       "group": "admin-improvements",
-      "text": "From v0.18.0 every release is a patch release (0.18.x). The main reform is done; what is left is minor changes and fixes, each shipped as a 0.18.x patch. No minor or major version bump unless the maintainer says otherwise.",
+      "text": "Releases follow the maintainer's monthly cycle. Each monthly upgrade session ends in one minor release: November 2026's session is v0.18.0, justified by the size of that month's work. Every later change in the same month ships as a patch of it (0.18.x); no further minor release that month. The next minor, v0.19.0, comes from the December session, scoped by feedback from users and admins, and December's later changes ship as 0.19.x. Production runs v0.15.4 (maintainer, 2026-11-17); the maintainer cuts and deploys every release.",
       "since": "2026-11-17",
-      "status": "In force from v0.18.0, cut by the maintainer on 2026-11-17.",
+      "status": "In force from v0.18.0 (cut 2026-11-17): the rest of November ships as 0.18.x; v0.19.0 is the December session.",
       "state": "in force",
       "by": "operator",
-      "on": "2026-11-17T10:11:09.364Z"
+      "on": "2026-11-17T10:18:42.597Z"
     }
   ],
-  "replaced": []
+  "replaced": [
+    {
+      "id": "DEC-67",
+      "group": "admin-improvements",
+      "was": "From v0.18.0 every release is a patch release (0.18.x). The main reform is done; what is left is minor changes and fixes, each shipped as a 0.18.x patch. No minor or major version bump unless the maintainer says otherwise.",
+      "replaced": "2026-11-17, by DEC-67",
+      "why": "The maintainer corrected the first wording: one minor release per monthly session, patches in between."
+    }
+  ]
 }

@@ -1774,6 +1774,21 @@
       "track": "main",
       "agent": "claude-opus-5-5 coordinator",
       "verb": "task_other"
+    },
+    {
+      "at": "2026-11-17T10:18:42.604Z",
+      "session": "cli",
+      "track": "main",
+      "agent": "operator",
+      "verb": "decision_replace",
+      "target": "admin-improvements / DEC-67: in force"
+    },
+    {
+      "at": "2026-11-17T10:19:11.743Z",
+      "session": "29729b30-6722-4d99-9c27-948d03fb8568",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_other"
     }
   ]
 }

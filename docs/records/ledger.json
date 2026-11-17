@@ -2016,6 +2016,10 @@
     {
       "commit": "66fd4c1",
       "note": "Plan: v0.18.0 cut recorded; releases from now are 0.18.x patches only (DEC-67)."
+    },
+    {
+      "commit": "1ac5fef",
+      "note": "Plan: monthly release cycle (DEC-67 replaced): one minor per monthly session, 0.18.x for the rest of November, v0.19.0 in December; production at v0.15.4."
     }
   ]
 }
