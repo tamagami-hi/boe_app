@@ -212,8 +212,6 @@ build_images() {
         err ""
         err "    ARG VITE_BEO_APP_TARGET=client"
         err "    ENV VITE_BEO_APP_TARGET=\$VITE_BEO_APP_TARGET"
-        err ""
-        err "See release_manager/FACTS_VS_PLAN.md §6 item 7."
         exit 1
     fi
     ok "Dockerfile declares ARG VITE_BEO_APP_TARGET"
