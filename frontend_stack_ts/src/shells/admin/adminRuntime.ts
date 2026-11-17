@@ -14,7 +14,7 @@ import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
-import { endSession } from "~/api/session/sessionEnd"
+import { endSession, watchStoredPrincipal } from "~/api/session/sessionEnd"
 import {
   createTokenStore,
   createWebPersistence,
@@ -310,23 +310,28 @@ export const createAdminRuntime = (): AdminRuntime => {
     }
   }
 
+  const endRestore = (): null => {
+    endSession(tokenStore, "admin", "revoked")
+    return null
+  }
+
   const cookieRestore = async (): Promise<Principal | null> => {
+    const stored = watchStoredPrincipal("admin")
     try {
       const { data } = await http.request(getWebCsrf, { unauthenticated: true })
-      tokenStore.update("admin", {
-        csrfToken: data.csrfToken,
-        principal: JSON.stringify(principalFrom(data.user)),
-      })
+      const recovered = principalFrom(data.user)
+      if (stored.anotherUserSince(recovered.userId)) return endRestore()
+      const recoveredText = JSON.stringify(recovered)
+      tokenStore.update("admin", { csrfToken: data.csrfToken, principal: recoveredText })
+      stored.wrote(recoveredText)
     } catch (error) {
       clearUnlessOutage(error)
       return null
     }
 
     const principal = await readCookieSession()
-    if (!holdsUser(tokenStore, "admin", principal.userId)) {
-      endSession(tokenStore, "admin", "revoked")
-      return null
-    }
+    if (!holdsUser(tokenStore, "admin", principal.userId)) return endRestore()
+    if (stored.anotherUserSince(principal.userId)) return endRestore()
     tokenStore.set("admin", "principal", JSON.stringify(principal))
     return principal
   }

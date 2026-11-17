@@ -333,6 +333,15 @@ const routeFetch = (routes: Readonly<Record<string, readonly Reply[]>>): Sent[] 
   return sent
 }
 
+const whileSending = (route: string, act: () => void): void => {
+  const send = globalThis.fetch
+  globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (`${init?.method ?? "GET"} ${new URL(url).pathname}` === route) act()
+    return send(input, init)
+  }
+}
+
 const settle = (): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, 0)
@@ -525,6 +534,28 @@ describe("admin browser restore", () => {
     expect(sent.map(({ route }) => route)).toEqual([CSRF, ADMIN_SESSION, CSRF, REFRESH, ADMIN_SESSION])
     expect(ended()).toEqual([])
     expect(runtime.tokenStore.read("admin", "csrfToken")).toBe(`rotated-csrf-of-${OPERATOR.userId}`)
+  })
+
+  it.each([
+    { stored: OTHER_OPERATOR, restores: null, ends: [{ scope: "admin", reason: "revoked" }], expectation: "ends the restore as revoked and keeps the other admin's stored principal" },
+    { stored: { ...OPERATOR, fullName: "Test Operator Renamed" }, restores: OPERATOR.userId, ends: [], expectation: "restores the admin" },
+  ])("$expectation when another tab stores $stored.fullName while the session read is in flight", async ({ stored, restores, ends }) => {
+    const storedText = JSON.stringify(stored)
+    const sent = routeFetch({ [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[200, SESSION_RESPONSE]] })
+    whileSending(ADMIN_SESSION, () => {
+      localStorage.setItem(PRINCIPAL_KEY, storedText)
+    })
+    const ended = listenForSessionEnd()
+    const runtime = createAdminRuntime()
+
+    const principal = await runtime.restore()
+    await settle()
+
+    expect(sent.map(({ route }) => route)).toEqual([CSRF, ADMIN_SESSION])
+    expect(principal?.userId ?? null).toBe(restores)
+    expect(heldUserId(runtime.tokenStore, "admin")).toBe(restores)
+    expect(ended()).toEqual(ends)
+    if (restores === null) expect(localStorage.getItem(PRINCIPAL_KEY)).toBe(storedText)
   })
 
   it("ends the restore as revoked when the session read names another admin than the CSRF recovery did", async () => {

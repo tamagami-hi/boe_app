@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { submitClientReview } from "~/api/generated/operations"
+import { heldUserId } from "~/api/session/refresh"
 import { SESSION_INVALIDATED_EVENT } from "~/api/session/scope"
 import { createClientRuntime } from "~/shells/client/clientRuntime"
 
@@ -155,6 +156,52 @@ describe("browser session recovery after a document load", () => {
   })
 })
 
+
+const whileSending = (route: string, act: () => void): void => {
+  const send = globalThis.fetch
+  globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (`${init?.method ?? "GET"} ${new URL(url).pathname}` === route) act()
+    return send(input, init)
+  }
+}
+
+const settle = (): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 0)
+  })
+
+describe("browser session recovery while another client signs in", () => {
+  const originalFetch = globalThis.fetch
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    delete window.__BOE_API_BASE__
+  })
+
+  it.each([
+    { stored: OTHER_INVESTOR, restores: null, ends: [{ scope: "client", reason: "revoked" }], expectation: "ends the restore as revoked and keeps the other client's stored principal" },
+    { stored: { ...INVESTOR, fullName: "Test Investor Renamed" }, restores: INVESTOR.userId, ends: [], expectation: "restores the client" },
+  ])("$expectation when another tab stores $stored.fullName while the CSRF recovery is in flight", async ({ stored, restores, ends }) => {
+    const storedText = JSON.stringify(stored)
+    const sent = routeFetch({ [CSRF]: [[200, csrfFor(INVESTOR)]] })
+    whileSending(CSRF, () => {
+      localStorage.setItem(PRINCIPAL_KEY, storedText)
+    })
+    const ended = listenForSessionEnd()
+    const runtime = createClientRuntime()
+    await runtime.tokenStore.hydrate()
+
+    const principal = await runtime.restore()
+    await settle()
+
+    expect(sent.map(({ route }) => route)).toEqual([CSRF])
+    expect(principal?.userId ?? null).toBe(restores)
+    expect(heldUserId(runtime.tokenStore, "client")).toBe(restores)
+    expect(ended()).toEqual(ends)
+    if (restores === null) expect(localStorage.getItem(PRINCIPAL_KEY)).toBe(storedText)
+  })
+})
 
 describe("transport selection", () => {
   const originalFetch = globalThis.fetch

@@ -13,6 +13,7 @@ import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
+import { endSession, watchStoredPrincipal } from "~/api/session/sessionEnd"
 import {
   createTokenStore,
   createWebPersistence,
@@ -237,9 +238,14 @@ export const createClientRuntime = (): ClientRuntime => {
    * as evidence of a session.
    */
   const cookieRestore = async (): Promise<Principal | null> => {
+    const stored = watchStoredPrincipal("client")
     try {
       const { data } = await http.request(getClientWebCsrf, { unauthenticated: true })
       const principal = principalFrom(data.user)
+      if (stored.anotherUserSince(principal.userId)) {
+        endSession(tokenStore, "client", "revoked")
+        return null
+      }
       tokenStore.update("client", {
         csrfToken: data.csrfToken,
         principal: JSON.stringify(principal),

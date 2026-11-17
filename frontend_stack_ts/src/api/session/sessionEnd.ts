@@ -14,16 +14,18 @@ export const endSession = (
   emitSessionInvalidated({ scope, reason })
 }
 
+const namesAnotherUser = (stored: string | null, userId: string | null): boolean => {
+  if (stored === null || userId === null) return false
+  const written = userIdOf(stored)
+  return written !== null && written !== userId
+}
+
 const endIfAnotherUserStored = (
   scope: SessionScope,
   tokenStore: TokenStore,
   stored: string | null,
 ): void => {
-  if (stored === null) return
-  const written = userIdOf(stored)
-  const held = heldUserId(tokenStore, scope)
-  if (written === null || held === null || written === held) return
-  endSession(tokenStore, scope, "revoked")
+  if (namesAnotherUser(stored, heldUserId(tokenStore, scope))) endSession(tokenStore, scope, "revoked")
 }
 
 const readStored = (key: string): string | null => {
@@ -31,6 +33,25 @@ const readStored = (key: string): string | null => {
     return localStorage.getItem(key)
   } catch {
     return null
+  }
+}
+
+export type StoredPrincipalWatch = Readonly<{
+  anotherUserSince: (userId: string) => boolean
+  wrote: (principal: string) => void
+}>
+
+export const watchStoredPrincipal = (scope: SessionScope): StoredPrincipalWatch => {
+  const principalKey = credentialStorageKey(scope, "principal")
+  const expected = { value: readStored(principalKey) }
+  return {
+    anotherUserSince: (userId) => {
+      const stored = readStored(principalKey)
+      return stored !== expected.value && namesAnotherUser(stored, userId)
+    },
+    wrote: (principal) => {
+      expected.value = principal
+    },
   }
 }
 
