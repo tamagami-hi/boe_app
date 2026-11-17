@@ -1,6 +1,6 @@
 # Client erasure (Phase G)
 
-Status: built on lane `g-erasure` (tally `M11-phase-g:G-L1-erasure`), reviewed three times and fixed, landed on local `main` at `e29ff37` (2026-11-14), not released. No client has been erased anywhere.
+Status: built on lane `g-erasure` (tally `M11-phase-g:G-L1-erasure`), reviewed three times and fixed, landed on local `main` at `e29ff37` (2026-11-14), and released from v0.16.0; v0.15.4 and earlier have no erase command. This document does not record whether any client has been erased in production; the re-scrub pre-flight below counts them.
 Decision: DEC-29 (behaviour) and DEC-33 (go-ahead), group `admin-improvements`.
 DEC-66 (national-form phones and the re-scrub of erased clients): built on lane `p-erasure-phones` (tally `M19-patches-0-18:P-erasure-phones`), not released.
 This is a destructive change under `RULES.md` rule 11: it deletes and overwrites existing
@@ -56,7 +56,7 @@ The pass then works only on the client's own rows (listed in the table map) and:
 - replaces whole emails, case-insensitively and only where no further address characters touch them, and their masked `x***@domain` form;
 - replaces phones only between digit boundaries, so no longer number is cut. A `+91` phone is replaced in every national form (DEC-66): the ten digits, split 5 + 5 by one space or hyphen or not split, alone or after `+91`, `91` or `0` with or without one space or hyphen (`9876543210`, `98765 43210`, `+91 98765 43210`, `+91-9876543210`, `098765 43210`, `919876543210`). Any other phone is replaced as `+E.164` and as its digits without `+`;
 - in free text, also replaces the client's full name, case-insensitively and only as whole words;
-- in JSON, replaces emails as above in every string value, and a phone in its stored `+91…` form in every string value. In a string value that contains at least one letter or whitespace, such as a decline reason, it also replaces every national form above (DEC-66). A value made only of digits, such as an amount or an id, and a JSON number are never touched, and nor is a value with no letter or space such as `98765-43210` on its own. It sets string values equal to the client's name or nominee to `Tombstoned`, and sets the `name` and `relation` fields directly inside any object under a `nominee` key to `Tombstoned`. A name inside a longer JSON sentence and a name or relation nested one object deeper are not replaced.
+- in JSON, replaces emails as above in every string value, and a phone in its stored `+91…` form in every string value. In a string value that contains at least one letter or whitespace, such as a decline reason, it also replaces each known phone as the text pass does (DEC-66): its digits without the `+`, and for a `+91` phone every national form above. A value made only of digits, such as an amount or an id, and a JSON number are never touched, and nor is a value with no letter or space such as `98765-43210` on its own. It sets string values equal to the client's name or nominee to `Tombstoned`, and sets the `name` and `relation` fields directly inside any object under a `nominee` key to `Tombstoned`. A name inside a longer JSON sentence and a name or relation nested one object deeper are not replaced.
 
 Phone endings (last four digits) in audit metadata are left: the code already treats them as redactions. Financial identifiers are never rewritten: `withdrawal_operations.transfer_reference` and `provider_payment_details.provider_reference` stay as they are.
 
@@ -127,7 +127,15 @@ Erasures made before DEC-66 replaced a phone in stored JSON only in its stored `
 
 **What it cannot tell or find.**
 
+- It cannot tell a phone number from any other number of the same shape. In an erased client's free text it also replaces numbers that are not phones at all:
+  - a bank account number of ten digits starting 6 to 9, for example after `a/c`;
+  - a 12-digit UTR or other reference that starts with `91` followed by 6 to 9;
+  - a paise amount of ten digits starting 6 to 9: `7500000000 paise` becomes `tombstone paise`;
+  - a range of two five-digit figures: `60000-70000` or `75000 80000` inside a sentence becomes `tombstone`;
+  - a rupee amount: `₹9876543210.00` becomes `₹tombstone.00`;
+  - the national part of a foreign number: `+44 98765 43210` becomes `+44 tombstone`.
 - It cannot tell the client's own number from any other mobile number written in the same text, such as a relative's number or a BeOnEdge support number quoted in a receipt; it replaces them all, in those rows only. A receipt that names the erased client's id counts as theirs even when it also names someone else, as in the erasure.
+- The erasure itself matches only the client's known numbers, so it does not have these false matches.
 - It does not find a number with a letter right before or after it (`Mob9876543210`) or a hyphen right before it, landline or foreign numbers, other separators (dots, brackets, two spaces), a value with no letter or space (`98765-43210` on its own), names, emails, or anything outside those rows.
 
 **How it runs.**
@@ -135,17 +143,53 @@ Erasures made before DEC-66 replaced a phone in stored JSON only in its stored `
 - Dry run by default: the whole pass runs in one transaction that is then rolled back, so it changes nothing, and prints what `--apply` would change: `mode`, `erasedClients`, the count per table, and each changed row's table and id (no values). `--apply` runs the same pass and commits it.
 - It refuses to run at all, dry run included, when `NODE_ENV` is `production`, unless `--allow-production` is given. Any other argument is refused. A refusal exits with code 2 and reads or changes nothing.
 - Idempotent: the replacement `tombstone` never matches the pattern, so a second `--apply` reports no rows and changes nothing.
-- It writes no audit row; the printed report is the record of the run.
+- It writes no audit row; the printed report is the only record of the run. Keep the `--apply` report with the release record.
+- It has no date limit: it re-scrubs every client with a `client.erased` row, including clients erased after DEC-66, whose known numbers were already replaced but whose free text can still hold the false matches above.
 - Rows are locked `FOR UPDATE` until the transaction ends, in the dry run too, and each erased client costs one sequential scan of `idempotency_records` (the receipts naming the id). The runtime's 10 s statement timeout applies.
 
-**Pre-flight (read-only).** Nothing needs re-scrubbing unless this returns a count above zero:
+**Pre-flight (read-only).** Nothing needs re-scrubbing unless this returns a count above zero. Fill in the time the first DEC-66 release was deployed to this database; erasures from then on already replaced national forms:
 
 ```sql
-SELECT count(DISTINCT entity_id) AS erased_clients FROM audit_events
-WHERE entity_type = 'user' AND command = 'client.erased';
+\set dec66_deployed_at 'YYYY-MM-DD HH:MI:SS+05:30'
+SELECT count(DISTINCT entity_id) AS erased_before_dec66 FROM audit_events
+WHERE entity_type = 'user' AND command = 'client.erased' AND occurred_at < :'dec66_deployed_at';
 ```
 
-**Production run (maintainer only).** Through the stack's compose project and environment (the `compose` wrapper in `release_manager/stacks/_shared/_boe_lib.sh`, the way it runs `migrate.js status`): `run --rm --no-deps migrate node dist/scripts/rescrubErasedPhones.js --allow-production` for the dry run; review the rows it names; then the same with `--apply --allow-production`. It was never run against a real database while it was built.
+A production database that goes straight from v0.15.4 to a DEC-66 release has never had the erase command (it shipped in v0.16.0), so it has nothing to re-scrub: do not run the command there.
+
+**Reading the named rows (read-only).** The dry run prints only table names and row ids. Before any `--apply`, read the free text of those rows: put every id from the report's `rows` into `ids` (all are UUIDs, so one list serves every table) and run:
+
+```sql
+\set ids '{00000000-0000-0000-0000-000000000000}'
+BEGIN READ ONLY;
+SELECT 'audit_events' AS row_table, id, reason_detail AS text_value, metadata::text AS json_value
+  FROM audit_events WHERE id = ANY (:'ids'::uuid[])
+UNION ALL SELECT 'notifications', id, concat_ws(' | ', title, body), payload::text
+  FROM notifications WHERE id = ANY (:'ids'::uuid[])
+UNION ALL SELECT 'support_requests', id, concat_ws(' | ', subject, body, resolution_note), NULL
+  FROM support_requests WHERE id = ANY (:'ids'::uuid[])
+UNION ALL SELECT 'application_reviews', id, reason_detail, NULL
+  FROM application_reviews WHERE id = ANY (:'ids'::uuid[])
+UNION ALL SELECT 'outbox_events', id, NULL, payload::text
+  FROM outbox_events WHERE id = ANY (:'ids'::uuid[])
+UNION ALL SELECT 'client_value_entries', id, note, NULL
+  FROM client_value_entries WHERE id = ANY (:'ids'::uuid[])
+UNION ALL SELECT 'client_position_maturities', id, note, NULL
+  FROM client_position_maturities WHERE id = ANY (:'ids'::uuid[])
+UNION ALL SELECT 'withdrawal_operations', id, note, NULL
+  FROM withdrawal_operations WHERE id = ANY (:'ids'::uuid[])
+UNION ALL SELECT 'fund_receipt_acknowledgements', id, private_note, NULL
+  FROM fund_receipt_acknowledgements WHERE id = ANY (:'ids'::uuid[])
+UNION ALL SELECT 'idempotency_records', id, NULL, response_body::text
+  FROM idempotency_records WHERE id = ANY (:'ids'::uuid[])
+UNION ALL SELECT 'user_contact_history', id, reason_detail, NULL
+  FROM user_contact_history WHERE id = ANY (:'ids'::uuid[]);
+ROLLBACK;
+```
+
+Run `--apply` only after an explicit maintainer decision to accept that scope: every mobile-shaped number in these rows, including any of the non-phone shapes above, becomes `tombstone`.
+
+**Production run (maintainer only).** Through the stack's compose project and environment (the `compose` wrapper in `release_manager/stacks/_shared/_boe_lib.sh`, the way it runs `migrate.js status`): `run --rm --no-deps migrate node dist/scripts/rescrubErasedPhones.js --allow-production` for the dry run; read the rows it names with the query above; only after the decision to accept them, the same with `--apply --allow-production`; keep that report with the release record. It was never run against a real database while it was built.
 
 **Rollback.** No schema change, so an images-only rollback is unaffected. The previous release's erase command does not replace national forms; an erasure made while rolled back can be covered by running the re-scrub after the roll-forward.
 
