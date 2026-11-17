@@ -12,7 +12,7 @@ import {
 import { isTemporaryFailure } from "~/api/errors"
 import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
-import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
+import { createRecoveryQueue, createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
 import { endSession, watchStoredPrincipal } from "~/api/session/sessionEnd"
 import {
@@ -192,14 +192,30 @@ export const createAdminRuntime = (): AdminRuntime => {
     }
   }
 
+  const recoverCsrfToken = async (): Promise<RefreshOutcome> => {
+    if (heldUserId(tokenStore, "admin") === null) return "replaced"
+    try {
+      const { data } = await bareClient.request(getWebCsrf, { unauthenticated: true })
+      if (!holdsUser(tokenStore, "admin", data.user.userId)) return "replaced"
+      tokenStore.set("admin", "csrfToken", data.csrfToken)
+      return "rotated"
+    } catch (error) {
+      if (isTemporaryFailure(error)) throw error
+      return "unauthenticated"
+    }
+  }
+
+  const recoveries = createRecoveryQueue()
+
   const refreshCoordinator = createRefreshCoordinator(
-    native ? executeNativeRefresh : executeCookieRefresh,
+    native ? executeNativeRefresh : () => recoveries(executeCookieRefresh),
   )
 
   const http = createHttpClient({
     scope: "admin",
     tokenStore,
     refreshCoordinator,
+    ...(native ? {} : { csrfRecovery: createRefreshCoordinator(() => recoveries(recoverCsrfToken)) }),
     reportOutcome: (outcome) => {
       reportOutcome(outcome)
     },

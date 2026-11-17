@@ -68,6 +68,7 @@ export type HttpClientDeps = Readonly<{
   scope: SessionScope
   tokenStore: TokenStore
   refreshCoordinator: RefreshCoordinator
+  csrfRecovery?: RefreshCoordinator
   reportOutcome?: (outcome: TransportOutcome) => void
   baseUrl?: () => string
   fetchImpl?: typeof fetch
@@ -144,6 +145,9 @@ const requiresSession = (
   operation: Pick<AnyOperation, "authChannel">,
   unauthenticated: boolean | undefined,
 ): boolean => unauthenticated !== true && !SESSIONLESS_AUTH_CHANNELS.includes(operation.authChannel)
+
+const isCsrfRefusal = (operation: Pick<AnyOperation, "method">, error: unknown): error is ApiError =>
+  operation.method !== "GET" && error instanceof ApiError && error.status === 403 && error.code === "CSRF_INVALID"
 
 const sessionRequired = (): ApiError =>
   new ApiError({
@@ -344,6 +348,22 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
   const stillHolds = (sender: string | null): boolean =>
     sender !== null && holdsUser(deps.tokenStore, deps.scope, sender)
 
+  const resendAfterCsrfRecovery = async <TOperation extends AnyOperation>(
+    operation: TOperation,
+    options: RequestOptions<TOperation>,
+    sender: string | null,
+    refusal: ApiError,
+  ): Promise<Result<TOperation>> => {
+    if (deps.csrfRecovery === undefined) throw refusal
+    const outcome = await deps.csrfRecovery.refreshOnce(deps.scope).catch((failure: unknown) => {
+      throw withoutRetry(failure)
+    })
+    if (!stillHolds(sender)) throw refusal
+    if (outcome === "rotated") return await sendOnce(operation, options)
+    if (outcome === "replaced") endSession(deps.tokenStore, deps.scope, "revoked")
+    throw refusal
+  }
+
   const sendWithAuthRecovery = async <TOperation extends AnyOperation>(
     operation: TOperation,
     options: RequestOptions<TOperation>,
@@ -356,6 +376,9 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
       return await sendOnce(operation, options)
     } catch (error) {
       if (options.unauthenticated === true) throw error
+      if (isCsrfRefusal(operation, error) && stillHolds(sender)) {
+        return await resendAfterCsrfRecovery(operation, options, sender, error)
+      }
       if (!(error instanceof ApiError) || error.status !== 401) throw error
       if (!stillHolds(sender)) throw error
 
