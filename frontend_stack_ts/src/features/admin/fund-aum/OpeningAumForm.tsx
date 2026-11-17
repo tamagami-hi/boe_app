@@ -102,6 +102,7 @@ export const OpeningAumForm = ({ fundId, fundName, hasAum, onReload }: OpeningAu
 
   if (hasAum) {
     if (!isLocked && outcome.kind !== "rejected") return null
+    if (!isLocked) return notices
     return (
       <Card>
         <Section

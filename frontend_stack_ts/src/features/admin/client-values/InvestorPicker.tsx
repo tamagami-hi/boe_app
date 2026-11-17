@@ -16,6 +16,7 @@ export type InvestorChoice = Readonly<{ userId: string; label: string }>
 
 export type InvestorPickerProps = Readonly<{
   userId: string
+  initialQuery?: string
   hint: string
   disabled?: boolean
   onChange: (choice: InvestorChoice) => void
@@ -25,13 +26,14 @@ const LIST_PERMISSIONS = ["users.read", "users.read_limited"] as const
 
 export const InvestorPicker = ({
   userId,
+  initialQuery = "",
   hint,
   disabled = false,
   onChange,
 }: InvestorPickerProps): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canList = hasAnyPermission(LIST_PERMISSIONS)
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState(initialQuery)
   const search = query.trim()
   const investors = useAdminUsers(search === "" ? { segment: "clients" } : { segment: "clients", q: search }, canList)
   const denied = !canList || hasCode(investors.error, "AUTHORIZATION_DENIED")

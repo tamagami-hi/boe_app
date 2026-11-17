@@ -11,6 +11,7 @@ import { useLinkedRecord } from "./linkedRecord"
 const IndividualClientGrowthScreen = (): React.ReactElement => {
   const { linked, relink } = useLinkedRecord()
   const [userId, setUserId] = useState(linked.userId)
+  const [formKey, setFormKey] = useState(linked.userId)
   const [pickedLabel, setPickedLabel] = useState("")
   const investor = useLinkedInvestor(userId, pickedLabel)
   const formUserId = investor.missing ? "" : userId
@@ -22,7 +23,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
         description="Appends a growth entry against one position. A rate is measured against the amount invested, so it does not compound; the amount invested itself never moves. Read the projected value before committing — the server recalculates it authoritatively and its response is the truth."
       />
       <IndividualGrowthForm
-        key={formUserId}
+        key={investor.missing ? "" : formKey}
         userId={formUserId}
         investorLabel={investor.label === "" ? "The selected investor" : investor.label}
         initialFundId={formUserId === linked.userId ? linked.fundId : ""}
@@ -33,11 +34,13 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
           <>
             <InvestorPicker
               userId={userId}
+              initialQuery={pickedLabel}
               hint="Search by name, email or phone. Only investors with a holding can be adjusted."
               disabled={disabled}
               onChange={(choice) => {
                 setUserId(choice.userId)
                 setPickedLabel(choice.label)
+                if (choice.userId !== "") setFormKey(choice.userId)
                 relink({ userId: choice.userId, fundId: "" })
               }}
             />

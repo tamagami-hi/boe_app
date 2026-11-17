@@ -76,6 +76,10 @@ export const UserLifecyclePanel = ({
   const canClose = hasAnyPermission(["users.close"])
   const unknown = outcome.kind === "unknown"
   const busy = lifecycle.isPending || unknown
+  const canSuspendHere = accountState === "active" && canSuspend && !ownAccount
+  const canReinstateHere = accountState === "suspended" && canSuspend
+  const canCloseHere = accountState !== "closed" && canClose && !ownAccount
+  const hasAction = canSuspendHere || canReinstateHere || canCloseHere
 
   const run = (action: UserLifecycle): void => {
     const attempt = held !== null && held.action === action ? held : { action, idempotencyKey: mintIdempotencyKey() }
@@ -160,59 +164,65 @@ export const UserLifecyclePanel = ({
           </Alert>
         ) : null}
 
-        <FormField label="Reason" hint="Recorded in the audit log. Not shown to the investor.">
-          {({ id }) => (
-            <Input
-              id={id}
-              value={reason}
-              maxLength={2_000}
-              disabled={unknown}
-              onChange={(event) => {
-                setReason(event.target.value)
-              }}
-            />
-          )}
-        </FormField>
+        {hasAction ? (
+          <>
+            <FormField label="Reason" hint="Recorded in the audit log. Not shown to the investor.">
+              {({ id }) => (
+                <Input
+                  id={id}
+                  value={reason}
+                  maxLength={2_000}
+                  disabled={unknown}
+                  onChange={(event) => {
+                    setReason(event.target.value)
+                  }}
+                />
+              )}
+            </FormField>
 
-        <div className={ACTION_ROW}>
-          {accountState === "active" && canSuspend && !ownAccount ? (
-            <Button
-              tone="danger"
-              disabled={busy}
-              onClick={() => {
-                setPending("suspend")
-              }}
-            >
-              Suspend
-            </Button>
-          ) : null}
-          {accountState === "suspended" && canSuspend ? (
-            <Button
-              disabled={busy}
-              onClick={() => {
-                setPending("reinstate")
-              }}
-            >
-              Reinstate
-            </Button>
-          ) : null}
-          {accountState !== "closed" && canClose && !ownAccount ? (
-            <Button
-              tone="danger"
-              disabled={busy}
-              onClick={() => {
-                setPending("close")
-              }}
-            >
-              Close
-            </Button>
-          ) : null}
-        </div>
+            <div className={ACTION_ROW}>
+              {canSuspendHere ? (
+                <Button
+                  tone="danger"
+                  disabled={busy}
+                  onClick={() => {
+                    setPending("suspend")
+                  }}
+                >
+                  Suspend
+                </Button>
+              ) : null}
+              {canReinstateHere ? (
+                <Button
+                  disabled={busy}
+                  onClick={() => {
+                    setPending("reinstate")
+                  }}
+                >
+                  Reinstate
+                </Button>
+              ) : null}
+              {canCloseHere ? (
+                <Button
+                  tone="danger"
+                  disabled={busy}
+                  onClick={() => {
+                    setPending("close")
+                  }}
+                >
+                  Close
+                </Button>
+              ) : null}
+            </div>
+          </>
+        ) : null}
 
         {ownAccount ? (
           <p className={PROSE_SM}>You cannot suspend or close your own account. Another admin can do this.</p>
         ) : !canSuspend && !canClose ? (
-          <p className={PROSE_SM}>Changing an account state needs the users.suspend or users.close permission.</p>
+          <p className={PROSE_SM}>Your role cannot suspend, reinstate or close accounts.</p>
+        ) : accountState === "closed" ? (
+          <p className={PROSE_SM}>This account is closed and cannot be reopened from here.</p>
         ) : null}
       </Card>
 

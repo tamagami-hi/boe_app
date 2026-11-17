@@ -6,6 +6,7 @@ import { mintIdempotencyKey } from "~/api/idempotency"
 import { useSession } from "~/app/providers/SessionProvider"
 
 import { isPastReceiptLifetime, keepHold, readHold, releaseHold, type ReceiptRetention } from "./heldWriteStore"
+import { useMarkUnsettledHeldWrite } from "./unsettledHeldWrites"
 
 export type HeldWriteOutcome<TResult> =
   | Readonly<{ kind: "idle" }>
@@ -86,6 +87,7 @@ export const useHeldWrite = <TBody extends object, TResult>(
   const [unreadableAt, setUnreadableAt] = useState(restored.unreadableAt)
   const [expired, setExpired] = useState(restored.expired)
   const [outcome, setOutcome] = useState<HeldWriteOutcome<TResult>>(() => (restored.hold === null ? IDLE : UNKNOWN))
+  useMarkUnsettledHeldWrite(hold !== null || unreadableAt !== null)
 
   const holdOn = (next: Hold<TBody> | null): void => {
     current.current = next

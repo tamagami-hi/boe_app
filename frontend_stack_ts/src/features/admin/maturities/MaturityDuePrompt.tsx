@@ -1,9 +1,11 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Modal } from "~/app/overlays/Modal"
+import { useOverlayStack } from "~/app/providers/OverlayStackProvider"
 import { useSession } from "~/app/providers/SessionProvider"
 import { ClientPageLink } from "~/features/admin/shared/clientPageLink"
+import { useHasUnsettledHeldWrite } from "~/features/admin/shared/unsettledHeldWrites"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
@@ -26,9 +28,21 @@ export const MaturityDuePrompt = ({ dismissed, onDismiss }: MaturityDuePromptPro
   const canRead = hasAnyPermission(READ_PERMISSIONS)
   const canWrite = hasAnyPermission(WRITE_PERMISSIONS)
   const due = useDueMaturities(canRead && !dismissed)
+  const { depth } = useOverlayStack()
+  const isHoldingWrite = useHasUnsettledHeldWrite()
   const [acting, setActing] = useState<MaturityAction | null>(null)
+  const [isArmed, setArmed] = useState(false)
+  const [isShown, setShown] = useState(false)
   const hasDue = due.data !== undefined && due.data.total > 0
   const readFailed = due.data === undefined && due.isError
+  const canOpen = canRead && !dismissed && (hasDue || readFailed) && depth === 0 && !isHoldingWrite
+
+  useEffect(() => {
+    if (!canOpen || isShown) return
+    if (isArmed) setShown(true)
+    else setArmed(true)
+  }, [canOpen, isArmed, isShown])
+
   if (!canRead || dismissed) return null
   if (acting !== null) {
     return (
@@ -42,7 +56,7 @@ export const MaturityDuePrompt = ({ dismissed, onDismiss }: MaturityDuePromptPro
       />
     )
   }
-  if (!hasDue && !readFailed) return null
+  if (!isShown || (!hasDue && !readFailed)) return null
 
   const openDashboard = (): void => {
     onDismiss()
