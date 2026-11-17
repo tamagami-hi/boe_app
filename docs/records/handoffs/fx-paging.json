@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "track": "fx-paging",
+  "current": {
+    "task": "FX-paging",
+    "from": "claude-opus-5-5 fixer fx-paging",
+    "track": "fx-paging",
+    "at": "2026-11-17T00:11:15.280Z",
+    "lines": [
+      "fx-paging follow-up after review-26 (r-fx-paging-2.out.md): one new commit 00ea526 fix(paging): refocus Show more without scrolling, end stale holds, on a8bc9b0. Track now 9ba2251, a8bc9b0, 00ea526. Not pushed, not landed (DEC-61).",
+      "Files: frontend_stack_ts/src/ui/patterns/LoadMore.tsx (1 line), frontend_stack_ts/src/api/paged.ts (+5 lines). Nothing else; B and D left alone (finding-52), E (plan count 34 vs 36) not owned.",
+      "A (MEDIUM, blocking) fixed: LoadMore's focus restore is now button.focus({ preventScroll: true }). Kept for both paths (failed and successful Show more); it restores only when focus fell to body/null and the pressed button is still connected.",
+      "C (LOW) fixed: new effect in usePagedQuery releases the query's hold whenever it is held and hasNextPage is false (any observer of the key, after any refetch or invalidation that leaves no next page). loadAll observers then refetch on focus/reconnect/mount again, and a later growth of the list does not bring the old error back.",
+      "TEST: none added (rule 10). The existing new test cannot cover C with one extra assertion (needs a shrinking first page plus an invalidation). Throwaway check src/api/pagedHoldRelease.tmp.test.ts, deleted afterwards and never committed: held loadAll key, invalidate with page 1 now hasMore=false, then a focus event must refetch. Green with the fix (run 20261117T000944Z, kind other); red with the release effect removed (20261117T000946Z, kind other): 'expected 2 to be 3' first-page reads.",
+      "CHECKS (Node 22 container, recorded, run from frontend_stack_ts): npm run check: typecheck, lint, 41 files / 339 tests, generate:api:check, build, boot 7 chunks, phonepe native check (20261117T000954Z); build:client: android dist 17 assets 950,161 bytes, boot 7 chunks (001031Z); build:admin: boot 7 chunks (001036Z). Contracts unchanged since 234831Z (not rerun). Committed paged.ts byte-identical to the checked one.",
+      "COMMIT: subject 65 characters, body 193 words, author and committer tamagami-hi, no trailers, no new comments.",
+      "RUNTIME PASS MUST CONFIRM:",
+      "- A: scroll position (window.scrollY or the list's scroll container) unchanged across a successful Show more by mouse click in Chromium at 1280 and by tap (touch emulation or APK) at 360; also on a failed Show more when the user scrolled up during the ~6.5 s retry chain. document.activeElement is the button afterwards (Try again on failure, Show more on success while pages remain).",
+      "- Earlier checks from the a8bc9b0 handoff: F2 request count (0 requests for the failed catalogue page after a /dashboard round trip; admin catalogue via /funds with no filter); F1 label (no 'The last refresh failed' notice on a remount within gcTime, real and 3 s delayed refetch; note whether the one-frame busy Try again is visible); focus after Enter on failure and success; F4 (403 AUTHORIZATION_DENIED on an after= request shows the alert and no button).",
+      "- C, if a fixture allows it: hold a loadAll list, shrink it to one page and invalidate (or wait out a refetch), then a focus event refetches it again."
+    ]
+  },
+  "history": [
+    {
+      "task": "FX-paging",
+      "from": "claude-pro-fx-paging",
+      "track": "fx-paging",
+      "at": "2026-11-16T21:35:51.882Z",
+      "lines": [
+        "fx-paging (FX-6) built on track/fx-paging: one commit 9ba2251 fix(paging): show a failed Show more or refresh, hold a failed page. Not pushed, not landed (held for the Node 24 cut, DEC-61/UQ-6).",
+        "Files: frontend_stack_ts/src/api/paged.ts, ui/patterns/LoadMore.tsx, ui/patterns/AsyncBoundary.tsx, plus tests api/paged.test.ts (one test added) and new ui/patterns/LoadMore.test.tsx. No other file, no state.ts change, no parked file, no API/contract/schema change.",
+        "FINDINGS: CC-13 closed; CA-12 closed; CL-11 closed; finding-25 closed (residual sibling in a parked file, see DOUBTS); finding-41 (FX-6) closed. Evidence TESTED + STATIC; RUNTIME not run (coordinator).",
+        "WHAT CHANGED:",
+        "- PagedListState gains loadMoreError (null unless the latest failure was a next page). The hook keeps it through a later background refetch, so the notice is not relabelled while that refetch runs. `error` keeps its old meaning (parked OnlinePaymentHistory relies on it).",
+        "- LoadMore: on a failed page shows an error Alert (role=alert) 'More <noun> could not be loaded, so this list is not complete.' above the same button, which now reads 'Try again' (button keeps its tree position, so focus is kept). Session-ended errors show no alert. Applies to all 36 LoadMore lists (plan said 34; Phase I added NomineeRequestQueueScreen and ClientNomineeRequestPanel).",
+        "- AsyncBoundary: when error is set and data is shown (and the error is not a page error or a session end), a warning Alert (role=status) 'The last refresh failed, so this may be out of date.' sits above the kept data, with 'Try again' (loading while refetching); no retry for forbidden/notConfigured, as ErrorState. Optional AsyncQuery.loadMoreError lets paged queries suppress it for page failures.",
+        "- loadAll queries: refetchOnMount/WindowFocus/Reconnect return false while the query is awaiting a page retry (status error + fetchMeta forward), so a stopped walk is not restarted by focus, reconnect or another screen mounting it; only the user's Try again (refetch) resumes it. Non-loadAll lists keep refreshing loaded pages on focus (the client bell shares the notifications key); those refreshes never request the failed page.",
+        "TESTS (rule 10, two, no others):",
+        "- LoadMore.test.tsx 'shows a failed page as an error with Try again, not as a shorter list'. Red: on unfixed code (run 20261116T212831Z) and isolated mutation isFailed forced false on the final code (20261116T213308Z): 'Unable to find role=alert'. Reverted.",
+        "- paged.test.ts 'does not re-request a failed page on focus, reconnect or another screen opening it'. Red: isolated mutation removing HELD_WALK_REFETCH (20261116T213100Z): 4 requests for the held key instead of 2. Reverted. Also red on unfixed code at 212831Z.",
+        "- Correction: run 20261116T213030Z (green kind) exited 1: my first test version asserted on the shared request log, which earlier tests' still-mounted clients also write to on focus/online events. Scoped to its own key (as the existing filter test does); green after.",
+        "CHECKS (Node 22 container, recorded): contracts npm ci + npm run build exit 0; frontend npm run check: typecheck, lint, 41 files / 338 tests passed (336 before, +2), generate:api:check, build, boot check 7 chunks, phonepe native check (run 20261116T213319Z); build:client passed, android dist 17 assets 949129 bytes, boot 7 chunks (213356Z); build:admin passed, boot 7 chunks (213401Z). Checks ran on the exact committed tree; amends changed only the message.",
+        "RUNTIME PASS for the coordinator (states.mjs variant; UQ-7 scope):",
+        "- Needs lists with a second page: in the route handler rewrite limit=<n> to limit=1 on list GETs (all requests of one list, so the cursor stays valid), then fulfil 500 (INTERNAL_ERROR, retryable) only for GETs whose query has after=. Expect ~3 s before the alert (app retries a retryable GET twice).",
+        "- State A, failed page: client /notifications, /activity (ledger), /activity/receipts, /portfolio/value-updates, /profile/support, /portfolio/funds/<id> (receipts and value updates); admin /users, /audit, /emails, /maturities, /support, /funds, /users/<id> ledger tab. Click Show more. Expect: rows kept, 'N <noun> so far', role=alert 'More <noun> could not be loaded, so this list is not complete.', button 'Try again', document.activeElement still that button, no warning notice. Count after= requests for 30 s plus a visibilitychange: no repeat. Unroute, Try again: next rows, alert gone.",
+        "- State B, failed refresh with data: load normally, then route GETs to 500 and trigger a refetch (document visibilitychange while visible, or reconnect). Expect the warning 'The last refresh failed, so this may be out of date.' above unchanged rows with 'Try again'; unroute + Try again clears it. Sample: client /dashboard, /portfolio, /activity/receipts; admin /overview (tiles keep their own copy, no double notice), /users, /client-values/returns.",
+        "- State C, load-all lookups: fail after= on admin /client-values/payment-sheet (recording sheet), /client-values/individual (investor picker), admin fund catalogue pickers, client fund names (useFundCatalogue). Expect the full error panel with Try again, never a partial list; after a visibilitychange no request at all until Try again.",
+        "- Widths: client 360 and 1280 (Alert in the centred LOAD_MORE_ROOT column, wrap at 360), admin 390 and 1440; full DEC-56 set if time allows. Also capture parked /activity payments tab and /sips: same shared pattern, no file changed; expect only the new notices.",
+        "- Existing states.mjs fail/slow modes should read as before (all-GET failure still gives error panels).",
+        "DOUBTS / NOT FIXED:",
+        "- Parked features/activity/OnlinePaymentHistory.tsx runs its own walk keyed on error != null; after a failed page, a successful focus/reconnect refetch clears the error and it re-requests the page by itself (one request per refetch, not a loop). File parked (DEC-14), not changed; belongs with finding-27.",
+        "- A write that invalidates a held load-all query (e.g. a fund edit invalidating the catalogue) refetches it and the walk resumes, re-requesting the failed page. A user's own write, not a timer or focus; left as is.",
+        "- Offline (STATIC): TanStack networkMode 'online' pauses a fetch while the browser reports offline, so Show more shows neither loading nor error until reconnect. Not a failure, so outside FX-6; candidate for fd-states-forms.",
+        "- Interpretation recorded: 'a failed page' = a next page (Show more or a load-all step); a failed refetch of loaded pages follows the normal focus/reconnect policy and shows the stale notice.",
+        "- Not run: runtime screenshot pass, contracts npm run check (only build), backend checks (untouched). docs/ui-overhaul/plan.md not edited (not owned); its '34 LoadMore lists' is now 36."
+      ]
+    },
+    {
+      "task": "FX-paging",
+      "from": "claude-opus-5-5 fixer fx-paging",
+      "track": "fx-paging",
+      "at": "2026-11-16T23:50:53.888Z",
+      "lines": [
+        "fx-paging fix pass after review-18 and the runtime pass: one new commit a8bc9b0 fix(paging): hold a failed page per query and keep focus on retry, on 9ba2251. Not pushed, not landed (DEC-61).",
+        "Files: frontend_stack_ts/src/api/paged.ts, api/paged.test.ts (one test added), ui/patterns/LoadMore.tsx, ui/patterns/AsyncBoundary.tsx (one line). Button.tsx (fd-actions) untouched; no parked file, no API/contract/schema change.",
+        "FINDINGS: F2 (finding-47 item 1) closed; F1 (finding-47 item 2) closed; finding-47's 'write invalidation restarts a stopped loadAll walk' also closed by the same hold; focus claim corrected; F4 closed. Not touched (not ours): stacked stale notices, raw fund ids in ClientLedgerTab, OnlinePaymentHistory (DEC-14), F3 (fx-admin-values).",
+        "WHAT CHANGED:",
+        "- paged.ts: the page hold is a module store (WeakMap keyed by the cached Query object, plus a listener set read through useSyncExternalStore). Every hook sharing the query key sees it. It is set when a next-page fetch settles as an error (forward fetchMeta), released when a next page succeeds or when the hook's refetch is called (the error panel's / stale notice's Try again). It lives exactly as long as the query's cache entry (gcTime after the last observer, or queryClient.clear at session end); a browser reload starts clean.",
+        "- While held: the loadAll walk does not step; loadAll observers skip refetch on mount/focus/reconnect; a stopped walk keeps data undefined and returns the held error even after another hook's successful refetch cleared query.error; loadMoreError = held error for every observer, including a freshly mounted one (F1).",
+        "- AsyncBoundary: stale notice now shows when error !== loadMoreError (was: loadMoreError == null). Same for non-paged queries; for paged ones a later refresh failure (a different error object) still shows its notice beside a held page failure.",
+        "- LoadMore: remembers its button when pressed while focused; when isLoadingMore ends and focus is on body/null, focuses the button again (still connected only). Covers both a failed and a successful Show more. The Alert text is wrapped in a span with useId and the button gets aria-describedby while failed. No button at all for AUTHORIZATION_DENIED (errorVariantOf === forbidden); the alert and 'N so far' stay.",
+        "BEHAVIOUR CHANGE vs 9ba2251 (deliberate): after a failed Show more, a later successful background refetch no longer clears the 'not complete' alert; it stays with 'Try again' until the user retries (runtime report item 5 will now read differently). A write that invalidates a held loadAll list refreshes loaded pages but keeps the error panel until Try again.",
+        "TEST (rule 10): paged.test.ts 'does not re-request a failed page after another hook sharing the query refreshes it': loadAll hook fails page 2, unmounts; a non-loadAll hook on the same key refetches page 1 (asserted: 2 first-page reads) and still reports the failure as loadMoreError (F1); the loadAll hook remounts: failed page requested once only, data undefined, error = failure; refetch (Try again) then loads both pages.",
+        "RED CONTROLS (reverted, final tree byte-identical to the checked one): 20261116T234815Z per-component flag back (9ba2251 paged.ts): 'expected length 1 but got 2' on failed-page requests. 20261116T234825Z isolated mutation removing isHeld from the walk effect: same failure. (20261116T234801Z was the same control before I moved the first-page assertion ahead of the remount; it failed on page-1 count 3 vs 2.)",
+        "CHECKS (Node 22 container, recorded): focused tests green 20261116T234749Z (10 tests); contracts npm run build exit 0 (234831Z); frontend npm run check: typecheck, lint, 41 files / 339 tests (338 before, +1), generate:api:check, build, boot 7 chunks, phonepe native check (234838Z); build:client 17 assets 950,078 bytes, boot 7 chunks (234919Z); build:admin boot 7 chunks (234924Z). npm ci not rerun (node_modules already installed in this worktree).",
+        "RUNTIME PASS TO RE-CHECK (same scripts/paging.mjs):",
+        "- F2 request count: client 390, stop the catalogue walk on /activity, open /dashboard (useFunds refetches page 1), back to /activity: expect 0 requests for the failed page (was 12 in 12 s) until Try again; also admin: stop useAdminFundCatalogue on a picker screen, visit /funds with no filter, come back. /dashboard and admin /funds lists may now show the page failure in their own LoadMore (same query) if they render one.",
+        "- F1 label: /activity page fails, leave to /notifications, wait 16.5 s, come back (real and 3 s delayed refetch): expect the error alert 'More ... not complete' and 'Try again' throughout, no 'The last refresh failed' notice. LoadMore may show a busy spinner for one frame (optimistic TanStack frame); report if visible longer.",
+        "- Focus: on Show more via keyboard (Enter) and mouse in Chromium, after the failure document.activeElement is the 'Try again' button (not body); after a successful Show more it is the 'Show more' button if more pages remain. 28 routes x widths as before.",
+        "- F4: force a 403 AUTHORIZATION_DENIED on an after= request: alert shown, no Try again button.",
+        "- Regression sample: failed refresh with data still shows the stale notice (no page failure held); loadall table from the report unchanged; visibilitychange on a stopped walk still 0 requests.",
+        "DOUBTS: (1) the hold store is module-level and keyed by Query instances, so it is per QueryClient in practice; tests create their own clients. (2) If a refetch shrinks a held list to one page, the hold stays in the store (harmless: LoadMore hides with hasMore false; a loadAll list counts as complete). (3) Two observers stepping the same walk concurrently still cancel each other's fetchNextPage (pre-existing, cancelRefetch default); with the hold this cannot repeat a failed page. (4) docs/ui-overhaul/plan.md '34 LoadMore lists' still says 34 (36 real); not owned."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "track": "fx-shell",
+  "current": {
+    "task": "FX-shell",
+    "from": "claude-opus-5-5 builder fx-shell",
+    "track": "fx-shell",
+    "at": "2026-11-16T21:34:12.387Z",
+    "lines": [
+      "fx-shell (plan docs/ui-overhaul/plan.md 4.1): three commits on track/fx-shell over 07ee398. Not pushed, landed, merged or rebased (DEC-61, UQ-6).",
+      "1d722ad fix(client-shell): keep the client router stable across eligibility (FX-1)",
+      "5164634 fix(client-shell): fill route parameters into the header back target (FX-3)",
+      "94f1217 fix(admin-auth): drop the client reset link from the admin sign-in (FX-11)",
+      "FINDINGS",
+      "FX-1 UCM-01, UCW-01: closed TESTED and STATIC; RUNTIME still owed. ClientRoutes builds the router once (useMemo on targets). buildRouter keeps one lazy() per RouteDef (WeakMap) and reads the gate through RouterConfig.useEligibilityGate, called only by the eligible-route guard. Admin passes a constant gate hook.",
+      "FX-1 EmailVerificationStatus.tsx checked, no change: once the screen stays mounted it reaches InlineReadFailure (the new test renders it).",
+      "FX-3 CC-01 and the parameter half of UCM-04: closed STATIC. The ClientFrame header back resolves parent targets with createBackPolicyResolver(CLIENT_ROUTES, CLIENT_HOME_PATH). Home and exit routes are unchanged. No parked file changed; window.confirm (CC-24) untouched. The history-first rule is FD-1 and was not attempted.",
+      "FX-11 CA-07: closed STATIC. AuthPort gains optional hasPasswordReset; the admin port sets it to false and LoginScreen omits the link. The client port leaves it unset, so its link is unchanged.",
+      "TEST (rule 10): src/shells/client/ClientRoutes.test.tsx, 'the client router > keeps the open screen and its draft mounted while eligibility fails and is read again'. The eligibility read fails, then succeeds after Try again. The test asserts 1 mount, 1 then 2 reads, and the draft input is kept.",
+      "RED 1: the test on the unchanged router failed with 2 eligibility reads where 1 was expected (evidence 8bfa48b5). An earlier attempt hit a vi.mock hoisting error and is recorded as 'other' (dd663007).",
+      "RED 2, controlled negative on 1d722ad: put back buildRouter in ClientRoutes render plus a lazy() per call. Red, 2 reads where 1 expected (a53933e0). Reverted with git checkout; green (f573d76a).",
+      "CHECKS (tools/node22-container/run.sh): contracts npm ci + build green. frontend npm run check 41 files / 337 tests, green on each commit's tree.",
+      "build:client (dist budget, chunk-cycle, boot): before 17 assets, 7 JS chunks, 948169 bytes; after 17 assets, 7 JS chunks, 948427 bytes. Acyclic; boot check passes on 7 chunks.",
+      "build:admin plus check-android-dist --variant=admin: before 18 assets, 7 JS chunks, 1209086 bytes; after 18 assets, 7 JS chunks, 1209327 bytes. Acyclic; boot check passes on 7 chunks.",
+      "Chunk count unchanged: manualChunks puts all of src/ in one 'app' chunk, so lazy() makes no route chunks.",
+      "RUNTIME PASS FOR THE COORDINATOR (u-audits method; not run here):",
+      "R1 states.mjs, client 360 and 1440 (390 and 1280 also if time): /dashboard and /profile with failing reads. The failure panel shows within 15 s: 'Couldn't check' + Try again on the email and investing lines, and ErrorState on the money reads. No skeleton or 'Checking...' is left.",
+      "R1 also: count requests over 60 s. Each read should stop at its retry budget (1 + 2 retries), against about 78 per minute in results/states-client.json. Check the Profile nominee panel is no longer blank.",
+      "R2 half-filled form: type into a Profile form, then make eligibility refetch (focus after 60 s staleTime, or Try again on a failed line). The input keeps its value and the screen does not flash the route spinner.",
+      "R3 invest back at 360 and 390: on /funds/<id>/invest/lumpsum and /funds/<id>/invest/sip, the header back arrow opens /funds/<id>, not /funds/:fundId. Also check /portfolio/funds/<id> goes back to /portfolio, and /verify-email goes back to /dashboard. Capture parked routes for no other change.",
+      "R4 admin /login at 390, 1280, 1440 and 1920: no 'Forgot your password?'. Client /login at 360 and 1440 still shows it and opens /password/forgot.",
+      "DOUBTS AND CONSERVATIVE READINGS",
+      "D1 hasPasswordReset is optional (absent means the client reset route) because ClientShellRoot.tsx is outside this lane. fd-client-shell (shells/client/**) can set it explicitly or move the path into the port.",
+      "D2 The client shell no longer subscribes to eligibility at the top. Eligibility is now read only by Home, Profile, the fund page, the verify screens and the invest guard, so it is no longer warmed on sign-in for screens that do not read it.",
+      "D3 React Query v5 puts a query with no data back to pending on refetch. A manual Try again therefore shows 'Checking...' until the answer, not the failure with a busy button, so InlineReadFailure's 'retrying' prop is effectively unused in EmailVerificationStatus and InvestingStatus. This is bounded, not a loop. InvestingStatus is cp-profile's (features/profile/**), so the two were left alike.",
+      "D4 On the parked invest routes, RequireEligible still shows 'Restoring your session' while a no-data eligibility read is retried. guards.tsx is not owned and the routes are parked.",
+      "D5 ClientFrame builds its own resolver instance over the same manifest as ClientShellRoot's hardware resolver. FD-1 (fd-header) can share one.",
+      "NOT RUN: runtime/screenshot pass (coordinator), backend and integration suites (no backend change). No API, contract, schema or permission change; no new source comments."
+    ]
+  },
+  "history": []
+}

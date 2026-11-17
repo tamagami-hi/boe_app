@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "track": "c-carried-backend",
+  "current": {
+    "task": "CL-backend",
+    "from": "claude-opus-5-5 fixer c-carried-backend",
+    "track": "c-carried-backend",
+    "at": "2026-11-16T22:45:21.738Z",
+    "lines": [
+      "Commits on track/c-carried-backend: ccdda78 (CL-01), 4027e64 (CL-02), 8f0090d fix(erasure): race the app version insert and refuse a deleted user (review fixes). Not pushed or landed.",
+      "F1: clientWriteErasureLock now publishes build 1502 (com.beonedge.app.dev) to a mkdtemp feed and reports 1501, so the app version report takes its INSERT branch (FK key-share lock waits behind erasure's users FOR UPDATE). Mark-read row dropped: it cannot leave anything behind; its lock in clientAccountRoutes stays. RacingWrite simplified (arrange returns void, no arranged id). 6 table cases.",
+      "F1 red control: run 20261116T224259Z-1181942, lockActiveClient removed from reportAppVersion only: 1 of 6 failed (app version 200). An unrecorded diagnostic run showed the body notified:true and 1 app_update_available row left for the erased account. Reverted from a saved copy; diff against HEAD empty.",
+      "F2: emailVerification lockActiveUser maps a missing user (after G3 delete) to ACCOUNT_NOT_ACTIVE instead of RESOURCE_NOT_FOUND.",
+      "F4: release_manager/docs/client-erasure.md Transaction row states refresh/logout (session row only, erasure revokes sessions after the users row), nominee withdrawal (nominee request lock), password change (INVALID_CREDENTIALS, password cleared), and the pre-existing gap of the code mailed after commit. Tests list updated to six writes.",
+      "F5: plan rows untouched (docs/ui-overhaul/plan.md CL-01/CL-02, plans/admin-improvements.md section 8); coordinator updates them at landing.",
+      "Checks (Node 22 container): npm run check 101 files/1204 tests green (20261116T224329Z-1196398); test:integration coverage off 73 files/589 tests green (20261116T224415Z-1210259), one fewer than 590 because the mark-read row was dropped. Targeted green 6/6 (20261116T224244Z-1174807).",
+      "Not verified: no runtime or VPS run."
+    ]
+  },
+  "history": [
+    {
+      "task": "CL-backend",
+      "from": "claude-opus-5-5 builder c-carried-backend",
+      "track": "c-carried-backend",
+      "at": "2026-11-16T22:27:30.459Z",
+      "lines": [
+        "Commits on track/c-carried-backend: ccdda78 fix(erasure): lock the client's user row in every client write (CL-01); 4027e64 refactor(statements): render the statement page without email helpers (CL-02). Not pushed or landed.",
+        "Started from the claude-pro run's uncommitted partial work (it stopped at a usage limit). Kept: activeClientLockRepository (users FOR SHARE, active and pii_tombstoned_at null), domain/client/activeClientLock.ts, H1's StatementLinkRepository.lockActiveClient moved there, the lock in reviews, tickets, app-version and mark-read, route wiring inside the register functions (composition.ts untouched). Added: refuseInactiveClient, the email verification fixes, the test and the erasure doc.",
+        "CL-01 newly locked (refuse ACCOUNT_NOT_ACTIVE unless active and not tombstoned): POST /v1/client/support/tickets, POST /v1/client/reviews, POST /v1/client/app-version, PATCH /v1/client/notifications/:id, statement links (H1 lock moved, now also checks tombstone).",
+        "CL-01 email verification: start already took users FOR UPDATE but never checked the state, so after a G2 erasure it created a code and mailed the placeholder; verify took the code row before users, the reverse of erasure. Both now lockById + refuseInactiveClient first.",
+        "Searched: every POST/PATCH in routes/client*.ts, clientProfileRoutes, passwordRoutes, auth routes, publicOnboardingRoutes, and their domain commands. Already locked, unchanged: profile phone/email/confirm (identity advisory then users FOR UPDATE), password change/reset/set/forgot, nominee requests (FOR UPDATE), sign-in, createOrder, SIP plan create.",
+        "Deliberately not locked: maturity choice. An open offer blocks erasure, so no row can outlive it, and sendMaturityOptions locks offer then users; a user-first lock in the client choice would invert that order (deadlock risk).",
+        "Not touched (DEC-14 payment files): SIP plan pause/resume/cancel, order pay, AutoPay routes. Sessions: refresh rotates in the locked session row, which erasure revokes.",
+        "Test: test/integration/clientWriteErasureLock.integration.test.ts, 7 table cases. Each holds the client's email_deliveries rows FOR UPDATE so a real G2 erasure stops after locking users, sends the write, waits for 2 lock waiters, releases; asserts erase 200, write 403 ACCOUNT_NOT_ACTIVE, nothing written.",
+        "Red control (run 20261116T222210Z-816052): lockActiveClient and refuseInactiveClient made no-ops and the verify lock removed: 7/7 failed (ticket, review, link 201; app-version, mark-read, code request 200; verify 500 after about 1.3 s). The 500 is inferred to be a deadlock from the timing; the app logger was off, so not confirmed from a log. Reverted from saved copies, then green.",
+        "Checks (Node 22 container, npm ci && npm run check; test:integration with coverage off): CL-01 tree 101 files/1204 tests, integration 73 files/590 tests; CL-02 tree the same counts. Targeted race test green 7/7.",
+        "CL-02: escapeHtml and groupIndian moved verbatim to src/domain/shared/displayText.ts; statementPage, emailLayout and emailMoney import from there; email modules no longer define them. A throwaway script (.temp/c-carried-backend/render-outputs.ts, not committed) hashed 21 renders before and after: identical (all-digest 0710fc18...).",
+        "Doubtful / for the coordinator: other domain files still import email helpers (domain/admin/earlyExit.ts and maturityOffers.ts from email/emailMoney, domain/auth/passwordLinkUrl.ts from email/emailValidation); the statement renderer still lives in domain/client. Not in this lane's scope.",
+        "Doubtful: mark-read and the app-version report only change a read flag, so their locks prevent no PII leak; locked for the class as the brief says. Released clients only see ACCOUNT_NOT_ACTIVE there while racing an erasure or closure; auth already answers it otherwise.",
+        "Docs: release_manager/docs/client-erasure.md Transaction row and Tests list updated. Plan rows (docs/ui-overhaul/plan.md CL-01/CL-02, plans/admin-improvements.md section 8 H1 carried) still say carried; update at landing.",
+        "Not verified: no runtime or browser run, nothing on a VPS."
+      ]
+    }
+  ]
+}

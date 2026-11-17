@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextId": 17,
+  "nextId": 38,
   "reviews": [
     {
       "id": "review-1",
@@ -338,6 +338,493 @@
         "agent": "claude-opus-5-5 coordinator (landing)"
       },
       "at": "2026-11-16T13:34:05.227Z"
+    },
+    {
+      "id": "review-17",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "commit": "94f1217",
+      "reviewer": "claude-pro (opus, xhigh), independent of the builder",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "medium": 1,
+        "low": 3
+      },
+      "summary": "FX-1, FX-3 and FX-11 closed; ownership, rule 8 (7 chunks, acyclic, boot passes), the one test and its red controls, and rules 9, 12 and 14 checked clean. Blocking M1: ClientFrame now resolves the back target on every render, and matchRouteParams called decodeURIComponent unguarded, so a malformed escape (/funds/%) threw above the route error boundary and blanked the client app (fixed by the coordinator in 09470fb, keeping the raw segment). Lows: hasPasswordReset absent means show (to fd-client-shell or cp-auth), Checking... on retry with no data (React Query reset; to cp-profile), commit-body wording (corrected in 09470fb).",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-shell.out.md",
+        "sha256": "60f21183f223b4ce15ff737e9667ab2b40905b4d05843e9d911c0904c527efa7",
+        "bytes": 7105
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T21:45:52.979Z"
+    },
+    {
+      "id": "review-18",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "commit": "9ba2251",
+      "reviewer": "claude-pro (opus, xhigh), independent of the builder",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 4
+      },
+      "summary": "Land when DEC-61 allows. CC-13, CA-12, CL-11, finding-25 and finding-41 closed; only the three owned files and their tests changed; all 36 LoadMore lists use the shared fix; both tests guard a rule-4 silent failure with real red controls. Lows: a remount within gcTime briefly shows a page failure as a failed refresh; two loadAll hooks share a query with ordinary lists, so a refetch elsewhere restarts a stopped walk once (finding-25 sibling); MaturityPanel shows two partly contradicting notices (to fx-admin-values); LoadMore offers Try again on AUTHORIZATION_DENIED (to fd-states-forms). Plan text says 34 lists; there are 36.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-paging.out.md",
+        "sha256": "abab58109e5dc490fcb71498b8d09898bb4d96a7d30072d72cd188159a847ce7",
+        "bytes": 7881
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T21:52:48.807Z"
+    },
+    {
+      "id": "review-19",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "commit": "09470fb",
+      "reviewer": "claude-pro (opus, xhigh), independent of the coordinator who made the fix",
+      "verdict": "land",
+      "blocking": 0,
+      "summary": "F1 closed for every caller (header back, client and admin hardware back, all through backPolicy): matchRouteParams keeps a raw segment it cannot decode. Safe: no double-encoding growth, no other route, no loop, no throw in substituteParams. Class check clean: the only decodeURIComponent in the frontend is now guarded, other parsers are already wrapped. Minimal one-function change in fd-header's file, which must keep decodeSegment when it reworks routeManifest.ts. Land when DEC-61 allows.",
+      "follows": "review-17",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-shell-2.out.md",
+        "sha256": "f06755849b1fbdb8bbe6f8fd1ae212a46ea8c3cc191378453c2fa2f4b4a99a01",
+        "bytes": 4579
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T21:55:54.938Z"
+    },
+    {
+      "id": "review-20",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "commit": "7c0c2cb",
+      "reviewer": "claude-pro (opus, xhigh), independent of the builder",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 3,
+        "low": 4
+      },
+      "summary": "Land when DEC-61 allows. UAW-01 closed, UAM-08 closed for Erase client, faint-text findings closed on every solid surface (recomputed: page 4.72, card 4.87, shell 4.54, field 4.51 as built at 67.8%). Mediums: the split list kept two columns at 1280 with 16 px slack (1 px with a scrollbar), fixed by the coordinator in 8d86c77 (9rem basis, 52rem threshold); the sign-in footnote is 4.39:1 over the darkest mesh point (carried, finding-48); faint text is now only 3-4 L* quieter than body text, for the screenshot review and the maintainer (DEC-45). Lows: built opacity 67.8 not 68; a darker dot in the disclosure glyph; disabled-button figures apply to secondary buttons only; long values still squeeze labels on phones.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-ui-recipes.out.md",
+        "sha256": "3b67bfad0e573a40f751218db7daa436122bedc85dd9343c47d9fa5375699a75",
+        "bytes": 9149
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T21:59:50.094Z"
+    },
+    {
+      "id": "review-21",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "commit": "b593cb9",
+      "reviewer": "claude-opus-5-5 reviewer agent (fresh context, not the builder or finisher)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "medium": 1,
+        "low": 5
+      },
+      "summary": "Moves byte-identical and every importer updated; persisted truth table and session-end clear correct; the touch of adminRuntime.ts and heldRecordings.ts is minimal and cannot fire for the client app. Blocking F1: a persisted hold is not bound to the admin who made it; a reload after the session ended in another tab keeps it (cookieRestore and nativeRestore return null without clearing), and the next admin signing in in that tab gets it, where Check again applies the write again because idempotency is scoped per admin. Lows: held carries the idempotency key at runtime; the slot is read once at mount but sends use the current slot; an unreadable stored entry is dropped silently; holds have no expiry against the 24 h receipt TTL; commit-body wording.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T22:35:32.380Z"
+    },
+    {
+      "id": "review-22",
+      "milestone": "M13-carried",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "commit": "4027e64",
+      "reviewer": "claude-opus-5-5 reviewer agent (fresh context, not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 4,
+        "info": 1
+      },
+      "summary": "Land. CL-01 closed: every non-payment client write is newly locked user-row first, already locked, or rightly exempt (maturity choice; session refresh and logout); FOR SHARE holders never upgrade, so no deadlock; the email-code check's inverted lock order is fixed; ACCOUNT_NOT_ACTIVE is declared on all seven operations and mapped by released apps. CL-02 closed: helpers moved byte for byte, no cycle. Lows fixed in 8f0090d: the race test now drives the app-version INSERT branch (its red control fails 1 of 6), a deleted user answers ACCOUNT_NOT_ACTIVE, and client-erasure.md states each case exactly. Plan rows are updated at landing.",
+      "by": {
+        "track": "c-carried-backend",
+        "agent": "claude-opus-5-5 coordinator (landing)"
+      },
+      "at": "2026-11-16T22:45:49.548Z"
+    },
+    {
+      "id": "review-23",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "commit": "6540c08",
+      "reviewer": "claude-opus-5-5 reviewer agent (fresh context, not the builder or fixer)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 1,
+        "low": 2
+      },
+      "summary": "F1, F2 and F3 closed: holds are bound to the admin who made them on restore, sign-in and restore drops other admins' holds, held carries no key and submit is refused while held, a hold captures its slot and admin. No regressions; 4 red controls real; 346 tests. Pre-existing, separate (finding-50): after a 401 the client refreshes and resends a write with the same key under whichever admin now owns the cookies, so a write from a tab whose cookies another admin took over can apply again and be attributed to that admin (MEDIUM, fix before persisted ledger writes land); a pre-processing CSRF refusal on Check again is shown as Nothing changed (LOW). Land when DEC-61 allows.",
+      "follows": "review-21",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T22:57:04.868Z"
+    },
+    {
+      "id": "review-24",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "commit": "c9e6572",
+      "reviewer": "claude-opus-5-5 security reviewer agent (fresh context, not the builder)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "medium": 1,
+        "low": 3,
+        "info": 3
+      },
+      "summary": "finding-50 closed for the first refresh in both cookie runtimes (tested); native not reachable; same-user resend unchanged. Blocking F1: after a replaced end the tab holds no user, isAnotherUser returns false for a null held user, so a later 401 (the payment sheet queue sends row 3 after rows 1 and 2 end the session; any late in-flight write) refreshes as the other admin, rotates their session and resends a held key as them. Fix: store the user during admin cookie restore, fail closed when the tab holds no user, stop the recorder queue at session end, add a test. F2 LOW: AUTHORIZATION_DENIED and ACCOUNT_NOT_ACTIVE are thrown before the key on every held-write route, so treat them as unknown on Check again. F3 LOW: no identity check after webRefresh. F4 judged acceptable. F5-F7 info.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T23:25:22.312Z"
+    },
+    {
+      "id": "review-25",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "commit": "c455a82",
+      "reviewer": "claude-opus-5-5 security reviewer (independent agent)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 3,
+        "info": 3
+      },
+      "summary": "review-24 F1-F3 closed, no regression, 7 red controls valid. Non-blocking: N1 late 401 after an end re-announces it as revoked; N2 resend checked against the user held at refresh time, not send time; N3 (pre-existing) another tab's sign-in serves this tab reads as the other user until a 401 (fix: storage listener on boe.<scope>.principal). N4-N6 info. Q4: yes, refuse signed-in requests locally while no user is held, keeping unauthenticated and public/public-token operations (password reset) allowed. Coordinator folds N1, N2, N3 and the Q4 guard into this lane before landing.",
+      "follows": "review-24",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-session-guard-2.out.md",
+        "sha256": "8bf4e09414f90265df10034401c3f994b2782670fd62579ebfa3a279f52ae92b",
+        "bytes": 10008
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T23:51:38.347Z"
+    },
+    {
+      "id": "review-26",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "commit": "a8bc9b0",
+      "reviewer": "claude-opus-5-5 reviewer (independent agent)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "medium": 2,
+        "low": 3
+      },
+      "summary": "F1, F2, F4 and the write-invalidation restart closed (static; F2 tested, 2 red controls). Blocks: A (MEDIUM) LoadMore restores focus with plain button.focus(), which scrolls the button into view after every mouse click or tap, so a successful Show more on a phone jumps past the new rows; fix with preventScroll. Not blocking: B (MEDIUM) the per-query hold outlives other hooks' refetches, so silent loadAll consumers (client names 'Fund', admin raw ids) stay degraded until Try again elsewhere, GC, sign-out or reload; C (LOW) a hold is not released when a refetch leaves no next page; D (LOW, pre-existing) focus lost after the final page; E plan count already 36 on main.",
+      "follows": "review-18",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-paging-2.out.md",
+        "sha256": "42fc99ac32440643c997b33c02c244be535dcbaf5e01ce0ddf424676a740aedd",
+        "bytes": 10869
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T00:07:32.646Z"
+    },
+    {
+      "id": "review-27",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "commit": "00ea526",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "closed": 2
+      },
+      "summary": "Read the 6-line diff of 00ea526. A closed: LoadMore restores focus with focus({ preventScroll: true }), only when focus fell to body and the button is still connected. C closed: a new effect releases a held query once its data has no next page. No other file changed; commit format and identity correct. No committed test for C (a throwaway test was recorded green and red as kind other); acceptable under rule 10. The scroll position must still be confirmed in the runtime re-check. B and D stay in finding-52.",
+      "follows": "review-26",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T00:12:13.392Z"
+    },
+    {
+      "id": "review-28",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "commit": "41de985",
+      "reviewer": "claude-opus-5-5 security reviewer (independent agent)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 2,
+        "info": 2
+      },
+      "summary": "Transport guard, N1, N2, N6 closed; N3 closed for the reported case; finding-50 closed. Every public and bootstrap path on all four surfaces still goes out (password reset is public by contract); no regression; 4 new and 5 changed tests, 8 red controls valid. Non-blocking: F1 the cross-tab listener subscribes only after the first signed-in render, so a switch during restore is missed (fix: compare stored and held principal on subscribe); F2 a signed-out web tab hydrated from localStorage still counts as holding a user, so the guard's invariant rests on no signed-out screen sending a signed-in read (fix: clear the scope when a cookie restore resolves signed out). F3, F4 info. Coordinator folds F1 and F2 into this lane.",
+      "follows": "review-25",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-session-guard-3.out.md",
+        "sha256": "ea9caacee2838e4a9d081f7c67ebface9c49c77a3be6fc382db9ffc4476bfb9c",
+        "bytes": 15151
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T00:24:14.755Z"
+    },
+    {
+      "id": "review-29",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "commit": "25de257",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "medium": 1,
+        "low": 1
+      },
+      "summary": "Read the source diff of 25de257. F1 and F2 of review-28 are addressed. Blocks (MEDIUM, rule 6): adminRuntime cookieRestore now calls tokenStore.clear('admin') in its catch for any CSRF-recovery failure, outages included; the wrapped admin store's clear also drops persisted held writes, so an admin who reloads during a network or backend outage loses a held write with an unknown outcome and can re-submit it under a new key. Before 25de257 an outage at reload kept the hold (review-23 design: holds bound to the admin survive a null restore). Fix: clear only when the error is not an outage, as readCookieSession already does; same rule for the client restore. LOW residual: if B finishes signing in while T1's client CSRF response (as A) is in flight, T1 stores A over B, T2 ends instead, and T1 reads B's data under A's name until the next 401 (at most the access-token lifetime); admin is covered by the getAdminSession compare. Record, no fix.",
+      "follows": "review-28",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T00:37:24.753Z"
+    },
+    {
+      "id": "review-30",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "commit": "496d7fb",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "closed": 1
+      },
+      "summary": "Read the source diff of 496d7fb. review-29's blocker closed: both admin restore catches (getWebCsrf and getAdminSession) clear the scope only when the error is not an outage, so held writes and held recordings survive an outage at reload; the client restore follows the same rule. A 401 (no cookie session) or a refused session read still clears, as any session end does. The extended restore test covers four cases with one red control (outage clears, failed 1 of 23). Checks on the committed head: 42 files, 376 tests; both builds boot. The residue is recorded as finding-53. Runtime pass (steps 1 to 9b) still to run.",
+      "follows": "review-29",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T00:41:37.161Z"
+    },
+    {
+      "id": "review-31",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "commit": "8b16de4",
+      "reviewer": "claude-pro opus xhigh (independent, read-only)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 2,
+        "low": 9
+      },
+      "summary": "All 15 writes use the shared held-write model; one key per attempt, Check again resends key and body, inputs locked while held; four persisted money writes keyed by slot with contract-schema parseBody; confirms match the sent body; FX-9 prefill, FX-10 IST dates, FX-8 panels and Manage AUM role (existing route permission) correct; no parked, ui, shared, API or contract change. M1: FAQ Publish/Unpublish still without confirm (CA-05). M2: Publish new terms has no expected-version check, so a stale page can publish over a newer version, and a refetch silently replaces typed values (API fix out of scope; screen-side compare possible). LOWs: no-versions 'moderate' defaults (rule 7), required tier offers Not set, clearPreview reset unguarded, bps shown as typed, malformed id gets a retry, quarter label on local clock, rate-limit seconds lost, generic helpers under funds/. Coordinator sends M1, M2 screen-side and the cheap LOWs back to the lane.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-admin-funds.out.md",
+        "sha256": "08f171afc7402cde68d86d57b53a3b3608110bd2c24c87113197de2a3e899b5e",
+        "bytes": 10120
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:04:59.369Z"
+    },
+    {
+      "id": "review-32",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "commit": "8d6fffd",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "closed": 1,
+        "low": 1
+      },
+      "summary": "Read the source diff of 8d6fffd, which fixes the runtime step-8 failure (evidence 8716f1e9). watchStoredPrincipal records the stored principal at restore start and the restore's own write; before storing a user from a server answer (admin: after getWebCsrf and after getAdminSession; client: after getClientWebCsrf) the restore ends as revoked, writing nothing, if the stored value changed since and names another user. Same-user changes and the tab's own write do not end it; native unchanged; sign-in still overwrites (correct, it sets the cookies). Two tests per shell, one red control each. Checks on the head: 42 files, 380 tests, both builds boot. LOW residual: localStorage changes reach other renderers asynchronously, so a write landing between the check and the write can still interleave; the subscribe-time check and listener then end whichever tab is wrong in most orderings. Step 8 re-run pending.",
+      "follows": "review-30",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:08:35.872Z"
+    },
+    {
+      "id": "review-33",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "commit": "aa6ac23",
+      "reviewer": "claude-pro opus xhigh (independent, read-only)",
+      "verdict": "fix",
+      "blocking": 3,
+      "findings": {
+        "high": 1,
+        "medium": 3,
+        "low": 5
+      },
+      "summary": "Ownership, rules, confirms, persisted slots, FX-8 and the table test are sound; every write holds its key. Blocks: F1 (HIGH) the 24 h hold expiry also withdraws Check again from record-an-investment and the payment sheet, whose receipts are durable, risking a second contribution; lifetime must be per write. F3 an unreadable hold does not lock the record and growth forms, and MaturityPanel's position change clears it. F4 collective growth and the monthly value update keep their key in page memory only, so leaving and committing again applies a second batch. Not blocking: F2 fx-admin-funds forms never surface unreadable; F5 stacked alerts; F6 URL tab change skips the hold check; F7 picker advice the finance role cannot follow; F8 payout hold stores the transfer reference (UQ-2); F9 confirms omit the investor. NomineeDecisionForm per-attempt key refuted. Backend gap recorded as finding-58.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-admin-values.out.md",
+        "sha256": "7ef75adedf3a9c6b9b4ef7a9099636a5d24e56d8d4911d7f0b849c8816903a4f",
+        "bytes": 12311
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:09:45.755Z"
+    },
+    {
+      "id": "review-34",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "commit": "d419374",
+      "reviewer": "claude-pro opus xhigh (independent, read-only)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 1,
+        "low": 4
+      },
+      "summary": "M1, M2 (screen side: real network re-read, typed values never overwritten), holdings persistence per fund, L1-L4, L7-L9 and review-33 F2 closed; no shared, ui, API, contract or payment change. F1 (MEDIUM, integration): the five persisted funds forms lock only on held !== null; after merging fx-admin-values an unreadable hold comes back as null, so the fund size, holding add and collective forms could resend under a new key. Must land together with a fix that locks them on unreadable. LOW: Check again after a lost publish does not re-read (record with finding-56); offline re-read waits silently; Return tier hint not linked; more generic helpers under funds/. Land when DEC-61 allows, after the runtime pass.",
+      "follows": "review-31",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-admin-funds-2.out.md",
+        "sha256": "38ddf1566e4ae39b2e40fb047887ab69c104a49f3e8c8aa2726f9f9157a77ce2",
+        "bytes": 9679
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:24:07.427Z"
+    },
+    {
+      "id": "review-35",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "commit": "4130e2b",
+      "reviewer": "claude-pro opus xhigh (independent, read-only)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "medium": 2,
+        "low": 3
+      },
+      "summary": "review-33 F1, F3, F6, F7, F9 closed; F4 partly. Per-write retention matches each route (record and sheet durable; reversal, maturity, growth ordinary). Blocks: A, the two batch screens say a held batch survives leaving the page even when storage refused the save, so the admin can leave and commit the batch again under a new key; render UnsavedHoldNotice and condition the text on persisted. For the funds lane at merge: B, FundSizeAdjustmentForm must set retention durable (its route stores a durable receipt); D, the funds forms must lock on an unreadable hold. C corrects finding-58: a growth resend after expiry does not apply twice, since expired receipts are never deleted and the unique insert rolls the transaction back. E: a URL tab change switches as soon as a hold clears.",
+      "follows": "review-33",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-admin-values-2.out.md",
+        "sha256": "5922e5408347dff2a4934fbf985748e6092031652caedc8593f4db462315ab9f",
+        "bytes": 9389
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:28:03.404Z"
+    },
+    {
+      "id": "review-36",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "commit": "8031c02",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "closed": 1,
+        "low": 1
+      },
+      "summary": "Read the source diff of 8031c02. review-35 A closed: both batch screens render UnsavedHoldNotice and say the hold survives leaving the page only when commit.persisted; inputs stay locked while held. New shared useUnloadGuard asks before reload or tab close while a hold is unsaved, on all eight saved forms. One test with a red control; checks on the head: 43 files, 391 tests, both builds boot. LOW left: in-app navigation away from an unsaved hold is not blocked (needs app/routing, not owned). Lane can land when DEC-61 allows, after the runtime pass, together with fx-admin-funds' integration fixes (retention durable on fund size, lock on unreadable).",
+      "follows": "review-35",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:32:00.054Z"
+    },
+    {
+      "id": "review-37",
+      "milestone": "M16-ui-overhaul",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "commit": "0268706",
+      "reviewer": "claude-pro opus xhigh (independent, read-only)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 3
+      },
+      "summary": "Integration commit after stacking on fx-admin-values (funds commits rebased to 671d124, 3d9b5a9, 6692999). Retention matches every route (fund size durable; opening AUM, collective, fund create, holdings ordinary). The five persisted forms lock on an unreadable or expired hold with only the danger-confirmed new attempt; values forms and payment sheet unchanged; no import cycle; the opening AUM card cannot double-apply. The 18-byte client growth is one unused CSS rule from Tailwind scanning admin copy, no admin JS in the client. LOWs: the opening AUM card keeps its title after a definite refusal; three new shared/ files added by this lane (the coordinator authorised this integration round to edit shared/ after fx-admin-values finished); holdings restart warning overstates the risk for an edit.",
+      "follows": "review-34",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-fx-admin-funds-3.out.md",
+        "sha256": "30c0ad4b2b62e09ba45a8a0670f1e6897f1409867f7b4f813b6d09d3c6de39f3",
+        "bytes": 9980
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T04:14:41.467Z"
     }
   ]
 }

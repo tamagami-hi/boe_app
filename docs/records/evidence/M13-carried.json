@@ -1,0 +1,304 @@
+{
+  "schema": 1,
+  "milestone": "M13-carried",
+  "records": [
+    {
+      "id": "2286fa47-26b5-4393-9e7b-da07867dec56",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "agent": "claude-opus-5-5 builder c-carried-backend",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/clientWriteErasureLock.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/c-carried-backend",
+      "started": "2026-11-16T22:21:45Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/c-carried-backend/20261116T222145Z-806459-green.log",
+        "sha256": "afb7602ce542e141fc6df85443e35c6aa254c66c9249a26a9f544e03a3b737a9",
+        "bytes": 601
+      },
+      "summary": {
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "CL-01 new race test, locks in place"
+    },
+    {
+      "id": "4f908c5c-c2e0-4645-be44-c0e03b58594c",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "agent": "claude-opus-5-5 builder c-carried-backend",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/clientWriteErasureLock.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/c-carried-backend",
+      "started": "2026-11-16T22:22:10Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/c-carried-backend/20261116T222210Z-816052-red.log",
+        "sha256": "78a90ba7dd1e451d3cfec861f6251a1bf8062bcf6cb39a4768cb64506e7131b1",
+        "bytes": 4980
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 7,
+        "ignored": 0
+      },
+      "note": "CL-01 control: every new user-row lock and active check removed, verify lock order reverted"
+    },
+    {
+      "id": "d694b680-10ac-485c-b4be-0cac943ff0ff",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "agent": "claude-opus-5-5 builder c-carried-backend",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/c-carried-backend",
+      "started": "2026-11-16T22:23:03Z",
+      "seconds": 52,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/c-carried-backend/20261116T222303Z-828797-green.log",
+        "sha256": "431842233f7a4a48608a9b523c4d6670931f2935143fbbaf9fb2c94ffea5dda5",
+        "bytes": 16910
+      },
+      "summary": {
+        "passed": 1204,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "CL-01 tree, before commit"
+    },
+    {
+      "id": "247e82c4-afa2-40fd-9c7c-1e565ae461ad",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "agent": "claude-opus-5-5 builder c-carried-backend",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/c-carried-backend",
+      "started": "2026-11-16T22:24:04Z",
+      "seconds": 40,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/c-carried-backend/20261116T222404Z-846685-green.log",
+        "sha256": "1bcd49d315e9b8e4d4f7c0cd8839f094030944c3ec312115df0c8903029745fd",
+        "bytes": 19099
+      },
+      "summary": {
+        "passed": 590,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "CL-01 tree, full integration suite"
+    },
+    {
+      "id": "526c4d92-e3dd-4e30-94de-07650c30d5cb",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "agent": "claude-opus-5-5 builder c-carried-backend",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/c-carried-backend",
+      "started": "2026-11-16T22:25:29Z",
+      "seconds": 50,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/c-carried-backend/20261116T222529Z-910999-green.log",
+        "sha256": "0c74b39b4f7af60f76357deca46153eeb4fdbccce684fb96955ae24b0277ab32",
+        "bytes": 16833
+      },
+      "summary": {
+        "passed": 1204,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "CL-02 tree, before commit"
+    },
+    {
+      "id": "94f1bdec-a984-4f51-ab99-5736b2697b4a",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "agent": "claude-opus-5-5 builder c-carried-backend",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/c-carried-backend",
+      "started": "2026-11-16T22:26:19Z",
+      "seconds": 41,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/c-carried-backend/20261116T222619Z-925282-green.log",
+        "sha256": "fdc81d0929421fdd52c33fd238865a2155b4d11c79ce5414132283f26a2271bc",
+        "bytes": 18254
+      },
+      "summary": {
+        "passed": 590,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "CL-02 tree, full integration suite"
+    },
+    {
+      "id": "d344558f-d5e4-4bd5-b4f3-69f27ba45fe7",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "agent": "claude-opus-5-5 fixer c-carried-backend",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/clientWriteErasureLock.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/c-carried-backend",
+      "started": "2026-11-16T22:42:44Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/c-carried-backend/20261116T224244Z-1174807-green.log",
+        "sha256": "2833c9ec4965d58e1744c1768ab561fcfddcec7d4e4a100b71e4c5bb5df443b5",
+        "bytes": 602
+      },
+      "summary": {
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "targeted race test after F1 rework"
+    },
+    {
+      "id": "f6189112-17ef-4cac-9f49-c92831357a83",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "agent": "claude-opus-5-5 fixer c-carried-backend",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/clientWriteErasureLock.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/c-carried-backend",
+      "started": "2026-11-16T22:42:59Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/c-carried-backend/20261116T224259Z-1181942-red.log",
+        "sha256": "9b9d7690b79db1d367d2a04ce31e619452141a8754fe93ab4ad08eeff4d0f82f",
+        "bytes": 2337
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control F1: app-version lock removed, expect the app version row to fail"
+    },
+    {
+      "id": "4dc8185a-823b-4d25-916f-956ad9177be1",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "agent": "claude-opus-5-5 fixer c-carried-backend",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/c-carried-backend",
+      "started": "2026-11-16T22:43:29Z",
+      "seconds": 43,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/c-carried-backend/20261116T224329Z-1196398-green.log",
+        "sha256": "0ba9a711159e1c256b9867d738b3b33f9708d9740bd8ea862971e184172ca59d",
+        "bytes": 16529
+      },
+      "summary": {
+        "passed": 1204,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend npm run check after review fixes"
+    },
+    {
+      "id": "cc2ab6ec-d35e-4fc6-957d-002ba1a69b61",
+      "task": "CL-backend",
+      "track": "c-carried-backend",
+      "agent": "claude-opus-5-5 fixer c-carried-backend",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/c-carried-backend",
+      "started": "2026-11-16T22:44:15Z",
+      "seconds": 40,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/c-carried-backend/20261116T224415Z-1210259-green.log",
+        "sha256": "299e8050d022ded0de7f1d06beae5af1daa00021d6171e7bcf206b2690bca967",
+        "bytes": 18114
+      },
+      "summary": {
+        "passed": 589,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "integration suite after review fixes, coverage off"
+    }
+  ]
+}

@@ -164,6 +164,5288 @@
         "doc_commit": "c5fe81e"
       },
       "note": "Failed and slow reads on 16 admin screens at 390 and 1440; every screen showed a failure with Try again. Route captures at 1280/1440/1920 are in the U3 capture run (logs/capture-admin.log); keyboard walks in logs/keyboard.log. plans/ui-overhaul/audit-admin-web.md in c5fe81e."
+    },
+    {
+      "id": "99b0e26e-9a32-4c5f-adad-735357ac8e9d",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "other",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:24:09Z",
+      "seconds": 41,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T212409Z-247354-other.log",
+        "sha256": "13b259acc6277cfbe03a98054d0db339b54e9e204b070ab942bcb610c1516de1",
+        "bytes": 898
+      },
+      "note": "contracts npm ci and build before frontend"
+    },
+    {
+      "id": "7df2f7de-670a-40e3-8ddf-c3afee2322a7",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:26:01Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T212601Z-255692-green.log",
+        "sha256": "7c269625b4dc80436469ff2bfd6ff9dc40cd230dd1793526741d38cc3e20f527",
+        "bytes": 897
+      },
+      "note": "contracts build for the frontend checks"
+    },
+    {
+      "id": "4048c352-5e5c-4b6f-9177-5c4a975d3857",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:26:11Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T212611Z-257227-green.log",
+        "sha256": "edafcb29c235a246b3d9fedf9be1a4ed8bd0a20a9c2e6e1a84b216c032d1f136",
+        "bytes": 3242
+      },
+      "note": "baseline build:client before the change, chunk count"
+    },
+    {
+      "id": "9313aee3-556c-404d-81fe-57cf7b0b7302",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "other",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:26:23Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T212623Z-260143-other.log",
+        "sha256": "96b561575d45c50b61206104c102ebbeeb8b8405d9f07226860a4540b2b241f3",
+        "bytes": 1109
+      },
+      "note": "frontend npm ci"
+    },
+    {
+      "id": "1598450a-e6be-4a22-984e-dfc108c0de3f",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin && node scripts/check-android-dist.mjs --variant=admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:26:25Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T212625Z-260855-green.log",
+        "sha256": "330838f11a164841f1a8d2bef3a732157e9a495580bf134b919a35593fa414d7",
+        "bytes": 2513
+      },
+      "note": "baseline build:admin before the change, plus the admin chunk-cycle check"
+    },
+    {
+      "id": "dd663007-44a0-4383-b3f6-5b7a1ccf1235",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "other",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/client/ClientRoutes.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:27:29Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T212729Z-270721-red.log",
+        "sha256": "f5af851a76364965db7394e2f78f096a866a522bd8a8fe5897177fd75fde2e2f",
+        "bytes": 1342
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; new FX-1 test against the unchanged router (per-render rebuild): expected red"
+    },
+    {
+      "id": "8bfa48b5-c85b-405d-9f74-667eef6894aa",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/client/ClientRoutes.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:27:40Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T212740Z-272705-red.log",
+        "sha256": "36dee1c45084b6d5355bcfe45731c68226f6e1264ed66dd8389c236cf4144e1e",
+        "bytes": 1203
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "new FX-1 test against the unchanged router (per-render rebuild): expected red"
+    },
+    {
+      "id": "664bf161-259c-4b68-949b-0a8202569894",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/paged.test.ts",
+        "src/ui/patterns/LoadMore.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:28:31Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T212831Z-280960-red.log",
+        "sha256": "dbefad3b1873c9d7fc58509589a9a4b558c2bcf4e9cd6252488c5d6821cd92df",
+        "bytes": 10103
+      },
+      "summary": {
+        "passed": 7,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "TDD red: both FX-6 tests against unfixed LoadMore/AsyncBoundary/paged"
+    },
+    {
+      "id": "affc4d75-98de-4d83-8894-9423908c0423",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:28:53Z",
+      "seconds": 37,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T212853Z-284505-green.log",
+        "sha256": "8a578d21196273f49c171306bc74c98f384fff401c40594d1b9c961b6585c74e",
+        "bytes": 6170
+      },
+      "summary": {
+        "passed": 337,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit 1 (FX-1) tree: npm run check"
+    },
+    {
+      "id": "977c7f44-7ad5-4758-90d9-d8f48a41f7f1",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:29:35Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T212935Z-289446-green.log",
+        "sha256": "fbdc9738b7e74c7b3a549e9d885e8217b651eecbaf2773376946e6399def5871",
+        "bytes": 2133
+      },
+      "note": "commit 1 (FX-1) tree: build:client with dist budget, chunk-cycle and boot checks"
+    },
+    {
+      "id": "b44853a4-da66-44f5-a7b9-c3887b10b275",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin && node scripts/check-android-dist.mjs --variant=admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:29:39Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T212939Z-289837-green.log",
+        "sha256": "8075ce28bc7cd5ef5ce90b4180fb8a6b835f21e06416650278f428beafa54045",
+        "bytes": 2513
+      },
+      "note": "commit 1 (FX-1) tree: build:admin plus the admin chunk-cycle check"
+    },
+    {
+      "id": "a53933e0-59c7-479c-91e1-a87cd49f68a2",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/client/ClientRoutes.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:30:08Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T213008Z-294559-red.log",
+        "sha256": "19fc267a4d2f5424dcb4fce00a26a4c71a396da7c328e076edc48a92a4c74c7c",
+        "bytes": 1203
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: per-render router rebuild and per-call lazy() put back on 1d722ad; expected red"
+    },
+    {
+      "id": "ced9cc22-2db8-4736-8256-255b2ec0ddcd",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/paged.test.ts",
+        "src/ui/patterns/LoadMore.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:30:30Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213030Z-298074-green.log",
+        "sha256": "515bcbf7b7731cc0d4c5fed801d383a28f7d3679c10693e4cd4699d3561e6d80",
+        "bytes": 2853
+      },
+      "summary": {
+        "passed": 8,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "FX-6 tests with the fix"
+    },
+    {
+      "id": "f573d76a-7155-40c2-b4f0-41ff4601ee20",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/client/ClientRoutes.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:30:38Z",
+      "seconds": 3,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T213038Z-299699-green.log",
+        "sha256": "7fa7949aff461aabea4c3835f6b551c91da2a556648d33eda938f09044c6f06b",
+        "bytes": 459
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "negative control reverted: FX-1 test back to green on 1d722ad"
+    },
+    {
+      "id": "9a27eb27-5e78-4f24-878b-7a1d8bafe428",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/paged.test.ts",
+        "src/ui/patterns/LoadMore.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:30:46Z",
+      "seconds": 2,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213046Z-301871-green.log",
+        "sha256": "c4d3ccf2ae2d081c37a23ed55625ab89cfd13664099f8703c605e743f4518ca6",
+        "bytes": 377
+      },
+      "summary": {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "FX-6 tests with the fix, held-walk assertion scoped to its own key"
+    },
+    {
+      "id": "7a3511a6-130e-4d12-a5d7-3b5eaf3df2de",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/paged.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:31:00Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213100Z-304788-red.log",
+        "sha256": "c463fa9ce51325fd721a6bf7d4843b458af09dac863952798fd2ed0b0d978ae5",
+        "bytes": 2435
+      },
+      "summary": {
+        "passed": 7,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "negative control: HELD_WALK_REFETCH removed from usePagedQuery; the no-re-fire test must fail"
+    },
+    {
+      "id": "a9b1dc0e-d7aa-42ff-9319-d4006966c8a6",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/ui/patterns/LoadMore.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:31:10Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213110Z-306210-red.log",
+        "sha256": "4580edc36d1db94fae41f0729239f9701cd293491dcc6fa67c6c8d786662ad5f",
+        "bytes": 7411
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "negative control: LoadMore error branch disabled (isFailed forced false); the failed-page test must fail"
+    },
+    {
+      "id": "65d3c20d-e3fb-4e60-8ea9-b8b32b9efd3f",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:30:54Z",
+      "seconds": 38,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T213054Z-304478-green.log",
+        "sha256": "36d891bbd4e1077331f1124976490837834d431395148a57b7dc474793234d18",
+        "bytes": 6174
+      },
+      "summary": {
+        "passed": 337,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit 2 (FX-3) tree: npm run check"
+    },
+    {
+      "id": "b9b5bb1c-84f6-45c2-80c2-3041a8211eae",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:31:37Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T213137Z-310700-green.log",
+        "sha256": "906616b802486dcbef4923a7baae341c88244b23d40ecb5d282cdc6365522713",
+        "bytes": 2133
+      },
+      "note": "commit 2 (FX-3) tree: build:client with dist budget, chunk-cycle and boot checks"
+    },
+    {
+      "id": "47812ed2-44ab-4024-8a7a-4067adf281e4",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:31:22Z",
+      "seconds": 42,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213122Z-308195-green.log",
+        "sha256": "069e45907f8746cd6eb164db063f57ff4e69a089e0f181b6f6ea6af4c2bd179c",
+        "bytes": 6257
+      },
+      "summary": {
+        "passed": 338,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm run check with FX-6"
+    },
+    {
+      "id": "a09fe4f9-6adc-44d9-9172-8f24d5dcbb3d",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:32:10Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213210Z-317572-green.log",
+        "sha256": "a889156dd2b37dff7d9f25be06937dcc5613619051b960c4645a757c8fcd4ba2",
+        "bytes": 2133
+      },
+      "note": "frontend build:client with FX-6"
+    },
+    {
+      "id": "c77f71ac-9c95-41ba-b671-a8e6884c502d",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:32:15Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213215Z-317954-green.log",
+        "sha256": "3abc80f35f9916daa913bbbe885f629cbb079c32e8a2b213c4fe6525a8099667",
+        "bytes": 2361
+      },
+      "note": "frontend build:admin with FX-6"
+    },
+    {
+      "id": "7385a493-f008-46fd-b9b3-afe544065ffc",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:32:07Z",
+      "seconds": 39,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T213207Z-317143-green.log",
+        "sha256": "f92558136ddb000caee1cf0212649c3a3458c0cb15dac91564985852b049fbb4",
+        "bytes": 6302
+      },
+      "summary": {
+        "passed": 337,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit 3 (FX-11) final tree: npm run check"
+    },
+    {
+      "id": "332e4c7c-f900-490f-af7e-6f44ef20e668",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:32:50Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T213250Z-322761-green.log",
+        "sha256": "f1ce6277f1e97a06b236f701663cfca3b0fc89dbd0e57aded9b58787961d071b",
+        "bytes": 2133
+      },
+      "note": "final tree: build:client with dist budget, chunk-cycle and boot checks; chunk count after"
+    },
+    {
+      "id": "a6c7e9a7-937f-4cb5-8156-6853f6426fdb",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 builder fx-shell",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin && node scripts/check-android-dist.mjs --variant=admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell",
+      "started": "2026-11-16T21:32:55Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-shell/20261116T213255Z-323107-green.log",
+        "sha256": "58088c93fa0598e110e250f7078efbc24e1b76cb7a034f9a6bbfb5c3d311afcc",
+        "bytes": 2513
+      },
+      "note": "final tree: build:admin plus the admin chunk-cycle check; chunk count after"
+    },
+    {
+      "id": "2fa86816-c179-4008-83aa-e2e9400a102d",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/paged.test.ts",
+        "src/ui/patterns/LoadMore.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:33:01Z",
+      "seconds": 3,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213301Z-324318-green.log",
+        "sha256": "9f9226ef3db20d339cbadd9095c2f220ce0fbdf9f92db856ac7dfd31029b4a25",
+        "bytes": 378
+      },
+      "summary": {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "FX-6 tests, final LoadMore (persistent button, Alert above)"
+    },
+    {
+      "id": "414599bc-efb8-427b-af80-ace5073caf9e",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/ui/patterns/LoadMore.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:33:08Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213308Z-326885-red.log",
+        "sha256": "4f6df48fe7901cb7ca893368a28dd15c371d5ac11dc76048c4c9c06008140e62",
+        "bytes": 7440
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "negative control on final LoadMore: error branch disabled (isFailed forced false); failed-page test must fail"
+    },
+    {
+      "id": "4d6f15a7-f985-4f57-a774-bd5d102a7199",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:33:19Z",
+      "seconds": 37,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213319Z-329737-green.log",
+        "sha256": "4e3c364d871adeafd13dde922c554d0e9877a5c3f2198095f863484661b6b16f",
+        "bytes": 6047
+      },
+      "summary": {
+        "passed": 338,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "final frontend npm run check with FX-6"
+    },
+    {
+      "id": "6dd453a5-8c37-4c38-a9a7-0c3a9493e455",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:33:56Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213356Z-334663-green.log",
+        "sha256": "42f72f8e930998fee105ecab9c63bdccdba5151cc8890751d8285b43919ee7c1",
+        "bytes": 2133
+      },
+      "note": "final build:client with FX-6"
+    },
+    {
+      "id": "cd17603f-c228-486f-a930-0b2e058f6170",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-pro-fx-paging",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T21:34:01Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T213401Z-335544-green.log",
+        "sha256": "d1762471ee78c9420e6d6ce850abb9ae662f44fbf8951fd4387c8438d03121db",
+        "bytes": 2361
+      },
+      "note": "final build:admin with FX-6"
+    },
+    {
+      "id": "1cda83bd-6bbf-4208-b838-5976b31358df",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-pro-fx-ui-recipes",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T21:36:12Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T213612Z-358136-green.log",
+        "sha256": "92812201500bbb68f10c3b33b07b9324f4800b8d4805b4d4d4920718be2f9c77",
+        "bytes": 897
+      },
+      "note": "contracts build before frontend checks (FX-2 tree)"
+    },
+    {
+      "id": "c971ec6d-f101-41d3-a193-169f9166f550",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-pro-fx-ui-recipes",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T21:36:30Z",
+      "seconds": 43,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T213630Z-361575-green.log",
+        "sha256": "13c9db09a3916b3f81befe6f3ddc75c13da61948f699ef40b9a6542c3d759485",
+        "bytes": 7606
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci and check on the FX-2 tree (datalist.ts, ClientErasureNotices.tsx)"
+    },
+    {
+      "id": "4485dd82-8f46-4ff2-b90d-39592b293143",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-pro-fx-ui-recipes",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T21:37:35Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T213735Z-377329-green.log",
+        "sha256": "6d27527e92076f866b2e7bde5cdafced4e8bed1c1379455f83e78fb3a86bbba5",
+        "bytes": 2133
+      },
+      "note": "build:client on the FX-2 tree"
+    },
+    {
+      "id": "734f2112-5815-4a9e-9ec4-ce32662b4a9d",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-pro-fx-ui-recipes",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T21:37:40Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T213740Z-377932-green.log",
+        "sha256": "3f3396014ec92260907f8aea41846efee76d2b4f1743c7b477ddf1e481470e9b",
+        "bytes": 2361
+      },
+      "note": "build:admin on the FX-2 tree"
+    },
+    {
+      "id": "133331e3-d5bb-448d-a12c-1a46a5c0b8f5",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-pro-fx-ui-recipes",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T21:38:50Z",
+      "seconds": 41,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T213850Z-387604-green.log",
+        "sha256": "cd09f41e9dcb921aee5712cd4019256a41fe13d7d3336a8fcacbed868aab8242",
+        "bytes": 7106
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci and check on the FX-7 tree (f936f86 plus tokens-core.css and auth.ts)"
+    },
+    {
+      "id": "ae16ba49-99c0-4670-a060-e5d022ceff5d",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-pro-fx-ui-recipes",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T21:39:34Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T213934Z-394587-green.log",
+        "sha256": "19d154760d8eab93f1dd41b5b34b1c035a6a6a1eb634244d45b7d203afa72b6a",
+        "bytes": 2133
+      },
+      "note": "build:client on the FX-7 tree"
+    },
+    {
+      "id": "3e66f1e5-6421-42e0-95d1-7e7852da8c15",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-pro-fx-ui-recipes",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T21:39:39Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T213939Z-394933-green.log",
+        "sha256": "4b2383b97ccc7cbbdb0e4b362ab8e77b02272f06687fe2954fc1624a4f58cfae",
+        "bytes": 2361
+      },
+      "note": "build:admin on the FX-7 tree"
+    },
+    {
+      "id": "e12ad99e-7526-4ec6-97c0-95cc425af5d1",
+      "task": "FX-shell",
+      "track": "fx-shell",
+      "agent": "claude-opus-5-5 verifier fx-shell",
+      "kind": "evidence",
+      "command": [
+        "node",
+        "states.mjs|fail60.mjs|draft.mjs|backnav.mjs|loginlink.mjs|malformed.mjs|capture.mjs (client 360x800,1440x900; admin 1440x900)",
+        "&&",
+        "python3",
+        "compare.py"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell/.temp/fx-shell/verify/scripts",
+      "started": "2026-11-16T21:49:29Z",
+      "seconds": 632,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-shell/.temp/fx-shell/verify/results/summary.json",
+        "sha256": "dc88edb7e94172870456da4469b0da3febab909b704ebea8fcaf9cbac098dad9",
+        "bytes": 7982
+      },
+      "summary": {
+        "head": "09470fb",
+        "check1_failing_reads": "pass: settled 7.6-7.7 s at 360/1440, 0 skeleton/Checking left, 9 HTTP per read (3 query x 3 transport) then 0 for ~52 s vs 78/min before; nominee panel shows ErrorState",
+        "check2_draft": "pass: 6/6 runs keep draft and DOM nodes (retry recovering, retry failing, focus refetch) at 390/1440",
+        "check3_back": "pass: 14/14, invest lumpsum/sip -> /funds/<id> at 360/390; 5 other targets unchanged",
+        "check4_login": "pass: admin 0 links at 390/1280/1440/1920; client link opens /password/forgot at 360/1440",
+        "check5_sweep": "pass: 137 routes, 0 flagged; diffs = FX-11 admin login + main Phase I sidebar/nominee/data",
+        "round1_note": "round-1 draft retry lost value from a Vite full reload when the lane head moved to 09470fb mid-run; re-run clean",
+        "passed": 5,
+        "failed": 0
+      },
+      "note": "RUNTIME (u-audits method, local throwaway stack, payments unconfigured). Report: .temp/fx-shell/verify/RUNTIME-REPORT.md"
+    },
+    {
+      "id": "73d11432-3e83-40a1-b60d-d82951798612",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-pro-fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:01:21Z",
+      "seconds": 37,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T220121Z-561529-green.log",
+        "sha256": "cd1e386fbd3ea92ae94384e059eaf45ed92699cc4de49b15148204d1ceb6e910",
+        "bytes": 6128
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit 1: held-write and indiaToday moves"
+    },
+    {
+      "id": "bd21b001-9083-457d-bdab-be5a8ed89b88",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-pro-fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client && npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:02:09Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T220209Z-569050-green.log",
+        "sha256": "751fa541651ee31dfef46d165e9d8597106896fbbcf2daf86d1ef76eef66e2b2",
+        "bytes": 4494
+      },
+      "note": "commit 1: build client and admin"
+    },
+    {
+      "id": "bdecc19d-f382-47fc-8181-3d8ea12cc96a",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-pro-fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check && npm run build:client && npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:04:38Z",
+      "seconds": 48,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T220438Z-603787-green.log",
+        "sha256": "c64eb57d89082b128cda125b5828f108bb23c28ff73f6afcc6c267c93e41e1d1",
+        "bytes": 10621
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit 2: write hooks into feature modules"
+    },
+    {
+      "id": "da1b1a74-ead7-40db-af5a-4a2b3e65182c",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-pro-fx-admin-held",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/shared/useHeldWrite.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:07:52Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T220752Z-630190-red.log",
+        "sha256": "e508ac98cdc666608ae0bb1b509a1ff002a71c5bbaa08244fc7d2a5551b36455",
+        "bytes": 1347
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: useHeldWrite does not restore the persisted hold on mount"
+    },
+    {
+      "id": "fc63ba26-2950-4770-8959-8e7056e34b73",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-pro-fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check && npm run build:client && npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:08:02Z",
+      "seconds": 47,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T220802Z-631644-green.log",
+        "sha256": "8785c02c0778a9173bbaf50904366e0c61b31fe4c0ecc93ee8a7cd07113becef",
+        "bytes": 10678
+      },
+      "summary": {
+        "passed": 337,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit 3: reload label and persisted hold; control reverted"
+    },
+    {
+      "id": "e6383fc2-60a1-453c-896e-f15541a15cf3",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 finisher fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:13:05Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T221305Z-703400-green.log",
+        "sha256": "92812201500bbb68f10c3b33b07b9324f4800b8d4805b4d4d4920718be2f9c77",
+        "bytes": 897
+      },
+      "note": "finisher: contracts npm ci and build on final tree 996687a"
+    },
+    {
+      "id": "d11c0f7c-6ea1-45b7-9cb6-366c2d020d0a",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 finisher fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:13:19Z",
+      "seconds": 48,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T221319Z-707863-green.log",
+        "sha256": "c93716961738706cde672734bc33d980a7dbfcf1652698ff1c1db48b66a21de5",
+        "bytes": 7174
+      },
+      "summary": {
+        "passed": 337,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "finisher: frontend npm ci and check on final tree 996687a"
+    },
+    {
+      "id": "ef74afb8-627f-4433-a2b9-68abe2f4e649",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 finisher fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:14:12Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T221412Z-716621-green.log",
+        "sha256": "c77a1fdc0f9de9512504b48459be1ae5e1de17a690bccaaa91b68eef8b6eeb01",
+        "bytes": 2133
+      },
+      "note": "finisher: build:client on final tree 996687a"
+    },
+    {
+      "id": "b4afec23-0b2f-46ad-af80-329503169898",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 finisher fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:14:17Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T221417Z-717549-green.log",
+        "sha256": "0aca02443bd14f180bf8ae76bafe0275f3ec3eb4794876017d1e5c019c62e94c",
+        "bytes": 2361
+      },
+      "note": "finisher: build:admin on final tree 996687a"
+    },
+    {
+      "id": "8bbe8685-be71-4a2d-ad4a-2db0d51f8917",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 builder fx-admin-held-2",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:21:43Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T222143Z-805592-red.log",
+        "sha256": "52c740cd140e41f64fc025cc8d5536b2f829eb36e99901eeab7d3cc748e8f026",
+        "bytes": 2556
+      },
+      "summary": {
+        "passed": 7,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "control: clear call removed from the admin token store clear"
+    },
+    {
+      "id": "b746b4dd-12a8-451b-b158-29a19e878d5f",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 builder fx-admin-held-2",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/shared/useHeldWrite.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:21:56Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T222156Z-811616-red.log",
+        "sha256": "13239b033c2cc20b62dd56353fb111a4aa120dc44088d114b69749f823ce8b94",
+        "bytes": 1383
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "control: persisted reports true whatever keepHold returns"
+    },
+    {
+      "id": "b0ef6003-3e59-4031-969d-e39d7814f1a5",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 builder fx-admin-held-2",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:22:03Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T222203Z-814463-green.log",
+        "sha256": "580cc8d22dfa032c415d68875694715443d2a3087bdde2692a03b04d3d19b76d",
+        "bytes": 897
+      }
+    },
+    {
+      "id": "8b750784-52e6-440d-880a-8dc9266e4185",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 builder fx-admin-held-2",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:22:16Z",
+      "seconds": 46,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T222216Z-818325-green.log",
+        "sha256": "c9b5add0a758267736e99c031ad3542301a0cdda9c6152c98c7614b946f9b9de",
+        "bytes": 7535
+      },
+      "summary": {
+        "passed": 341,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "01e11e7f-c41b-45ee-97b6-24c47b39da80",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 builder fx-admin-held-2",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:23:07Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T222307Z-830362-green.log",
+        "sha256": "ba2d13585cfd7e46325fb7620943d4d24757f47a12a1631517c4bfb6c3cf4c59",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "d4e42097-e28f-41ff-8e9c-9f3b18320b97",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 builder fx-admin-held-2",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:23:12Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T222312Z-830992-green.log",
+        "sha256": "0224028ec10f061f04e1517ef356d0f25d1d4ff6f6e3a26d537b546af518069c",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "5815ce14-c130-4a93-acdd-61626e90b17c",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-opus-5-5 verifier fx-ui-recipes",
+      "kind": "evidence",
+      "command": [
+        "node scripts/capture.mjs client 360x800,390x844,768x1024,1280x800,1440x900 + admin 390x844,1280x800,1440x900,1920x1080 (PX=1 pixel contrast)",
+        "node scripts/layout.mjs overview|erase|split|client-split",
+        "node scripts/signin.mjs",
+        "node scripts/parked.mjs",
+        "node scripts/lookfeel.mjs",
+        "python3 scripts/compare.py (audit a842496 and fx-shell 09470fb baselines)",
+        "python3 scripts/contrast_report.py"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes/.temp/fx-ui-recipes/verify",
+      "started": "2026-11-16T22:03:43Z",
+      "seconds": 1747,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes/.temp/fx-ui-recipes/verify/logs/verify-all.log",
+        "sha256": "f8423b9ed40c50621bbc6d43e6ac87fc8aaae6144d52421d9059701e565b2fcd",
+        "bytes": 93809
+      },
+      "summary": {
+        "head": "8d86c77",
+        "overview_1280_1440_1920": "pass: both funds name above date, date 1 line, 0 spill",
+        "erase_page_height_1280": "6453 -> 1182 px, 4 paragraphs, 0 rows",
+        "erase_page_height_390": "1300 -> 1220 px",
+        "split_1280_15px_scrollbar": "pass: 13 lists on 8 pages, 2 columns, 865 px, slack 33 px, 0/86 rows stacked",
+        "client_contact_nominee_360_390_1280_1440": "pass",
+        "probe_faint_failures": "about 1040 -> 0 (351 ivory-on-nav false positives remain, 349 before)",
+        "pixel_faint_solid_min": 4.53,
+        "pixel_faint_card_min": 4.51,
+        "footnote_rendered_phone": "3.85-3.90 (panel shadow + mesh), desktop 4.22-4.37; mesh-only 4.37",
+        "markers_360_390": "4.51-4.63",
+        "current_value_label": "4.51-4.56",
+        "faint_over_page_mesh": "4.29-4.47 (risk/source line)",
+        "glyph_dot": "confirmed",
+        "disabled_secondary_text": "2.8-2.9 -> 4.78",
+        "sweep_vs_main_fxshell": "client 90 shots max 0.7% px, no height change; admin changes FX-2 only plus data/timing",
+        "results": ".temp/fx-ui-recipes/verify/RUNTIME-REPORT.md"
+      },
+      "note": "Runtime pass of fx-ui-recipes at 8d86c77; report at .temp/fx-ui-recipes/verify/RUNTIME-REPORT.md, machine summary results/summary.json."
+    },
+    {
+      "id": "319c5350-5bc3-491a-aa7c-8147021dfe1c",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-opus-5-5 builder fx-ui-recipes-2",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T22:42:03Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T224203Z-1163066-green.log",
+        "sha256": "30e248e697300e0c676109b552fc13b9cb95f2b21e5b90b73afec9825177a7d3",
+        "bytes": 265
+      }
+    },
+    {
+      "id": "dbaf30de-2555-4210-8890-95ce13cac7c4",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-opus-5-5 builder fx-ui-recipes-2",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T22:42:11Z",
+      "seconds": 39,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T224211Z-1165455-green.log",
+        "sha256": "ae742376cdb7acc8e95c09e40a0c76f577e8fa7c5856a15ec1cc183ed4568d3e",
+        "bytes": 5995
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "23c5a317-44a9-4a45-81d5-c018a1a4024a",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-opus-5-5 builder fx-ui-recipes-2",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T22:42:55Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T224255Z-1179011-green.log",
+        "sha256": "e2baf6aac084fe23d7735eb109bb9d0281b6de463623498fe2af08d07464206d",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "97510ed1-affd-4265-9647-d8ef4370a456",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-opus-5-5 builder fx-ui-recipes-2",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T22:43:00Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T224300Z-1182465-green.log",
+        "sha256": "a0f132a87a7fd7d2bdf8434fc34730544fde8c4c02db6b0e2d2387a117818570",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "4ccb067e-a1a0-434c-9fd0-6cf98d618923",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 fixer fx-admin-held",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/shared/useHeldWrite.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:44:30Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T224430Z-1227289-red.log",
+        "sha256": "21dec58aef324a29e43add3ab517a2c50904b47750e34235a9077b882eaac59c",
+        "bytes": 1642
+      },
+      "summary": {
+        "passed": 2,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "control: loadHold ignores the owner"
+    },
+    {
+      "id": "9bf690b4-3459-45c4-a78f-331c831cecf1",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 fixer fx-admin-held",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/payment-sheet/PaymentSheetScreen.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:44:49Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T224449Z-1251182-red.log",
+        "sha256": "d88e112bf7bafc2a2a4944305175d29ba23dd59e26cbb86b1e0d6e17f06fe9e4",
+        "bytes": 2491
+      },
+      "summary": {
+        "passed": 7,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "control: loadHeldRecordings ignores the owner"
+    },
+    {
+      "id": "ff265e94-4a43-4c41-aa00-c16d06e3b886",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 fixer fx-admin-held",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:45:01Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T224501Z-1259434-red.log",
+        "sha256": "d210b1f756c5eafd44e78f221dbb7a6f3ab77da99184702820550a98eb211abf",
+        "bytes": 3115
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "control: sign-in and restore keep other admins' holds"
+    },
+    {
+      "id": "c1f3101d-b749-4837-a32c-70a6e512a755",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-opus-5-5 builder fx-ui-recipes-2",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T22:44:03Z",
+      "seconds": 71,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T224403Z-1206930-green.log",
+        "sha256": "e9d186eb99f16b0ed810d2b54149891d57a402810375247d993077f4e2983602",
+        "bytes": 6248
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "edda5ac8-bb14-4806-ae9e-f5323052e5c6",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 fixer fx-admin-held",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/shared/useHeldWrite.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:45:10Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T224510Z-1263181-red.log",
+        "sha256": "0f5fbaf5177a230a8c8d71abd5213b3197e1749f872401b471554cf67b9f6592",
+        "bytes": 1593
+      },
+      "summary": {
+        "passed": 2,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "control: submit mints a new key while a write is held"
+    },
+    {
+      "id": "3d961392-f20a-4c70-957b-535b4ab3a658",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-opus-5-5 builder fx-ui-recipes-2",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T22:45:14Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T224514Z-1265064-green.log",
+        "sha256": "17138195b5101b44f515e7a3c060ff58602f02d8f85a546ab5bb07a7e40ced5b",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "52cc9b7e-c8f7-4236-aff6-265bed51b577",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-opus-5-5 builder fx-ui-recipes-2",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes",
+      "started": "2026-11-16T22:45:19Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-ui-recipes/20261116T224519Z-1266358-green.log",
+        "sha256": "b59cb37817d18869b9bfddc859a4f6f47c71c56dd6ffaaabfca06cd77eccfa8c",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "ef25c835-e795-467d-8f03-df39bf394155",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 fixer fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:45:33Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T224533Z-1271276-green.log",
+        "sha256": "92812201500bbb68f10c3b33b07b9324f4800b8d4805b4d4d4920718be2f9c77",
+        "bytes": 897
+      }
+    },
+    {
+      "id": "bab80833-30cc-4aab-9481-cb84c301fa08",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 fixer fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:45:47Z",
+      "seconds": 50,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T224547Z-1276222-green.log",
+        "sha256": "dfbaba917e00e10a4a6199cef8bb76119be83a35c3d07d63e7948689efc0fffd",
+        "bytes": 7665
+      },
+      "summary": {
+        "passed": 346,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "77d3f463-6b94-4c74-8c63-4d5a03e36117",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 fixer fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:46:43Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T224643Z-1289854-green.log",
+        "sha256": "61ee4f3ff08db6e84e5e465116ae5098cf0f72f7881cf44590af53b0bf44affe",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "9f565058-44d4-4396-ad3b-525b0dfdfed2",
+      "task": "FX-admin-held",
+      "track": "fx-admin-held",
+      "agent": "claude-opus-5-5 fixer fx-admin-held",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-held",
+      "started": "2026-11-16T22:46:49Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-held/20261116T224649Z-1291480-green.log",
+        "sha256": "9d6f19c5f9626e716aed931c0f227c43dfd2a7a796a4736b13d0820165683e36",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "45f8ad98-5090-49df-87f9-dc6c47d18cc4",
+      "task": "FX-ui-recipes",
+      "track": "fx-ui-recipes",
+      "agent": "claude-opus-5-5 verifier fx-ui-recipes-2",
+      "kind": "evidence",
+      "command": [
+        "node capture.mjs (client 360,1440; admin 1440) + PX=1 capture.mjs (client 360,390,768,1280,1440; admin 390,1280,1440,1920) + signin2.mjs + contrast2.py + compare.py + recompare.py"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes/.temp/fx-ui-recipes/verify/pass2/scripts",
+      "started": "2026-11-16T22:48:36Z",
+      "seconds": 850,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-ui-recipes/.temp/fx-ui-recipes/verify/pass2/logs/verify-all.log",
+        "sha256": "d5f2b16d14f776d1a42033e051aab0a39698dcc9211b9adf089aa8598f222316",
+        "bytes": 24676
+      },
+      "summary": {
+        "head": "2b93206",
+        "R1_footnote_phone_min": 5.76,
+        "R1_footnote_desktop_min": 6.31,
+        "R2_markers_phone_min": 7.06,
+        "R3_source_line_min": 6.43,
+        "R3_admin_card": 8.49,
+        "R5_body_grey_under_4_5": 0,
+        "R5_body_grey_under_4_5_before": 127,
+        "R6_page_states": 413,
+        "R6_audit_probe_non_nav_failures": 0,
+        "regression_shots": 137,
+        "regression_height_changes": 0,
+        "passed": 7,
+        "failed": 0
+      },
+      "note": "RUNTIME pass 2 of fx-ui-recipes at 2b93206 (DEC-63, DEC-64): R1-R6 and regression PASS. Remaining under 4.5 are pre-existing or known: BC avatar 2.82, faint edge shading 4.15-4.46, amber 4.28, Sent badge 4.48. Report .temp/fx-ui-recipes/verify/RUNTIME-REPORT-2.md."
+    },
+    {
+      "id": "2c1bef94-35d6-4f67-87f1-8466e02a9197",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:05:17Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T230517Z-1493659-green.log",
+        "sha256": "580cc8d22dfa032c415d68875694715443d2a3087bdde2692a03b04d3d19b76d",
+        "bytes": 897
+      }
+    },
+    {
+      "id": "cc6a43bb-4fa3-4246-ba52-5de9ce39d7e6",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:07:52Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T230752Z-1511292-red.log",
+        "sha256": "f7f8ea66dd8491d3def99ab7c9f654e0e847a507f77a0c5504b838d70d39e80c",
+        "bytes": 4018
+      },
+      "summary": {
+        "passed": 14,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "control: admin cookie refresh without the different-user check"
+    },
+    {
+      "id": "b166b21e-a203-417b-be67-03d848a9001f",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:08:03Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T230803Z-1514291-red.log",
+        "sha256": "a3879b20fba817f749337332e7ead4b59b9f84a617596bb3b56332856d79fc1c",
+        "bytes": 3241
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "control: client cookie refresh without the different-user check"
+    },
+    {
+      "id": "bd782989-e8aa-4678-aefc-861cc4a816d4",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminRuntime.test.ts",
+        "src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:08:11Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T230811Z-1517504-red.log",
+        "sha256": "2945e9f29ad5d3f7e522bb3a74a1a6df2582cba14d8f213194c3822990238cf2",
+        "bytes": 6899
+      },
+      "summary": {
+        "passed": 24,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "control: transport resends on any outcome but unauthenticated (pre-fix logic)"
+    },
+    {
+      "id": "d7c9f7f9-df30-4323-9268-eb764d7b4299",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/shared/useHeldWrite.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:08:19Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T230819Z-1520012-red.log",
+        "sha256": "fd66c1a8dcc50983bcca3003c70211ab439270cd0fae4dd4ab33820d602c5d33",
+        "bytes": 3077
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 4,
+        "ignored": 0
+      },
+      "note": "control: held write Check again classified like a first send"
+    },
+    {
+      "id": "ecfbf1ef-53fd-43d8-baca-1f2d26996a1e",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/payment-sheet/PaymentSheetScreen.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:08:28Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T230828Z-1523032-red.log",
+        "sha256": "4d20dbbb1af32162e4794f068e91709c2d818d679c795662259b75c2aa6e9a10",
+        "bytes": 31038
+      },
+      "summary": {
+        "passed": 8,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "control: payment sheet Check again classified like a first send"
+    },
+    {
+      "id": "9d3b1d70-6170-4ad6-8f6b-7583af466ad2",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:08:46Z",
+      "seconds": 31,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T230846Z-1526922-green.log",
+        "sha256": "9569753483afce87e2ff0a01c6d494f8ab0ef4e9618ea0d11149d1d311d9411b",
+        "bytes": 2000
+      }
+    },
+    {
+      "id": "ab467870-f686-4440-beb1-c2e724558636",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:09:32Z",
+      "seconds": 43,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T230932Z-1530791-green.log",
+        "sha256": "17f14618dfa393678ad248e749d7af46e70d1ec5e36d08b768b9ad63d0fe7542",
+        "bytes": 7326
+      },
+      "summary": {
+        "passed": 356,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "fc33fb26-ded0-4a0c-9a44-dfa50c98cad5",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:10:20Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T231020Z-1539007-green.log",
+        "sha256": "b97b99e7890be8084c85720d865b7d56a4d0ce9d036ac3844e60d10933e98f54",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "e2ee71df-4d25-437f-8abf-c791d2a2c7b3",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:10:25Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T231025Z-1539408-green.log",
+        "sha256": "96c917c5b0b389643a08dfe29b0e0ba887c13c34f7bc5c26902bffa4ccfcb17d",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "b852a10c-8ae8-4c43-94cb-462df42b4bbd",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:11:26Z",
+      "seconds": 40,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T231126Z-1546691-green.log",
+        "sha256": "1c63bf966f1c39cd443d0a5c8771111db403c6d7631acf38b5ff696a356ccba0",
+        "bytes": 6189
+      },
+      "summary": {
+        "passed": 350,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit 1 alone: session guard without the held-write retry change"
+    },
+    {
+      "id": "cfa1c304-816f-45fd-ad38-d7a75511dfd3",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:12:24Z",
+      "seconds": 44,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T231224Z-1555059-green.log",
+        "sha256": "189ec132aeef50ae1312d37904edca624fa1fd572506e617afbc68f4c1c12eaa",
+        "bytes": 7178
+      },
+      "summary": {
+        "passed": 356,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "both changes: session guard and held-write retry classification"
+    },
+    {
+      "id": "ac01db65-7153-4300-ac9b-d9fbf7d1146f",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:13:40Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T231340Z-1563658-green.log",
+        "sha256": "a0c549146b8a3986d2c1decfc2a47822d0e6f6c874e447121724e933ba36b9b9",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "973cbadc-0058-4f13-9817-a4f6c3daf087",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 builder fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:13:45Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T231345Z-1564099-green.log",
+        "sha256": "f7b116dbd156b2be6a9953b073cc5fb77440d9aa11570a67177a53e9688a80c2",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "cbdcc623-fc72-41ac-a1b4-a639a263818d",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "other",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/shells/admin/adminRuntime.test.ts src/shells/client/clientRuntime.test.ts 2>&1 | grep -E \"✓|✗|×|FAIL|Tests|Test Files|AssertionError\" | head -30"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:33:37Z",
+      "seconds": 1,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233336Z-1694768-red.log",
+        "sha256": "327ead14257eb5f6d141c04da0c097de7b3da569f23f0f90e82f20969a7f754d",
+        "bytes": 3967
+      },
+      "note": "recorded as other, not red: it exited 0; R1 control: no held user treated as the tab's user (pre-fix semantics), early return removed in both cookie refreshes"
+    },
+    {
+      "id": "346af1c1-f08a-4b32-a1e5-103570c6868c",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "../.temp/fx-session-guard/vt.sh",
+        "src/shells/admin/adminRuntime.test.ts",
+        "src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:33:47Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233347Z-1696854-red.log",
+        "sha256": "99cee6ac475d57bbedf37c917d8899ce656e42e857016228bf7548523fd28d39",
+        "bytes": 448
+      },
+      "summary": {
+        "passed": 29,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "R1 control (rerun with real exit; supersedes 20261116T233336Z-1694768 whose pipe masked the exit): no held user treated as the tab's user, early return removed in both cookie refreshes"
+    },
+    {
+      "id": "aeff2804-9ef0-45fa-b0ba-df6bf3ac48e0",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "../.temp/fx-session-guard/vt.sh",
+        "src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:33:58Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233358Z-1698801-red.log",
+        "sha256": "e27821fca86a7c1deab1aa53020a38a28a94b7d28e74c07085f6e37ecbc32907",
+        "bytes": 199
+      },
+      "summary": {
+        "passed": 17,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "R2 control: admin cookieRestore stores only the CSRF token (pre-fix), with the fail-closed refresh in place"
+    },
+    {
+      "id": "84c1e862-75fa-45ae-8e1d-ada5ff2df59d",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "../.temp/fx-session-guard/vt.sh",
+        "src/shells/admin/adminRuntime.test.ts",
+        "src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:34:05Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233405Z-1700584-red.log",
+        "sha256": "a74a40338d10c5447b48ffffae9e292a5886067ec4faa6ba07f70b3735a4e6b8",
+        "bytes": 434
+      },
+      "summary": {
+        "passed": 29,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "R3 control: identity check after webRefresh removed in both cookie refreshes"
+    },
+    {
+      "id": "2486d419-de65-4325-89de-451880ac50c9",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "../.temp/fx-session-guard/vt.sh",
+        "src/features/admin/payment-sheet/PaymentSheetScreen.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:34:14Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233414Z-1703225-red.log",
+        "sha256": "255ca2cc16014a8417af28b68ff6861fb9685b8a5f998432d4f4fc1ec4f97ce2",
+        "bytes": 353
+      },
+      "summary": {
+        "passed": 9,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "R4 control: recorder pump without the session-end stop"
+    },
+    {
+      "id": "4a03c556-a893-47f4-a2d8-7df3100f505b",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "../.temp/fx-session-guard/vt.sh",
+        "src/features/admin/payment-sheet/PaymentSheetScreen.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:34:27Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233427Z-1706115-red.log",
+        "sha256": "f0788bb6de41e8c640612692967ae5e8d11dd0f3e3e56e9da85644178f1e2d02",
+        "bytes": 201
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "R4a control: recorder ignores the session-ended event (error check kept)"
+    },
+    {
+      "id": "aba0946f-1bcf-4aa4-8403-11f7923ee2e4",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "../.temp/fx-session-guard/vt.sh",
+        "src/features/admin/payment-sheet/PaymentSheetScreen.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:34:30Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233430Z-1706838-red.log",
+        "sha256": "875b9b897afbbd9bf851f86a6c54b13c377f46e14d039112114c77d7710938c5",
+        "bytes": 218
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "R4b control: recorder ignores a session-ended refusal (event subscription kept)"
+    },
+    {
+      "id": "4241f924-9c8f-4bf6-8a33-99717f3e115f",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "../.temp/fx-session-guard/vt.sh",
+        "src/features/admin/shared/useHeldWrite.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:34:38Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233438Z-1710434-red.log",
+        "sha256": "b6412e27de17753241bafe3dae7691d70d939aba3fc290b81c07a539a0e1f405",
+        "bytes": 367
+      },
+      "summary": {
+        "passed": 7,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "R5 control: AUTHORIZATION_DENIED and ACCOUNT_NOT_ACTIVE removed from isUnknownRetryOutcome"
+    },
+    {
+      "id": "66a4332b-065f-460b-a8be-22d20b5a5290",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:34:51Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233451Z-1713441-green.log",
+        "sha256": "30e248e697300e0c676109b552fc13b9cb95f2b21e5b90b73afec9825177a7d3",
+        "bytes": 265
+      }
+    },
+    {
+      "id": "c70a056a-7f8b-4283-a806-d668f9a9a5e7",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:34:58Z",
+      "seconds": 38,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233458Z-1714994-green.log",
+        "sha256": "3c12c43a488b5718bd6b56ca6b46707f7a2f448be7425997bea4e74f66ca09be",
+        "bytes": 6072
+      },
+      "summary": {
+        "passed": 365,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "fc3e94c1-5f39-42b9-946f-01eae0f613d6",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:35:41Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233541Z-1720498-green.log",
+        "sha256": "bf50a7415f52f9da255254a4cff6ebe30c96e88459b4df76a4477e9ef2513141",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "ad3c9754-b8ba-4835-8a77-038e305bb1c8",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-16T23:35:46Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261116T233546Z-1721054-green.log",
+        "sha256": "07268725e9ede6840a97e627491bdf77e00310ab0b62f473f89f5899eec3b505",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "c917071c-d406-4984-81d9-82d695b2e66d",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 verifier fx-paging",
+      "kind": "evidence",
+      "command": [
+        "node paging.mjs showmore|refresh|loadall|f1|f2 (client 360,1280; admin 390,1440) + capture.mjs normal state vs 07ee398 baseline copy + compare.py"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/.temp/fx-paging/verify/scripts",
+      "started": "2026-11-16T23:04:00Z",
+      "seconds": 2000,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging/.temp/fx-paging/verify/logs/verify-all.log",
+        "sha256": "a78e818d43affaeaed35478b9f17cce8e19b4cdbc8855f95153c40bb84de26c7",
+        "bytes": 35313
+      },
+      "summary": {
+        "head": "9ba2251",
+        "showmore_runs": 28,
+        "showmore_rows_kept": 28,
+        "showmore_error_and_try_again": 28,
+        "showmore_focus_kept_on_button": 0,
+        "showmore_failed_page_rerequested_after_visibility": 0,
+        "refresh_stale_notice_data_kept": "all stale screens",
+        "overview_second_notice": 0,
+        "loadall_partial_lists": 0,
+        "F1_confirmed": true,
+        "F2_failed_page_requests_on_return": 12,
+        "normal_state_shots_vs_07ee398": 184,
+        "normal_state_max_diff_pct": 0.8,
+        "passed": 4,
+        "failed": 1
+      },
+      "note": "RUNTIME fx-paging 9ba2251: rows kept, error + Try again on all 28 failed Show more runs, no re-request on visibilitychange, stale notice keeps data, no second notice on /overview, no partial load-all list. FAIL vs claim: focus goes to body (pre-existing, baseline same). F1 and F2 confirmed (F2: 12 requests). Doubts: 10 stacked notices on admin client page; ledger tab raw fund ids with stopped catalogue. Report .temp/fx-paging/verify/RUNTIME-REPORT.md."
+    },
+    {
+      "id": "7c6d6ba9-5bb8-4358-ae00-4d6d30f31b86",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/paged.test.ts",
+        "src/ui/patterns/LoadMore.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T23:47:49Z",
+      "seconds": 3,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T234749Z-1814775-green.log",
+        "sha256": "ee1fa75f7d7bd1838b585948a291834c5579129c7d603359349f3ed80978ba36",
+        "bytes": 381
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "5f21ff2c-fd56-4660-87e7-417afdf5e746",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/paged.test.ts",
+        "-t",
+        "another hook sharing"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T23:48:01Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T234801Z-1816876-red.log",
+        "sha256": "bdbf9cf19d97a554c42a7705e807673a226568b9348f69eb51653ca7cc7aec94",
+        "bytes": 2035
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 8
+      }
+    },
+    {
+      "id": "8fe2c114-179e-461d-847b-383b9808b3ff",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/paged.test.ts",
+        "-t",
+        "another hook sharing"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T23:48:15Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T234815Z-1820149-red.log",
+        "sha256": "92d7924dba2d2a7dd574355cbf4fe0deed7ac5def458191d7f737ca0faebe1e0",
+        "bytes": 2040
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 8
+      }
+    },
+    {
+      "id": "820dd19f-77b9-4dac-83e1-442ba4857c79",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/paged.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T23:48:25Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T234825Z-1822714-red.log",
+        "sha256": "f4271fe05220214a38bef7444163643cf2a0933d4e50b87f2b7c770fb9209789",
+        "bytes": 2069
+      },
+      "summary": {
+        "passed": 8,
+        "failed": 1,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "866fa439-de21-4a5e-8140-11b75aeaccf0",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T23:48:31Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T234831Z-1824522-green.log",
+        "sha256": "30e248e697300e0c676109b552fc13b9cb95f2b21e5b90b73afec9825177a7d3",
+        "bytes": 265
+      }
+    },
+    {
+      "id": "258602ab-858a-4e03-8e94-37bc9fae3cc5",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T23:48:38Z",
+      "seconds": 37,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T234838Z-1826394-green.log",
+        "sha256": "f5f07da240a443631d2610ce901d29fa5f07aacd1b72db88a0abe3b908efe8b2",
+        "bytes": 5896
+      },
+      "summary": {
+        "passed": 339,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "df519bfc-a4fd-42b5-a00f-175f63d257de",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T23:49:19Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T234919Z-1831115-green.log",
+        "sha256": "eff1fcd28521e02f341f0c0fb6236b0e70b1acea77ab8d2e77deed827df401ef",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "52dc0c32-6f85-4292-aa49-3e4cfbba7848",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-16T23:49:24Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261116T234924Z-1831501-green.log",
+        "sha256": "9115629bfff9dc01d4e38e27375f07f059b0dca217b5330afe1a64426f8acc7f",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "12e44e72-d59b-412d-8719-ebb09b2e06f3",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/api/http.test.ts src/shells/admin/adminRuntime.test.ts src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:07:10Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000710Z-1975124-red.log",
+        "sha256": "da9fef3b13828b248e815c331785ae835649fdf321c16e5bb8f020eb8b609759",
+        "bytes": 10120
+      },
+      "summary": {
+        "passed": 52,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "RC1 guard removed: a signed-in request with no held user is sent"
+    },
+    {
+      "id": "b9aff233-11b6-45b6-97d4-f7446cf18594",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/api/http.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:07:18Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000718Z-1982454-red.log",
+        "sha256": "4c39dde625f69f2ebeb6bc6244a6ac552b54dd4c9c761b8627c49eed94af010a",
+        "bytes": 3835
+      },
+      "summary": {
+        "passed": 23,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RC2 N2 check after the refresh removed: a rotated refresh resends as whoever the tab now holds"
+    },
+    {
+      "id": "73cfa02f-00a0-471e-8883-05e0992664a5",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/api/http.test.ts src/shells/admin/adminRuntime.test.ts src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:07:26Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000726Z-1984903-red.log",
+        "sha256": "1420814ef93446508a7a5cd695ecca85d2286b1be5442f7ba04efcc7b8b50bb5",
+        "bytes": 3461
+      },
+      "summary": {
+        "passed": 54,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RC3 N1 check before the refresh removed: a late 401 after the end refreshes again"
+    },
+    {
+      "id": "47324289-e635-4f2a-8570-7f2daee5d1f1",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/api/http.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:07:34Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000734Z-1989045-red.log",
+        "sha256": "78e608779c5beebd773556acb4e8e4c92b64e126f71b4e3625cba46228f17c70",
+        "bytes": 4486
+      },
+      "summary": {
+        "passed": 22,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "RC3b both sender checks removed (c455a82 recovery): a late 401 refreshes and ends the session a second time"
+    },
+    {
+      "id": "f2d7fdaf-91d2-4b04-9804-49563159627e",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/app/providers/SessionProvider.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:07:44Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000744Z-1992598-red.log",
+        "sha256": "186f75403758172a5472918be426749ee606a737a9afcdaad21e605a870caaa1",
+        "bytes": 2502
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RC4 N3 storage listener not subscribed: another tab's sign-in leaves this tab signed in"
+    },
+    {
+      "id": "e448b605-9aa8-46bb-a45a-9c9631f60b3b",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/app/providers/SessionProvider.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:07:47Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000747Z-1995388-red.log",
+        "sha256": "8d14406f80eb388d310c2558273111c936fc75dee3c7d1b1d2894b1ddb6cdbda",
+        "bytes": 2447
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RC5 N3 same-user comparison removed: a same-user write ends the session"
+    },
+    {
+      "id": "306b1b4a-2aba-443d-bae2-a3620abdda37",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/app/providers/SessionProvider.test.tsx src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:07:57Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000757Z-1999551-red.log",
+        "sha256": "862fff25daeaaafc2ffad29704d697c099015239984b6238d221bb06d6647fcf",
+        "bytes": 5292
+      },
+      "summary": {
+        "passed": 18,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "RC6 clear removes the shared fields unconditionally (c455a82): the other user's stored principal is deleted on the storage-event and replaced ends"
+    },
+    {
+      "id": "47f26f60-af22-48a8-9e53-50da6579f4a1",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:07:59Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000759Z-2000505-red.log",
+        "sha256": "44a515bd926fa934426e0a25febc65b766e864ad105f0a30f9df1068f31b0706",
+        "bytes": 3666
+      },
+      "summary": {
+        "passed": 17,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RC7 N6: a failed refresh ends as revoked; the expired row must catch it"
+    },
+    {
+      "id": "732895f6-c0c6-4317-9476-0d4b2d82015e",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd packages/contracts && npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:08:08Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000808Z-2002970-green.log",
+        "sha256": "580cc8d22dfa032c415d68875694715443d2a3087bdde2692a03b04d3d19b76d",
+        "bytes": 897
+      },
+      "note": "contracts npm ci and build"
+    },
+    {
+      "id": "18f747f2-bb0d-4e7a-a5ae-ff6cd3451379",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:08:22Z",
+      "seconds": 42,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000822Z-2004743-green.log",
+        "sha256": "62453e16eb6f3e739c39430debf3955e294e33122692d371875b0e36e94b28cc",
+        "bytes": 7240
+      },
+      "summary": {
+        "passed": 369,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci and npm run check"
+    },
+    {
+      "id": "0b93ed5f-1438-470d-b458-b390a11eb470",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:09:09Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000909Z-2013035-green.log",
+        "sha256": "23218afbd0db32642416b3b9326f54f2d566a0a0252208f3ba5c2fab7c9f6610",
+        "bytes": 2133
+      },
+      "note": "frontend build:client"
+    },
+    {
+      "id": "a5bfebdc-7f10-4313-9b13-a533e05361cc",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:09:14Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T000914Z-2013717-green.log",
+        "sha256": "bd40219c7fe43e0ba02a31defc88d55ad603256891d930b27827e755fb979ecf",
+        "bytes": 2361
+      },
+      "note": "frontend build:admin"
+    },
+    {
+      "id": "d8467764-d268-43b4-9b77-ac8a898898f8",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "other",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/pagedHoldRelease.tmp.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-17T00:09:44Z",
+      "seconds": 1,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261117T000944Z-2017578-other.log",
+        "sha256": "acf4859f0f38819fbbf628084c49aa78f48724198ec3ac12e89f58f1bda2ebd7",
+        "bytes": 337
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "throwaway check for review-26 C, fix in place (file deleted after)"
+    },
+    {
+      "id": "1cd47fa2-a75b-48f6-a5ed-9eecc1afa459",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "other",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/api/pagedHoldRelease.tmp.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-17T00:09:46Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261117T000946Z-2018639-other.log",
+        "sha256": "7731704a7e1fbcee6a24eaa610e2b7b9ee987b780715525fb9b628f50e246885",
+        "bytes": 1675
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "throwaway check for review-26 C, release effect removed (control), file deleted after"
+    },
+    {
+      "id": "82b955c1-e492-452c-b8c7-9b0f01f6d47f",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-17T00:09:54Z",
+      "seconds": 37,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261117T000954Z-2022289-green.log",
+        "sha256": "d0b77d1405bf185efea71c5866c7441f7f69b57677518724b18563f0d0ea9cfc",
+        "bytes": 6301
+      },
+      "summary": {
+        "passed": 339,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "131d541d-cf98-47a5-a3ce-52ceb0b53edd",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-17T00:10:31Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261117T001031Z-2027361-green.log",
+        "sha256": "33eb6d1d6fa73b4642ad717f9e48a0b52471972352a76904ed73872272afe846",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "4249ab22-8448-41ab-b8db-b7f2782366c1",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 fixer fx-paging",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-17T00:10:36Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261117T001036Z-2028301-green.log",
+        "sha256": "eb470538a0e27bb1b895bd88a73b198cd464b8ff8ae3b80eda4ff01a5a67de5e",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "91051a73-9dc2-4a5e-9df9-7405bd64bcfd",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/app/providers/SessionProvider.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:31:30Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003130Z-2175171-red.log",
+        "sha256": "603f00ddbf3c281307c193eb1678e716f8b0f12e76130faa111517a1ee92ded1",
+        "bytes": 2954
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RF1a F1 subscribe-time check removed: a user stored by another tab during the restore is missed"
+    },
+    {
+      "id": "e06db702-6ffc-469c-a87c-d1a96927c691",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:31:33Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003133Z-2175928-red.log",
+        "sha256": "659ce5b15f67e3d2b77419175c5596e024a2499dc7d485c9a0a868220a4d89ad",
+        "bytes": 4173
+      },
+      "summary": {
+        "passed": 21,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RF1b admin restore adopts the session read's admin without comparing it with the CSRF recovery's"
+    },
+    {
+      "id": "79f9ed62-4a69-405f-ac0b-3ff569dcf8c8",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/shells/admin/adminRuntime.test.ts src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:31:45Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003145Z-2178703-red.log",
+        "sha256": "5c2db4168c4a4d68f5aed7a41948f55f5b5b4caa56c7b2050fad76745431ba45",
+        "bytes": 7598
+      },
+      "summary": {
+        "passed": 32,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "RF2a signed-out cookie restores no longer clear: the hydrated principal stays held"
+    },
+    {
+      "id": "e30a5a86-fa93-485d-99ab-bd8aba786da0",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:31:47Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003147Z-2180014-red.log",
+        "sha256": "cfbe81df93490b3a0b37068a7f933ae1b75aeefd7a1aa40522033a365b3d6867",
+        "bytes": 4076
+      },
+      "summary": {
+        "passed": 21,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RF2b an outage on the session read also clears: the tab can no longer restore when the network returns"
+    },
+    {
+      "id": "f4c9b7ac-ef04-4806-85f3-b22773b5aaf9",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd packages/contracts && npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:33:37Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003337Z-2194696-green.log",
+        "sha256": "92812201500bbb68f10c3b33b07b9324f4800b8d4805b4d4d4920718be2f9c77",
+        "bytes": 897
+      },
+      "note": "contracts npm ci and build at 25de257"
+    },
+    {
+      "id": "963a2571-1632-4a93-96e3-ddc110c3a6c5",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:33:46Z",
+      "seconds": 42,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003346Z-2195448-green.log",
+        "sha256": "00fa57ad9c92815a91d96f235cbd07bf090b4527027570201c3dfb70387a1953",
+        "bytes": 7378
+      },
+      "summary": {
+        "passed": 375,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci and npm run check at 25de257"
+    },
+    {
+      "id": "5ac46451-6c48-477a-afae-a4dd51082c26",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:34:33Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003433Z-2202059-green.log",
+        "sha256": "10ca6b3ece0074965a7e53a812ef3e6cc8840fb5b712e1d67481ffab5b3277d1",
+        "bytes": 2133
+      },
+      "note": "frontend build:client at 25de257"
+    },
+    {
+      "id": "4bf86ea7-24f4-4ee8-8bd9-b50c063c055d",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:34:38Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003438Z-2202475-green.log",
+        "sha256": "e25ab842a23d76942ab0339fad9b9e6220dc92ab28f5ffe1dd147f5b3e081e42",
+        "bytes": 2361
+      },
+      "note": "frontend build:admin at 25de257"
+    },
+    {
+      "id": "ff409737-ec85-4ad9-ac19-047e977af6b0",
+      "task": "FX-paging",
+      "track": "fx-paging",
+      "agent": "claude-opus-5-5 verifier fx-paging-2",
+      "kind": "evidence",
+      "command": [
+        "bash",
+        ".temp/fx-paging/verify/scripts/recheck.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-paging",
+      "started": "2026-11-17T00:30:39Z",
+      "seconds": 257,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-paging/20261117T003039Z-2168835-evidence.log",
+        "sha256": "19489af80feda7a2a6a7fceb23c066d2897dcecce35ef9c610789c54b2140562",
+        "bytes": 9396
+      },
+      "note": "RUNTIME re-check of fx-paging at 00ea526: F2 client and admin, F1, scroll, focus, F4 403, shrink; summary over results/00ea526"
+    },
+    {
+      "id": "6a1d6128-eb15-4681-8685-ceabc067fa27",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:38:30Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003830Z-2239207-red.log",
+        "sha256": "b85a9825f4bb4815b5b1cf5173a08733468c8ec4dc0dd8a5e79691203926e294",
+        "bytes": 4291
+      },
+      "summary": {
+        "passed": 22,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RF5 CSRF-recovery outage clears the admin scope (25de257): the persisted held writes are dropped"
+    },
+    {
+      "id": "f36e0193-11a7-46d7-a31e-0b00f3c733e3",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd packages/contracts && npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:39:37Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003937Z-2246969-green.log",
+        "sha256": "9dd2d094fb6b59609ac9ba7a93cc9ff1f4e33ac37cb0bc18a1262e9d131b4763",
+        "bytes": 897
+      },
+      "note": "contracts npm ci and build at 496d7fb"
+    },
+    {
+      "id": "1484f061-bbc5-474f-a70b-7ef205c90cb8",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:39:47Z",
+      "seconds": 42,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T003947Z-2247560-green.log",
+        "sha256": "1a209d8e2b1fbe937d851b6341cc13fca74aaec7653aabab20403228922f5626",
+        "bytes": 7378
+      },
+      "summary": {
+        "passed": 376,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci and npm run check at 496d7fb"
+    },
+    {
+      "id": "c6ab59de-e13b-44e3-b7a8-1d7c31dd8bfd",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:40:29Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T004029Z-2251306-green.log",
+        "sha256": "921c791d4c6a8f13ada1ff4807e10a73753fdc16da36d6861015704ad39e92db",
+        "bytes": 2133
+      },
+      "note": "frontend build:client at 496d7fb"
+    },
+    {
+      "id": "151d662d-9ea5-428a-bdb6-fa7a14cc5652",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T00:40:34Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T004034Z-2252299-green.log",
+        "sha256": "0f272618f71516bd3ebca9bbcc39bcf85e01ad2197823d868941b73178ccf67c",
+        "bytes": 2361
+      },
+      "note": "frontend build:admin at 496d7fb"
+    },
+    {
+      "id": "a8b4a994-e015-4010-bc04-e08e1c7eabb7",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T00:51:01Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T005101Z-2403233-green.log",
+        "sha256": "580cc8d22dfa032c415d68875694715443d2a3087bdde2692a03b04d3d19b76d",
+        "bytes": 897
+      },
+      "note": "contracts build before frontend"
+    },
+    {
+      "id": "a1fb76dd-a1af-4a2a-af29-f6e51c988a83",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T00:51:09Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T005109Z-2404290-green.log",
+        "sha256": "7c269625b4dc80436469ff2bfd6ff9dc40cd230dd1793526741d38cc3e20f527",
+        "bytes": 897
+      }
+    },
+    {
+      "id": "d54b246a-9358-4f1b-ba5c-6f39f042a8d4",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T00:51:49Z",
+      "seconds": 3,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T005149Z-2412341-green.log",
+        "sha256": "96b561575d45c50b61206104c102ebbeeb8b8405d9f07226860a4540b2b241f3",
+        "bytes": 1109
+      },
+      "note": "install only"
+    },
+    {
+      "id": "90213595-d2e0-44a7-ba13-f8f93be51dad",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/funds/fundWrites.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:05:43Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T010543Z-2571848-red.log",
+        "sha256": "e20c6094275796777efdbd3476ddb40779070b5ff730bb71ac6d2e8ef212cf3f",
+        "bytes": 4752
+      },
+      "summary": {
+        "passed": 18,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control FX-4: useInitializeAum mints a new key per attempt"
+    },
+    {
+      "id": "a31ff5ec-60c0-478b-8b14-107b13879303",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/funds/fundWrites.test.tsx -t \"publishing new terms\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:05:58Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T010558Z-2575814-red.log",
+        "sha256": "a9bd9f44278090ee7cd5cbf5be3daaac1d5a6c3c40833634b52bef69e7b4d5ce",
+        "bytes": 32639
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 18
+      },
+      "note": "red control FX-9: publish form starts blank"
+    },
+    {
+      "id": "c27edc83-f57b-411e-84c2-9af1f6425524",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/funds/fundWrites.test.tsx -t \"publishing new terms\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:06:10Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T010610Z-2578670-red.log",
+        "sha256": "38b44744ad18587e8890341ec581207c3aefdfe342be681f83d306333d337a90",
+        "bytes": 5236
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 18
+      },
+      "note": "red control FX-9: publish form starts blank (body assertion)"
+    },
+    {
+      "id": "baa78a8e-f6bd-4a94-9d44-3daa6583e736",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/funds/fundWrites.test.tsx -t \"default effective dates\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:06:19Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T010619Z-2582000-red.log",
+        "sha256": "7bbe9e46a489bb754c2dcae2a8917b33d1b02564139859e5fdf52bc66c1b3bc9",
+        "bytes": 4453
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 1,
+        "ignored": 15
+      },
+      "note": "red control FX-10: new fund form defaults to the UTC day"
+    },
+    {
+      "id": "cf1551e7-0ebc-4273-9711-6decd56fd128",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:06:40Z",
+      "seconds": 47,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T010640Z-2588465-green.log",
+        "sha256": "718cbac0ea3f8cfe478ab735a217ebaa9eb52c032936983c6e30853038877322",
+        "bytes": 7502
+      },
+      "summary": {
+        "passed": 395,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend check, uncommitted fx-admin-funds change"
+    },
+    {
+      "id": "00077640-bc8b-45be-b404-de56464582ec",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:07:33Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T010733Z-2598554-green.log",
+        "sha256": "7f9e224e46c74eacbe37f7a375586ec8f1a265a7ca93d2920cbca7f86fc75097",
+        "bytes": 2133
+      },
+      "note": "build:client, uncommitted fx-admin-funds change"
+    },
+    {
+      "id": "0312029e-932e-4b8b-b2ef-9e441f1ecd81",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:07:37Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T010737Z-2599027-green.log",
+        "sha256": "656d578d37004f66b60a1a030c55c085ba0b97890b9095457fdb09974b95e8f8",
+        "bytes": 2361
+      },
+      "note": "build:admin, uncommitted fx-admin-funds change"
+    },
+    {
+      "id": "1de9b7f4-445b-4ada-98a8-4ba3fa15a85c",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T01:09:17Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T010917Z-2621549-red.log",
+        "sha256": "116a9c31f9b50dd8e8d6f5e9320a21524adfc71dc6dbd6805669e2b12398e272",
+        "bytes": 2776
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: ledger reversal mints a new key per attempt"
+    },
+    {
+      "id": "c5e1406a-9f59-4678-a702-2479413f76ea",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T01:09:27Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T010927Z-2625528-red.log",
+        "sha256": "69693f4c91cd6eeadf6d3ee6e6a3fd07c8e7ef45ccc8e6d8f1eab7e887205e8b",
+        "bytes": 54494
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: record form not persisted, so closing drops the hold"
+    },
+    {
+      "id": "702d0af3-4f9e-4b59-9b1f-0ac1c4d4cf05",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/shared/useHeldWrite.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T01:09:59Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T010959Z-2632022-red.log",
+        "sha256": "c7c824393e7b82c23e83e1cc872b0df99c5062fe5a020c5c4c9e94498835e200",
+        "bytes": 2750
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control F4: an unreadable own hold is ignored silently"
+    },
+    {
+      "id": "094f4418-84b9-434a-94c6-7bb44ea046e9",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/shared/useHeldWrite.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T01:10:05Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T011004Z-2634402-red.log",
+        "sha256": "811de916061865c8250cadf6e0d9bdf6115bb031f2539842d0bb5c61f985ac73",
+        "bytes": 2760
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control F5: holds never pass the receipt lifetime"
+    },
+    {
+      "id": "765ab49e-898a-4017-9db7-2d76016ba578",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:09:25Z",
+      "seconds": 45,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T010925Z-2625055-green.log",
+        "sha256": "430249eb98bc949a5f4a0fd8a6b8845f6b4d197555f2a8315aaae0f22a2c1e0f",
+        "bytes": 7487
+      },
+      "summary": {
+        "passed": 382,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit 1 tree (FAQ, application, app config, overview, support): frontend check"
+    },
+    {
+      "id": "f86063c3-e339-4497-9ddf-45309f56145f",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:10:15Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T011015Z-2638407-green.log",
+        "sha256": "9af8efd6600b7d4ed82b4094f6f59ea0456213e198a6177291c1cf7367ac316d",
+        "bytes": 2133
+      },
+      "note": "commit 1 tree: build:client"
+    },
+    {
+      "id": "28dbf3a3-ffab-448f-996c-ae99d70fcad7",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:10:20Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T011020Z-2638936-green.log",
+        "sha256": "143bfb7ad74082c2d6edd36f8ae41f9ec07367024db74f61ffbfba9e88c32728",
+        "bytes": 2361
+      },
+      "note": "commit 1 tree: build:admin"
+    },
+    {
+      "id": "db2e2784-b612-4b0e-81e2-d077042f0d79",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/payment-sheet/PaymentSheetScreen.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T01:10:43Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T011043Z-2643964-red.log",
+        "sha256": "9d238b80316309b93854a4ca40c8340247fb63c5bd17bc95d881227a9d94a633",
+        "bytes": 17918
+      },
+      "summary": {
+        "passed": 13,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: a row whose save failed is treated as persisted"
+    },
+    {
+      "id": "8f0d88ec-ccc2-4a02-b3ab-8f7a9dae1927",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/payment-sheet/PaymentSheetScreen.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T01:10:46Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T011046Z-2645090-red.log",
+        "sha256": "89a18d647128a2e88b2ec76b488c3680ffdc4360616fd34e6f2ff7847c606a16",
+        "bytes": 3234
+      },
+      "summary": {
+        "passed": 13,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control F4: an unreadable held row is ignored"
+    },
+    {
+      "id": "f0aeb8e2-ad70-4c07-871e-1503cfdb4fee",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/payment-sheet/PaymentSheetScreen.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T01:10:49Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T011049Z-2646972-red.log",
+        "sha256": "41e206da8db578b196f0c1e1959479975c197e158cd40172db6e806a6e8b3c9b",
+        "bytes": 3204
+      },
+      "summary": {
+        "passed": 13,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control F5: a held row past the receipt lifetime is offered Check again"
+    },
+    {
+      "id": "59e48567-8280-4995-88c5-48695d462a72",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:11:07Z",
+      "seconds": 44,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T011107Z-2652862-green.log",
+        "sha256": "927017e8f3ab90cfc94ac47469d5edad25acd37a7f535807dfa02e1ac0d6c35e",
+        "bytes": 7637
+      },
+      "summary": {
+        "passed": 395,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit 2 tree (funds, AUM, holdings, FX-9, FX-10): frontend check"
+    },
+    {
+      "id": "61f13d44-a288-4a4a-9a8b-f60bcb28c6e0",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:11:51Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T011151Z-2660766-green.log",
+        "sha256": "9a18bd3fb5f56f76c5cea7ebf6ee367f643a7e39f4a2b517b858c240a1e2e78f",
+        "bytes": 2133
+      },
+      "note": "commit 2 tree: build:client"
+    },
+    {
+      "id": "ba01d5f8-582d-4a1f-baa4-948912c30a55",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T01:11:56Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T011156Z-2662082-green.log",
+        "sha256": "951dd511e138414e79293e72d176d6eb2b0f8a8fc48dcefb25a99c2a1d634ed1",
+        "bytes": 2361
+      },
+      "note": "commit 2 tree: build:admin"
+    },
+    {
+      "id": "36562c9c-ea1c-47cc-bc81-14f4b979a214",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T02:52:11Z",
+      "seconds": 51,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T025211Z-2945370-green.log",
+        "sha256": "553fbcb1fa80575dfe3af17f1fe1ad1ea4cb76a8c707ec42410fa306353993f6",
+        "bytes": 7633
+      },
+      "summary": {
+        "passed": 395,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "committed head 8b16de4, clean tree: frontend check"
+    },
+    {
+      "id": "5d90d217-51d3-4578-86ba-6124d684b835",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T02:53:02Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T025302Z-2956156-green.log",
+        "sha256": "fd08703a5fa28ec3386f35f837995ce043af87e22fbaffdc999a83b8246aabc0",
+        "bytes": 2133
+      },
+      "note": "committed head 8b16de4: build:client"
+    },
+    {
+      "id": "12860721-b6c6-46d1-882e-b33cea0e1bcc",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T02:52:26Z",
+      "seconds": 49,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T025226Z-2949847-green.log",
+        "sha256": "9c9b49f4b49fdcf2d263c08e06cc9a41f965e5920181b30e1d71ee1694659c2f",
+        "bytes": 6138
+      },
+      "summary": {
+        "passed": 381,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit 1 tree: shared F4/F5 and payment sheet"
+    },
+    {
+      "id": "2497e29f-004c-4e8d-91a8-3324ab23a687",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T02:53:10Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T025310Z-2958640-green.log",
+        "sha256": "e39646c8d268e1cfd14fd766b40efc9dfced8e04b955cdbcf41168df0205d5b9",
+        "bytes": 2361
+      },
+      "note": "committed head 8b16de4: build:admin"
+    },
+    {
+      "id": "ef1a132b-173d-438e-bde4-7e655f698fa7",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T02:53:20Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T025320Z-2961969-green.log",
+        "sha256": "917d3ba510ba884615bfdff30a59b502b92a828e28b458d6d856766b1e8c0e31",
+        "bytes": 2133
+      },
+      "note": "commit 1 tree build:client"
+    },
+    {
+      "id": "9890e3cc-7ccf-43ca-9f63-61f2fa015847",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T02:53:25Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T025325Z-2962447-green.log",
+        "sha256": "74d10ea9b9854c1bbafcb96dba25de9a086f3c9d8d19271a2f7275dc42ca2f3f",
+        "bytes": 2361
+      },
+      "note": "commit 1 tree build:admin"
+    },
+    {
+      "id": "b55dbc0e-2302-47e0-a868-020a63d84149",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T02:53:53Z",
+      "seconds": 39,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T025353Z-2968770-green.log",
+        "sha256": "4b32c51483238abfd73450764bb1c08fc8157990bd4ab6195b983a600a3e22b1",
+        "bytes": 7434
+      },
+      "summary": {
+        "passed": 387,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "final tree: conversions, FX-8, table test"
+    },
+    {
+      "id": "a8dde524-3cb9-49ee-bfa2-f15edcbfd113",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T02:54:37Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T025437Z-2979411-green.log",
+        "sha256": "008603684b8b5d5c5294ca3a17c8c43e08fa957a6aa18a264f04f98664711fd6",
+        "bytes": 2133
+      },
+      "note": "final tree build:client"
+    },
+    {
+      "id": "1599e387-b092-4a6e-b740-879805b520d3",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T02:54:42Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T025442Z-2981858-green.log",
+        "sha256": "985c2edc12d0bad999284f0a03fc9276a441d6cd39c9049a594a63abe5e5e68c",
+        "bytes": 2361
+      },
+      "note": "final tree build:admin"
+    },
+    {
+      "id": "8716f1e9-cd6e-4383-8a6a-695663c834fa",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 verifier fx-session-guard",
+      "kind": "green",
+      "command": [
+        "node",
+        ".temp/fx-session-guard/verify/scripts/pass.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T02:52:25Z",
+      "seconds": 244,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T025225Z-2948997-green.log",
+        "sha256": "af10d7a51da8bda8b20759c9d5f36ff1ec3a756cedfeaec7bdc53016d32509a7",
+        "bytes": 757
+      },
+      "note": "fx-session-guard runtime pass (RUNTIME, local stack, 496d7fb): steps 1-9 and 9b, admin web 1280, client web 390"
+    },
+    {
+      "id": "65769ebf-0bef-49e2-8ba2-514ead5a2c4c",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/shells/admin/adminRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T03:04:48Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T030448Z-3052280-red.log",
+        "sha256": "034caa36580add213c0e9916b21828fc5a3a42734049d2b1ce7ef04c31d8c2bb",
+        "bytes": 4670
+      },
+      "summary": {
+        "passed": 24,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RF6a admin restore stores the session read's admin without re-reading the stored principal: another admin stored mid-read is overwritten"
+    },
+    {
+      "id": "8f3c406b-541d-48b9-8fd6-4b0fe4f2f7f2",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "red",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npx vitest run src/shells/client/clientRuntime.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T03:04:50Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T030450Z-3053484-red.log",
+        "sha256": "696796199ec27d61d166b91817b93d67bd5f152b7e96239400012f29f5310201",
+        "bytes": 3521
+      },
+      "summary": {
+        "passed": 14,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "RF6b client restore stores the CSRF recovery's client without re-reading the stored principal: another client stored mid-recovery is overwritten"
+    },
+    {
+      "id": "00851e4a-9cec-42ee-84f9-d44f35ae2c8e",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd packages/contracts && npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T03:06:03Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T030603Z-3071656-green.log",
+        "sha256": "580cc8d22dfa032c415d68875694715443d2a3087bdde2692a03b04d3d19b76d",
+        "bytes": 897
+      },
+      "note": "contracts npm ci and build at 8d6fffd"
+    },
+    {
+      "id": "c5fdfbd0-ec47-4dba-b030-217631980f2f",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T03:06:12Z",
+      "seconds": 42,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T030612Z-3072253-green.log",
+        "sha256": "254b52aea0f37748760ca00bc35ca5bbaadd0e59559dcdab8cd69d09209f932c",
+        "bytes": 7245
+      },
+      "summary": {
+        "passed": 380,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci and npm run check at 8d6fffd"
+    },
+    {
+      "id": "7e82dcb5-da8f-4f63-a17f-0a572cf93c5d",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T03:06:54Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T030654Z-3078845-green.log",
+        "sha256": "176e763fd724fc51328820f1c87a98d92bd28089c5a4f9ca2c6414b3832ec5eb",
+        "bytes": 2133
+      },
+      "note": "frontend build:client at 8d6fffd"
+    },
+    {
+      "id": "056f1b96-fb52-4b4d-ad63-838b226e9db8",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 fixer fx-session-guard",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "cd frontend_stack_ts && npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T03:06:59Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T030659Z-3079891-green.log",
+        "sha256": "2f35db1da3b968505db08aab33598b64a153ca02669e3f7522e8453a18192e66",
+        "bytes": 2361
+      },
+      "note": "frontend build:admin at 8d6fffd"
+    },
+    {
+      "id": "a706538e-f6e3-49d6-8eff-ca92ee8536bd",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/funds/heldWrites.test.tsx -t \"newer version\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T03:09:45Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T030945Z-3123922-red.log",
+        "sha256": "6571c61c72402aaa243e3817fca796efcafddbbaaf21b4fcfee6b242c4c99013",
+        "bytes": 33287
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 20
+      },
+      "note": "red control M2: publish sends without re-reading the fund"
+    },
+    {
+      "id": "3265ce33-343a-4517-ac69-757fcfc1da49",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/funds/heldWrites.test.tsx -t \"adding a holding\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T03:09:57Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T030957Z-3133098-red.log",
+        "sha256": "60e748e83e5094a6676f8b560b4e688c1f9e0c459c5e3fdb49b52b65d8a35a11",
+        "bytes": 33259
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 20
+      },
+      "note": "red control: holding add hold not persisted"
+    },
+    {
+      "id": "1f14cda8-189e-4258-a5f5-bb947ba27c05",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T03:11:10Z",
+      "seconds": 40,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T031110Z-3144109-green.log",
+        "sha256": "c488a2fb1e8aa2139b43e5511710bbdd99c49377789e3104b17f62681825d023",
+        "bytes": 6675
+      },
+      "summary": {
+        "passed": 397,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "review-31 follow-up, uncommitted: frontend check"
+    },
+    {
+      "id": "7f2c94c6-2275-4940-bc73-56c2d8930c20",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T03:12:08Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T031208Z-3157089-green.log",
+        "sha256": "92812201500bbb68f10c3b33b07b9324f4800b8d4805b4d4d4920718be2f9c77",
+        "bytes": 897
+      },
+      "note": "committed head d419374: contracts build"
+    },
+    {
+      "id": "57b21b43-bdab-41d6-8174-58a00aa6b48f",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T03:12:16Z",
+      "seconds": 44,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T031216Z-3158983-green.log",
+        "sha256": "e6ad6c82457dffe952f8a21d0ce8d4a4f06f39ef16f48c62a337f6d017ebdc37",
+        "bytes": 7502
+      },
+      "summary": {
+        "passed": 397,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "committed head d419374, clean tree: frontend check"
+    },
+    {
+      "id": "68157086-ee62-46a0-960e-9b060fb22b3d",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T03:13:00Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T031300Z-3166772-green.log",
+        "sha256": "a4d39b4abffc43ec56269878dfa4746673b1b5495185718409f8067ed356595f",
+        "bytes": 2133
+      },
+      "note": "committed head d419374: build:client"
+    },
+    {
+      "id": "307cdc29-21e5-4c9c-af37-0b059d81b47e",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T03:13:05Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T031305Z-3168010-green.log",
+        "sha256": "d1d9873911fb482dfdd92ff4d98674bdc35c16a5e421d48bfd2bf301ba802002",
+        "bytes": 2361
+      },
+      "note": "committed head d419374: build:admin"
+    },
+    {
+      "id": "18975a40-23fa-4b5b-a6c0-16baa77380ad",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:15:52Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T031552Z-3198441-red.log",
+        "sha256": "09e2ec39e78e394979d8cb2467d94efa19699409c43ccb73fafb7cd5dad75f59",
+        "bytes": 55027
+      },
+      "summary": {
+        "passed": 8,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control F1: the durable record form expires after a day"
+    },
+    {
+      "id": "f3cb2474-9944-45b4-9008-04a0e84282d6",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:15:56Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T031556Z-3199197-red.log",
+        "sha256": "4b84bf70e6ace0c731d55509b6ff82ab3d854f7aca765615c614908bee364c30",
+        "bytes": 17279
+      },
+      "summary": {
+        "passed": 8,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control F3: an unreadable hold does not lock the record form"
+    },
+    {
+      "id": "c3050a68-150c-44df-8c76-eb5f13b44a2f",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:16:01Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T031601Z-3200583-red.log",
+        "sha256": "8830134d82b6cb3e331898edeb1f4fc04eb129f5db998cb6d37b868975b7dd35",
+        "bytes": 33282
+      },
+      "summary": {
+        "passed": 8,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control F4: the growth batch commit is not persisted"
+    },
+    {
+      "id": "876f2697-8a94-4bca-afa4-bc4d2983b371",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:16:42Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T031642Z-3207534-green.log",
+        "sha256": "7c269625b4dc80436469ff2bfd6ff9dc40cd230dd1793526741d38cc3e20f527",
+        "bytes": 897
+      },
+      "note": "4130e2b contracts"
+    },
+    {
+      "id": "54448db7-db62-4295-8c9e-3923eb2dd57a",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:16:49Z",
+      "seconds": 42,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T031649Z-3208014-green.log",
+        "sha256": "5ddd6cfbcec5711e75797ec0301005d84daf94cc12489917e2c8c8b09d99d7a2",
+        "bytes": 7982
+      },
+      "summary": {
+        "passed": 390,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "4130e2b frontend check"
+    },
+    {
+      "id": "4d97476d-8e8f-43b8-a90d-595575ae0235",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:17:36Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T031736Z-3213509-green.log",
+        "sha256": "921c791d4c6a8f13ada1ff4807e10a73753fdc16da36d6861015704ad39e92db",
+        "bytes": 2133
+      },
+      "note": "4130e2b build:client"
+    },
+    {
+      "id": "a0f56bf1-5658-4ee2-85c0-fdfd6855894e",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:17:41Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T031741Z-3214143-green.log",
+        "sha256": "ef51681d12228a0e406bb8639746df3d407b8f3f1806fdc5082b0e27521321cd",
+        "bytes": 2361
+      },
+      "note": "4130e2b build:admin"
+    },
+    {
+      "id": "391237e4-f2cc-4df9-aef9-e5342cd5193f",
+      "task": "FX-session-guard",
+      "track": "fx-session-guard",
+      "agent": "claude-opus-5-5 verifier fx-session-guard",
+      "kind": "green",
+      "command": [
+        "node",
+        ".temp/fx-session-guard/verify/scripts/pass2.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-session-guard",
+      "started": "2026-11-17T03:18:06Z",
+      "seconds": 247,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-session-guard/20261117T031806Z-3218723-green.log",
+        "sha256": "011073f425643b3a2404de19833e4bdde1565abac7d0fa832fac9a5d66a7be67",
+        "bytes": 864
+      },
+      "note": "fx-session-guard runtime re-run (RUNTIME, local stack, 8d6fffd): steps 1-7, 8a-8f, 9, 9b; admin web 1280, client web 390"
+    },
+    {
+      "id": "6bf65ec0-c892-48f7-88ab-7e94a0ce49f0",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:29:44Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T032944Z-3355934-red.log",
+        "sha256": "ae6db6ebea73836bdb01ab8145392c0f280fdb239463f648b39e47393f0d2bcc",
+        "bytes": 31777
+      },
+      "summary": {
+        "passed": 9,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control A: the batch screen does not render the unsaved notice"
+    },
+    {
+      "id": "9c772a66-b8d2-45e3-8889-6fcb39f55537",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:30:07Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T033007Z-3361729-green.log",
+        "sha256": "580cc8d22dfa032c415d68875694715443d2a3087bdde2692a03b04d3d19b76d",
+        "bytes": 897
+      },
+      "note": "head contracts"
+    },
+    {
+      "id": "b21921e3-410f-4601-b6ba-6f1549f2fcca",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:30:16Z",
+      "seconds": 43,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T033016Z-3363373-green.log",
+        "sha256": "b1175adc1666c8f690e81de336964ece186aa02ea7c6ce27c64a4b124af10451",
+        "bytes": 7968
+      },
+      "summary": {
+        "passed": 391,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "head frontend check"
+    },
+    {
+      "id": "ffc62c1f-aba8-4a6c-9cd8-63e38e182559",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:31:03Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T033103Z-3369048-green.log",
+        "sha256": "7f9e224e46c74eacbe37f7a375586ec8f1a265a7ca93d2920cbca7f86fc75097",
+        "bytes": 2133
+      },
+      "note": "head build:client"
+    },
+    {
+      "id": "3f24b8c9-4596-43ff-b09c-91e0e3f314ae",
+      "task": "FX-admin-values",
+      "track": "fx-admin-values",
+      "agent": "claude-opus-5-5 builder fx-admin-values",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-values",
+      "started": "2026-11-17T03:31:08Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-values/20261117T033108Z-3369527-green.log",
+        "sha256": "65b0467393927ac2ff0b2003a90ff28f9f5fc4c217403af2d59e8799bc2890bb",
+        "bytes": 2361
+      },
+      "note": "head build:admin"
+    },
+    {
+      "id": "8708914d-e7ec-478c-aa68-fbed3856fc50",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 verifier fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "node",
+        ".temp/fx-admin-funds/verify/scripts/pass.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T03:48:01Z",
+      "seconds": 334,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T034801Z-3474537-green.log",
+        "sha256": "91fe19bff1cba9b454ac28c836de9912da385c653809348adf51c465fea3a999",
+        "bytes": 3026
+      },
+      "note": "fx-admin-funds runtime pass (RUNTIME, local stack, d419374): items 1-8, admin web 1440 and admin 390"
+    },
+    {
+      "id": "782e1cb4-a952-4c05-b6a7-1843b2d5d0d3",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/funds/heldWrites.test.tsx -t \"held past a day\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T04:00:10Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T040010Z-3578222-red.log",
+        "sha256": "f313ced64484c638644b0dc58bade09f11dec8ea94afca1198907cb8f6168543",
+        "bytes": 19247
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 23
+      },
+      "note": "red control: fund size hold with ordinary retention"
+    },
+    {
+      "id": "79b590cd-c23d-4912-a4f3-6d1209b70928",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/funds/heldWrites.test.tsx -t \"unreadable held fund size\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T04:00:14Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T040014Z-3579021-red.log",
+        "sha256": "f2be4ede08d7360802fa0b8b62e3770805b5155cd705edb2235d0b8b3d272706",
+        "bytes": 6078
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 23
+      },
+      "note": "red control: unreadable hold does not lock the fund size form"
+    },
+    {
+      "id": "eef039cc-755d-4f5e-911c-2f91e64a5be1",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/funds/heldWrites.test.tsx -t \"once the fund has an AUM\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T04:00:16Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T040016Z-3580150-red.log",
+        "sha256": "d1203bb064175a2f21b04b73513b8dd8ff7c4d5d34eb2e3c51e3b735c54e9619",
+        "bytes": 33585
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 23
+      },
+      "note": "red control: held opening AUM hidden once the fund has an AUM"
+    },
+    {
+      "id": "721bd52b-6f4d-4645-a158-e7379946ec5a",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T04:00:28Z",
+      "seconds": 42,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T040028Z-3583915-green.log",
+        "sha256": "2763338c990ca7b2028bb07cf4dacbf00669f1046fabd39a85d23ce7b4c6cefe",
+        "bytes": 7318
+      },
+      "summary": {
+        "passed": 415,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "integration round on 6692999, uncommitted: frontend check"
+    },
+    {
+      "id": "a6f74ef8-33e9-4e3f-84ee-e2b8a96eddb2",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T04:01:29Z",
+      "seconds": 15,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T040129Z-206550-green.log",
+        "sha256": "9dd2d094fb6b59609ac9ba7a93cc9ff1f4e33ac37cb0bc18a1262e9d131b4763",
+        "bytes": 897
+      },
+      "note": "committed head 0268706: contracts build"
+    },
+    {
+      "id": "ab39cd5e-6d8c-447a-a6bb-128e6eaed5a0",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T04:01:44Z",
+      "seconds": 71,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T040144Z-573882-green.log",
+        "sha256": "8ffae58198a677a5fd098a8e91fb74e9e32e7d03938e9c50eda714b61f56ce77",
+        "bytes": 8111
+      },
+      "summary": {
+        "passed": 415,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "committed head 0268706, clean tree: frontend check"
+    },
+    {
+      "id": "b43a7367-ebbc-4f44-8a8e-506e2f819282",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T04:02:55Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T040255Z-1884181-green.log",
+        "sha256": "2064757e33427f4108ae30c1296979055aea44638ca2070913782671ea04bded",
+        "bytes": 2133
+      },
+      "note": "committed head 0268706: build:client"
+    },
+    {
+      "id": "7da5412a-39c7-45ff-acd8-fe92c7aca637",
+      "task": "FX-admin-funds",
+      "track": "fx-admin-funds",
+      "agent": "claude-opus-5-5 builder fx-admin-funds",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/fx-admin-funds",
+      "started": "2026-11-17T04:03:01Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/fx-admin-funds/20261117T040301Z-1886656-green.log",
+        "sha256": "3bb2e88097fb391c3d872936e7ec401601bfdbd0d3c6e93acde7574d3ac8b7ef",
+        "bytes": 2361
+      },
+      "note": "committed head 0268706: build:admin"
     }
   ]
 }

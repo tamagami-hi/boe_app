@@ -525,6 +525,100 @@
         "agent": "tally"
       },
       "closedWhy": "landed, and idle since 2026-11-16T13:55:53.625Z"
+    },
+    {
+      "name": "fx-shell",
+      "branch": "track/fx-shell",
+      "worktree": ".temp/worktrees/fx-shell",
+      "purpose": "UI stage A: FX-1, FX-3, FX-11 (router rebuild hang, invest back arrow, admin reset link); held until the Node 24 release is cut (DEC-61)",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-16T21:19:59.364Z"
+    },
+    {
+      "name": "fx-ui-recipes",
+      "branch": "track/fx-ui-recipes",
+      "worktree": ".temp/worktrees/fx-ui-recipes",
+      "purpose": "UI stage A: FX-2, FX-7 (detail-row collapse, faint text contrast); held until the Node 24 release is cut (DEC-61)",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-16T21:19:59.812Z"
+    },
+    {
+      "name": "fx-paging",
+      "branch": "track/fx-paging",
+      "worktree": ".temp/worktrees/fx-paging",
+      "purpose": "UI stage A: FX-6 (silent Show more and refetch failures, paged re-fire); held until the Node 24 release is cut (DEC-61)",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-16T21:20:00.235Z"
+    },
+    {
+      "name": "fx-admin-held",
+      "branch": "track/fx-admin-held",
+      "worktree": ".temp/worktrees/fx-admin-held",
+      "purpose": "UI stage A: groundwork for FX-4 and FX-10 (shared held-write model, write hooks out of adminQueries, IST date helper); behaviour unchanged; held until the Node 24 release is cut (DEC-61)",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-16T21:56:26.770Z"
+    },
+    {
+      "name": "c-carried-backend",
+      "branch": "track/c-carried-backend",
+      "worktree": ".temp/worktrees/c-carried-backend",
+      "purpose": "Carried LOWs CL-01 (user-row lock for client writes racing erasure) and CL-02 (statement renderer off the email layer); backend only",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-16T22:00:29.719Z",
+      "closedAt": "2026-11-16T23:50:56.527Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-16T22:50:56.430Z"
+    },
+    {
+      "name": "fx-session-guard",
+      "branch": "track/fx-session-guard",
+      "worktree": ".temp/worktrees/fx-session-guard",
+      "purpose": "finding-50: end the session instead of resending when an auth refresh returns a different user (admin and client runtimes); keep a held write unknown on a pre-processing refusal. Based on fx-admin-held; gates fx-admin-values",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-16T22:57:05.424Z"
+    },
+    {
+      "name": "fx-admin-values",
+      "branch": "track/fx-admin-values",
+      "worktree": ".temp/worktrees/fx-admin-values",
+      "purpose": "UI overhaul FX-4, FX-5, FX-8 for client values, users, payment sheet, maturities, returns, reports (plan 4.1); based on fx-session-guard",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T00:42:49.802Z"
+    },
+    {
+      "name": "fx-admin-funds",
+      "branch": "track/fx-admin-funds",
+      "worktree": ".temp/worktrees/fx-admin-funds",
+      "purpose": "UI overhaul FX-4, FX-5, FX-8, FX-9, FX-10 for funds, AUM, FAQs, applications, app config, overview (plan 4.1); based on fx-session-guard",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-17T00:42:50.128Z"
     }
   ]
 }

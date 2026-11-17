@@ -1,26 +1,7 @@
 {
   "schema": 1,
   "nextRow": 47,
-  "open": [
-    {
-      "row": 45,
-      "group": "admin-improvements",
-      "question": "Q-013 (carried from the previous plan, app-onboarding-contact-investment-email.md section 0a): the sole admin can suspend or close their own account, with no in-app or seed recovery. Should the app refuse that?",
-      "meanwhile": "Unchanged and out of scope: no guard is added; recovery stays a maintainer database step.",
-      "asked": "2026-11-16T12:55:15.779Z",
-      "by": "claude-opus-5-5 coordinator",
-      "track": "main"
-    },
-    {
-      "row": 46,
-      "group": "admin-improvements",
-      "question": "A phone number an admin types into a nominee decline reason (or any free reason) survives client erasure inside that admin decision's idempotency receipt, because the scrubber replaces only the stored +91 form. DEC-29 says phones are erased everywhere. Should erasure also scrub national-format numbers from receipts and reasons?",
-      "meanwhile": "Unchanged: only the stored +91 form is replaced inside JSON; documented in release_manager/docs/client-erasure.md.",
-      "asked": "2026-11-16T21:19:35.550Z",
-      "by": "claude-opus-5-5 coordinator",
-      "track": "main"
-    }
-  ],
+  "open": [],
   "answered": [
     {
       "row": 1,
@@ -328,6 +309,28 @@
       "track": "main",
       "answeredAt": "2026-11-16T12:14:28.978Z",
       "decision": "DEC-55"
+    },
+    {
+      "row": 45,
+      "group": "admin-improvements",
+      "question": "Q-013 (carried from the previous plan, app-onboarding-contact-investment-email.md section 0a): the sole admin can suspend or close their own account, with no in-app or seed recovery. Should the app refuse that?",
+      "meanwhile": "Unchanged and out of scope: no guard is added; recovery stays a maintainer database step.",
+      "asked": "2026-11-16T12:55:15.779Z",
+      "by": "claude-opus-5-5 coordinator",
+      "track": "main",
+      "answeredAt": "2026-11-17T04:04:53.567Z",
+      "decision": "DEC-65"
+    },
+    {
+      "row": 46,
+      "group": "admin-improvements",
+      "question": "A phone number an admin types into a nominee decline reason (or any free reason) survives client erasure inside that admin decision's idempotency receipt, because the scrubber replaces only the stored +91 form. DEC-29 says phones are erased everywhere. Should erasure also scrub national-format numbers from receipts and reasons?",
+      "meanwhile": "Unchanged: only the stored +91 form is replaced inside JSON; documented in release_manager/docs/client-erasure.md.",
+      "asked": "2026-11-16T21:19:35.550Z",
+      "by": "claude-opus-5-5 coordinator",
+      "track": "main",
+      "answeredAt": "2026-11-17T04:04:53.876Z",
+      "decision": "DEC-66"
     }
   ]
 }

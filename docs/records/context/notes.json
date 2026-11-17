@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 112,
+  "nextNumber": 113,
   "notes": [
     {
       "id": "note-1",
@@ -1869,6 +1869,20 @@
       "kind": "heads-up",
       "text": "track u-plan was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/u-plan.",
       "at": "2026-11-16T14:55:54.696Z",
+      "replies": []
+    },
+    {
+      "id": "note-112",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track c-carried-backend was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/c-carried-backend.",
+      "at": "2026-11-16T23:50:56.527Z",
       "replies": []
     }
   ]

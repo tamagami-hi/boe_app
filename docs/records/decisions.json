@@ -620,6 +620,46 @@
       "state": "built",
       "by": "operator",
       "on": "2026-11-16T21:19:38.904Z"
+    },
+    {
+      "id": "DEC-63",
+      "group": "admin-improvements",
+      "text": "Small text that sits on the patterned sign-in background or a page gradient (the sign-in footnote, and the 'Values recorded by BeOnEdge ... Investments are subject to market risk.' source and risk line) uses the normal body grey there, so it reaches 4.5:1; the background stays as it is.",
+      "since": "2026-11-17",
+      "status": "Decided, not built on main: built on lane fx-ui-recipes (c76b341), held until the Node 24 release (DEC-61)",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-16T22:51:27.171Z"
+    },
+    {
+      "id": "DEC-64",
+      "group": "admin-improvements",
+      "text": "Body text is made slightly darker (about 8:1 on the page) so faint text, now at 4.5:1 or more, stays clearly quieter than body text; a small app-wide refinement of today's look under DEC-45.",
+      "since": "2026-11-17",
+      "status": "Decided, not built on main: built on lane fx-ui-recipes (2b93206), held until the Node 24 release (DEC-61)",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-16T22:51:27.475Z"
+    },
+    {
+      "id": "DEC-65",
+      "group": "admin-improvements",
+      "text": "The app refuses when an admin tries to suspend or close their own account: the server refuses the request and the admin app hides those actions on the admin's own record. This prevents the sole-admin lockout that today needs a manual database fix (Q-45, carried Q-013). It is a business rule, not a permission or role change (DEC-36), and needs no migration.",
+      "since": "2026-11-17",
+      "status": "Decided, not built: a small backend and admin lane, not yet planned",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-17T04:04:52.887Z"
+    },
+    {
+      "id": "DEC-66",
+      "group": "admin-improvements",
+      "text": "Client erasure also replaces the erased client's own known phone numbers in their national forms (for example 98765 43210) inside stored JSON such as idempotency receipts, but only in free-text string values that contain letters or spaces, never in digit-only values such as amounts or ids. Applies to future erasures, plus a one-off re-scrub of already erased accounts if any exist (Q-46, DEC-29).",
+      "since": "2026-11-17",
+      "status": "Decided, not built: a small backend lane, not yet planned",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-17T04:04:53.215Z"
     }
   ],
   "replaced": []

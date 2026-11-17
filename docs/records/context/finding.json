@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 47,
+  "nextNumber": 60,
   "entries": [
     {
       "id": "finding-1",
@@ -1184,6 +1184,355 @@
         "agent": "claude-pro-u-plan"
       },
       "at": "2026-11-16T13:32:45.176Z"
+    },
+    {
+      "id": "finding-47",
+      "kind": "finding",
+      "title": "Paged lists after fx-paging: two leftovers of finding-25 (shared loadAll query, remount relabel)",
+      "text": "From review-18 of lane fx-paging (9ba2251). (1) The refetch hold is per component, but useAdminFundCatalogue shares its query with useAdminFunds({}) and useFundCatalogue with useFunds; a refetch of the ordinary list clears the error and the catalogue's walk then requests the failed page once more, per round trip, not a loop (frontend_stack_ts/src/api/paged.ts:98; features/admin/shared/queries.ts:35,59; features/shared/queries.ts:74,88). (2) The page-failure flag lives in component state, so remounting within gcTime after the stale time briefly shows a page failure as a failed refresh until the refetch ends (paged.ts:107-109). Also recorded: an admin write that invalidates a stopped loadAll list restarts it, and the parked OnlinePaymentHistory re-requests a failed page after a background refresh (DEC-14). For fd-states-forms or a later paging pass.",
+      "paths": [
+        "frontend_stack_ts/src/api/paged.ts",
+        "frontend_stack_ts/src/features/admin/shared/queries.ts",
+        "frontend_stack_ts/src/features/shared/queries.ts"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "paging"
+      ],
+      "refs": [
+        "finding-25",
+        "finding-41",
+        "review-18"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T21:52:49.063Z",
+      "retiredAt": "2026-11-17T00:07:32.901Z",
+      "retiredWhy": "replaced by finding-52"
+    },
+    {
+      "id": "finding-48",
+      "kind": "finding",
+      "title": "After fx-ui-recipes: sign-in footnote 4.39:1, glyph dot, phone label squeeze, faint-vs-body hierarchy",
+      "text": "From review-20 of lane fx-ui-recipes. (1) The sign-in footnote (ui/recipes/auth.ts:65) now uses the muted grey but measures 4.39:1 over the darkest point of the background mesh, below WCAG 1.4.3; the contrast probe cannot see it because the mesh is not a parent element. Changing the mesh is a look decision (DEC-45): for cp-auth or the maintainer. (2) The disclosure '+' glyph and a disabled secondary button's arrow draw a darker dot where two translucent strokes cross (datalist.ts:45, ui/patterns/DataList.tsx:88-89): give glyph recipes a solid colour (fd-actions or fd-states-forms). (3) Below 1024 px a detail row with a long value still squeezes its label (Grievance timelines; the parked payment Reason row): for the client phone lanes. (4) Faint text is now only about 3 L* (page) to 4 L* (cards) quieter than body text, under 2 on shells; colour alone cannot hold the hierarchy at 4.5:1, so size carries it. For the screenshot review and the maintainer's acceptance. (5) The probe marks card-face text unknown and measures colour-mixed backgrounds against a lighter parent; a 0-failure result does not cover card text.",
+      "paths": [
+        "frontend_stack_ts/src/ui/recipes/auth.ts",
+        "frontend_stack_ts/src/ui/recipes/datalist.ts",
+        "frontend_stack_ts/src/ui/tokens/tokens-core.css"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "contrast"
+      ],
+      "refs": [
+        "review-20",
+        "finding-42"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T21:59:50.391Z"
+    },
+    {
+      "id": "finding-49",
+      "kind": "finding",
+      "title": "Failed GETs retry 3 x 3 = 9 requests; the malformed-id error state has no main landmark",
+      "text": "From the fx-shell runtime pass (evidence e12ad99e, 2026-11-17). (1) A failing client read sends 9 HTTP requests in about 8 s before it shows its failure: 3 React Query attempts (2 retries) times 3 transport attempts per GET (frontend_stack_ts/src/api/http.ts retry delays [300, 900] ms). Bounded, and it predates the UI overhaul; whether the two retry layers should be one is for fd-states-forms or the maintainer. (2) After in-app navigation to a malformed id such as /funds/%, the fund screen's error state renders without a main landmark or heading (accessibility; fd-states-forms). (3) A full page load of /funds/% gets a 500 'URI malformed' from the Vite dev server itself; the production nginx and static build were not checked.",
+      "paths": [
+        "frontend_stack_ts/src/api/http.ts"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "states"
+      ],
+      "refs": [
+        "review-19",
+        "FX-shell"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T22:02:57.693Z"
+    },
+    {
+      "id": "finding-50",
+      "kind": "finding",
+      "title": "Auth refresh resends a write as whichever admin now owns the cookies (rule 6); CSRF refusal reads as Nothing changed",
+      "text": "From review-23 (static trace, 2026-11-17). (1) MEDIUM, pre-existing (ca4730a, 5bec7a6): frontend_stack_ts/src/api/http.ts:326-348 sendWithAuthRecovery resends any method once, same Idempotency-Key, after a 401 AUTHENTICATION_REQUIRED and a 'rotated' refresh; shells/admin/adminRuntime.ts:169-186 executeCookieRefresh stores principalFrom(data.user) without comparing it to the tab's admin. If admin B signed in in another tab and B's access cookie has expired, a Check again or submit in tab 1 rotates B's session and the write applies again under admin:B (idempotency is per admin, adminRouteKit.ts:115-127) and is audited as B; tab 1 then sends as B. Today unique indexes and expectedVersion limit it to wrong attribution; ledger writes without natural uniqueness would apply twice. Fix: when the refreshed user differs from the cached principal, end the session instead of 'rotated'; same class for the client runtime. Must land before fx-admin-values adopts persisted holds. (2) LOW: a Check again refused before processing (403 CSRF_INVALID) is classed as definite (api/errors.ts:79), so useHeldWrite drops the hold and shows Nothing changed although the first attempt may have applied (rule 4). (3) LOW: no test for cookie restore, F3, or no-principal persistence.",
+      "paths": [
+        "frontend_stack_ts/src/api/http.ts",
+        "frontend_stack_ts/src/shells/admin/adminRuntime.ts",
+        "frontend_stack_ts/src/api/errors.ts"
+      ],
+      "tags": [
+        "security",
+        "session",
+        "rule-6"
+      ],
+      "refs": [
+        "review-23",
+        "FX-admin-held"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T22:57:17.657Z"
+    },
+    {
+      "id": "finding-51",
+      "kind": "finding",
+      "title": "Runtime pass 2026-11-17: avatar initials 2.82:1, stacked stale notices, raw fund ids in the ledger tab",
+      "text": "From the fx-ui-recipes pass 2 and fx-paging runtime passes (evidence 45f8ad98, c917071c). (1) The 'BC' profile avatar initials are ivory on the gold gradient at 2.82:1 at every width; not covered by finding-48 or DEC-63. (2) After one failed refresh the admin client page stacks 10 identical stale notices (one per section), the client dashboard 3 and portfolio 2: for fd-states-forms (one notice per screen). (3) The admin ledger tab shows raw fund ids with no notice when the fund catalogue walk stops (ClientLedgerTab.tsx:74-77): FX-8, lane fx-admin-values. (4) Faint text over edge shading stays at 4.15-4.46 (admin Users at 1280, right edge at 390), amber warning text at 4.28, the 'Sent' badge at 4.48 at the 390 edge. The sign-in footnote item of finding-48 is closed by DEC-63 and DEC-64 (5.76-6.53 measured).",
+      "paths": [
+        "frontend_stack_ts/src/ui",
+        "frontend_stack_ts/src/features/admin/users/ClientLedgerTab.tsx"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "contrast",
+        "states"
+      ],
+      "refs": [
+        "finding-48",
+        "FX-ui-recipes",
+        "FX-paging"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T23:38:20.133Z"
+    },
+    {
+      "id": "finding-52",
+      "kind": "finding",
+      "title": "Paged lists after fx-paging a8bc9b0: per-query hold leftovers (silent loadAll consumers, focus)",
+      "text": "From review-26 of lane fx-paging (a8bc9b0). Closed by a8bc9b0: the shared loadAll query re-requesting a failed page (runtime: 12 requests in 12 s), the remount relabel, and the write invalidation restarting a stopped walk. The hold now lives per query (paged.ts:84-97,147,160) and only Try again releases it.\nLeft: (B, MEDIUM) the hold outlives other hooks' successful refetches, and loadAll observers skip refetch on mount, focus and reconnect while held. Consumers that show no notice and no Try again stay degraded until Try again on another screen, gc (5 min unobserved), sign-out or reload. Client: ActivityScreen.tsx:121-124, SipListScreen.tsx:33, SipDetailScreen.tsx:86, PaymentStatusScreen.tsx:110 (names fall back to 'Fund'); needs an owner, fd-states-forms proposed. Admin raw fund ids: ClientLedgerTab.tsx:75, ClientMaturityTab.tsx:17, ClientPositionDetailScreen.tsx:75-77, IndividualClientGrowthScreen.tsx:88, maturities/ClientMaturitySection.tsx:48 (FX-8, fx-admin-values). (C, LOW) a hold is not released when a refetch leaves no next page; fixed in this lane's next commit. (D, LOW, pre-existing) after the final Show more the button unmounts and focus falls to body: fd-states-forms. The parked OnlinePaymentHistory re-request stays (DEC-14).",
+      "paths": [
+        "frontend_stack_ts/src/api/paged.ts",
+        "frontend_stack_ts/src/ui/patterns/LoadMore.tsx",
+        "frontend_stack_ts/src/features/shared/queries.ts",
+        "frontend_stack_ts/src/features/admin/shared/queries.ts"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "paging"
+      ],
+      "refs": [
+        "finding-25",
+        "finding-41",
+        "finding-51",
+        "review-18",
+        "review-26"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T00:07:32.901Z",
+      "replaces": "finding-47",
+      "retiredAt": "2026-11-17T00:37:41.143Z",
+      "retiredWhy": "replaced by finding-54"
+    },
+    {
+      "id": "finding-53",
+      "kind": "finding",
+      "title": "Session guard residue: client restore race and outage-held principal (fx-session-guard)",
+      "text": "From review-28 and review-29 of lane fx-session-guard (finding-50 closed). Residue, accepted, LOW: (1) Client web: if investor B finishes signing in in another tab while this tab's getClientWebCsrf response (as A) is still in flight, this tab stores A over B's stored principal, the other tab ends instead, and this tab reads B's data under A's name until the next 401 or refresh (at most the 10-minute access-token lifetime, webAuth.ts:60). Admin web is covered by the getAdminSession compare in cookieRestore. A full fix needs a server-checked expected user on reads (an API change, rule 11). (2) After a restore that fails with an outage, the signed-out screen may still hold the principal hydrated from localStorage, so the transport guard treats the tab as holding a user; no signed-out screen sends a signed-in read today. Kept so an outage at reload does not drop persisted held writes (rule 6). (3) N4: the first detection calls getWebCsrf with the other user's cookies and rotates their CSRF token once per tab. (4) Native signed-out screens can hold a cached user, so an outage never deletes the refresh token.",
+      "paths": [
+        "frontend_stack_ts/src/shells/client/clientRuntime.ts",
+        "frontend_stack_ts/src/shells/admin/adminRuntime.ts",
+        "frontend_stack_ts/src/api/session",
+        "frontend_stack_ts/src/app/providers/SessionProvider.tsx"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "session",
+        "security"
+      ],
+      "refs": [
+        "finding-50",
+        "review-25",
+        "review-28",
+        "review-29"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T00:37:40.860Z",
+      "retiredAt": "2026-11-17T03:08:36.160Z",
+      "retiredWhy": "replaced by finding-57"
+    },
+    {
+      "id": "finding-54",
+      "kind": "finding",
+      "title": "Paged lists after fx-paging 00ea526: per-query hold leftovers (silent loadAll consumers, focus)",
+      "text": "From review-26 and the runtime re-check of 00ea526 (evidence ff409737, all 7 items pass). Closed: the shared loadAll query re-requesting a failed page (12 requests in 12 s, now 0), the remount relabel, the write invalidation restarting a stopped walk, the focus restore scrolling (0 px over 16 presses), a hold surviving a list that shrinks to one page. Only Try again releases a hold (paged.ts).\nLeft: (B, MEDIUM) the hold outlives other hooks' successful refetches; consumers with no notice and no Try again stay degraded until Try again on another screen, gc (5 min unobserved), sign-out or reload. Client: ActivityScreen.tsx:121-124, SipListScreen.tsx:33, SipDetailScreen.tsx:86, PaymentStatusScreen.tsx:110 (names fall back to 'Fund'); owner needed, fd-states-forms proposed. Admin raw fund ids: ClientLedgerTab.tsx:75, ClientMaturityTab.tsx:17, ClientPositionDetailScreen.tsx:75-77, IndividualClientGrowthScreen.tsx:88, maturities/ClientMaturitySection.tsx:48 (FX-8, fx-admin-values). (B2) Admin /funds with no filter shares the catalogue's query, so a walk stopped on /aum/collective shows there as '1 funds so far / not complete / Try again'. (D, LOW, pre-existing) when the load-more block disappears (final page or a 403) focus falls to body: fd-states-forms. The parked OnlinePaymentHistory re-request stays (DEC-14).",
+      "paths": [
+        "frontend_stack_ts/src/api/paged.ts",
+        "frontend_stack_ts/src/ui/patterns/LoadMore.tsx",
+        "frontend_stack_ts/src/features/shared/queries.ts",
+        "frontend_stack_ts/src/features/admin/shared/queries.ts"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "paging"
+      ],
+      "refs": [
+        "finding-25",
+        "finding-41",
+        "finding-51",
+        "review-26",
+        "review-27"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T00:37:41.143Z",
+      "replaces": "finding-52"
+    },
+    {
+      "id": "finding-55",
+      "kind": "finding",
+      "title": "Outage during a reload at a deep URL leaves an endless 'Restoring your session' spinner (pre-existing)",
+      "text": "From the fx-session-guard runtime pass (evidence 8716f1e9, 2026-11-17). Reloading the admin app at a signed-in deep URL (for example /users) while the session read fails with an outage shows RequireSession's 'Restoring your session' spinner with no Try again, and nothing retries after the browser's online event; only a manual reload recovers. At / the splash offers Try again and recovers correctly. Source is the same on main 07ee398, so this predates the UI overhaul lanes. Rule 4: a failed read needs a visible failure and a recovery. Owner: the lane that owns app/routing/guards.tsx (fd-header or cp-auth); fx-session-guard must not touch it.",
+      "paths": [
+        "frontend_stack_ts/src/app/routing/guards.tsx",
+        "frontend_stack_ts/src/app/providers/SessionProvider.tsx"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "session",
+        "rule-4"
+      ],
+      "refs": [
+        "finding-53",
+        "FX-session-guard"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:02:06.355Z"
+    },
+    {
+      "id": "finding-56",
+      "kind": "finding",
+      "title": "Fund terms publish has no expected-version guard on the server (API change needed)",
+      "text": "From review-31 of lane fx-admin-funds (M2). The admin 'Publish new terms' request carries no base version and the backend publish route has no expected-version check, so an admin whose page shows version 3 can publish version 5 from version 3's terms after another admin published version 4, silently undoing their changes. fx-admin-funds adds a screen-side re-read before sending, which narrows the window but cannot close it. The real fix is an expected version on the publish operation (contract, backend route, frontend): an API change under rule 11, for a later backend lane with a contract change and an expand-first rollout.",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/funds/PublishTermsSection.tsx",
+        "backend_controller/src/routes",
+        "packages/contracts/src/operations"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "admin",
+        "funds",
+        "concurrency"
+      ],
+      "refs": [
+        "review-31",
+        "FX-admin-funds"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:05:07.280Z"
+    },
+    {
+      "id": "finding-57",
+      "kind": "finding",
+      "title": "Session guard residue after 8d6fffd: cross-renderer storage lag and outage-held principal (fx-session-guard)",
+      "text": "From review-28 to review-32 and the runtime pass (evidence 8716f1e9) of lane fx-session-guard; finding-50 closed. Correction: the earlier text said admin web was covered by the getAdminSession compare; it was not (a sign-in by another admin finishing while the session read was in flight left the tab showing A with B's cookies). 8d6fffd closes that and the client twin: a web restore ends as revoked, writing nothing, when another tab stored a different user while it waited on the server. Residue, accepted, LOW: (1) localStorage changes reach other renderers asynchronously, so another tab's write landing between a restore's check and its own write can still interleave; the subscribe-time check and the listener end the wrong tab in most orderings. A full fix needs a server-checked expected user on reads (an API change, rule 11). (2) After a restore that fails with an outage, the signed-out screen may still hold the principal hydrated from localStorage; no signed-out screen sends a signed-in read; kept so an outage at reload does not drop persisted held writes (rule 6). (3) N4: the first detection calls getWebCsrf with the other user's cookies and rotates their CSRF token once per tab. (4) Native signed-out screens can hold a cached user, so an outage never deletes the refresh token. Hold keys are beo.admin.*.",
+      "paths": [
+        "frontend_stack_ts/src/shells/client/clientRuntime.ts",
+        "frontend_stack_ts/src/shells/admin/adminRuntime.ts",
+        "frontend_stack_ts/src/api/session",
+        "frontend_stack_ts/src/app/providers/SessionProvider.tsx"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "session",
+        "security"
+      ],
+      "refs": [
+        "finding-50",
+        "finding-55",
+        "review-28",
+        "review-29",
+        "review-32"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:08:36.160Z",
+      "replaces": "finding-53"
+    },
+    {
+      "id": "finding-58",
+      "kind": "finding",
+      "title": "Client growth route re-runs a resent key after its idempotency receipt expires (backend)",
+      "text": "From review-33 of lane fx-admin-values. Admin writes through runAdminMutation (adminRouteKit.ts:158: ledger reversal, mark matured, settle, payout) refuse a key whose receipt has expired as reused. The client growth routes (adminClientGrowthRoutes.ts:234-255, individual and collective) have no expired-key check, so a resend after the receipt lifetime (IDEMPOTENCY_TTL_MS, default 24 h) runs the adjustment again. The frontend hold expiry (fx-admin-values) stops offering Check again after 24 h, which covers the default, but if the deployed IDEMPOTENCY_TTL_MS is shorter, a Check again inside the frontend window would apply a second adjustment. Recorded contributions use durable receipts (retention durable, adminClientPositionRoutes.ts:99) and are not affected. Fix: give the growth routes the same expired-key refusal (or durable retention); a backend lane, no contract change. Also verify the deployed IDEMPOTENCY_TTL_MS.",
+      "paths": [
+        "backend_controller/src/routes/adminClientGrowthRoutes.ts",
+        "backend_controller/src/routes/adminRouteKit.ts",
+        "backend_controller/src/http/idempotencyProtocol.ts"
+      ],
+      "tags": [
+        "backend",
+        "idempotency",
+        "rule-6",
+        "admin"
+      ],
+      "refs": [
+        "review-33",
+        "FX-admin-values"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:09:37.272Z",
+      "retiredAt": "2026-11-17T03:28:03.702Z",
+      "retiredWhy": "replaced by finding-59"
+    },
+    {
+      "id": "finding-59",
+      "kind": "finding",
+      "title": "Client growth route on a resent key after its receipt's lifetime: no second apply, but answer unverified (backend)",
+      "text": "Corrected by review-35 of lane fx-admin-values (the earlier text, from review-33, said a resend after expiry runs the adjustment again). runGrowthCommit (adminClientGrowthRoutes.ts:247-256) runs the write and inserts the idempotency receipt in one transaction; the insert has no conflict handling (idempotencyRepository.ts:61-81) and idempotency_records_scope_uk is unique on the key (012_canonical_rbac_platform.sql:158). Nothing in backend_controller/src deletes expired receipts (only erasure deletes, clientErasureDeleteRepository.ts:72), so a resend after IDEMPOTENCY_TTL_MS fails the insert and rolls the whole write back: no second apply. Open: which status the client then gets (likely a 500 from the unique violation, which the frontend treats as unknown), whether anything outside the repository prunes receipts, and the deployed IDEMPOTENCY_TTL_MS. A backend lane could answer such a resend as IDEMPOTENCY_KEY_REUSED like runAdminMutation (adminRouteKit.ts:158). The frontend's 24 h cut-off for ordinary holds stays right.",
+      "paths": [
+        "backend_controller/src/routes/adminClientGrowthRoutes.ts",
+        "backend_controller/src/routes/adminRouteKit.ts",
+        "backend_controller/src/repositories/idempotencyRepository.ts"
+      ],
+      "tags": [
+        "backend",
+        "idempotency",
+        "rule-6",
+        "admin"
+      ],
+      "refs": [
+        "review-33",
+        "review-35",
+        "FX-admin-values"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T03:28:03.702Z",
+      "replaces": "finding-58"
     }
   ]
 }
