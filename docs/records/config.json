@@ -13,7 +13,7 @@
   ],
   "commands": {
     "test": [
-      "tools/node22-container/run.sh",
+      "tools/node24-container/run.sh",
       "sh",
       "-c",
       "set -e; cd packages/contracts && npm ci --no-audit --no-fund && npm run build; cd ../../backend_controller && npm ci --no-audit --no-fund && npm run check; cd ../frontend_stack_ts && npm ci --no-audit --no-fund && npm run check"

@@ -1040,8 +1040,12 @@
         {
           "id": "E3-node24-build",
           "track": "e-node24",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "4d881e1",
+          "also": [
+            "0a4a89e",
+            "5e6ca42"
+          ],
           "brief": "Lane e-node24 build of E3 (DEC-48, held until DEC-57): Node 24.22.3 in .nvmrc, engines, @types/node, lockfiles, production Dockerfiles, runtime contract test; tools/node24-container; docs; native-dependency and Node 23/24 behaviour checks. Evidence for M8-phase-e:E3-node24-upgrade (track main), which this track could not claim.",
           "paths": [
             "backend_controller/Dockerfile",
@@ -1058,7 +1062,8 @@
             "release_manager/tests/runtime_contract.test.sh",
             "tools/node24-container/**",
             "README.md"
-          ]
+          ],
+          "landedAt": "2026-11-17T04:28:14.044Z"
         },
         {
           "id": "E-close",
@@ -1920,6 +1925,14 @@
     {
       "commit": "382c4bc",
       "note": "Plan: carried backend fixes recorded (CL-01, CL-02 closed at 8f0090d), UI plan counts 36 LoadMore lists, DEC-63 and DEC-64 rows; documentation only."
+    },
+    {
+      "commit": "d36dc1f",
+      "note": "Release v0.17.0 (Phase I: nominee requests, SIP early exit, carried erasure fixes), cut by the maintainer with status.sh and pushed with tag v0.17.0"
+    },
+    {
+      "commit": "815dd79",
+      "note": "Docs after the E3 landing: CLAUDE.md and the plan name Node 24 and its check container; section 8 records Node 24 on main and the Node 22 container's removal condition"
     }
   ]
 }

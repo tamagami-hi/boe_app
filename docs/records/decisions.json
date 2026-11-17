@@ -476,10 +476,10 @@
       "group": "admin-improvements",
       "text": "Build the Node 24 upgrade (E3) now. Landing puts Node 24 into the next release cut, so it waits on its branch for the maintainer's word; deploy timing is the maintainer's.",
       "since": "2026-11-16",
-      "status": "Decided, not built: lane e-node24; held on its branch until the maintainer says to land",
-      "state": "decided, not built",
+      "status": "Built: lane e-node24 landed on main at 4d881e1 on 2026-11-17, after v0.17.0; cut as v0.17.1",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-16T12:09:12.132Z"
+      "on": "2026-11-17T04:29:57.417Z"
     },
     {
       "id": "DEC-49",
@@ -566,10 +566,10 @@
       "group": "admin-improvements",
       "text": "Node 24 (E3) lands after Phase I is released and ships as its own release with no features, on dev for about a day before production.",
       "since": "2026-11-16",
-      "status": "In force: e-node24 waits on its branch until Phase I is released",
+      "status": "In force: Phase I released as v0.17.0; E3 landed at 4d881e1 and is cut on its own as v0.17.1, dev about a day before production",
       "state": "in force",
       "by": "operator",
-      "on": "2026-11-16T12:14:12.019Z"
+      "on": "2026-11-17T04:29:57.734Z"
     },
     {
       "id": "DEC-58",

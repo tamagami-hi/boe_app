@@ -443,7 +443,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-16T12:10:19.862Z"
+      "openedAt": "2026-11-16T12:10:19.862Z",
+      "closedAt": "2026-11-17T04:30:01.154Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
     },
     {
       "name": "u-audits",

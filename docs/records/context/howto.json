@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "howto",
-  "nextNumber": 4,
+  "nextNumber": 5,
   "entries": [
     {
       "id": "howto-1",
@@ -43,7 +43,9 @@
         "agent": "claude-opus-5-5"
       },
       "at": "2026-11-13T09:25:56.484Z",
-      "replaces": "howto-1"
+      "replaces": "howto-1",
+      "retiredAt": "2026-11-17T04:29:07.728Z",
+      "retiredWhy": "replaced by howto-4"
     },
     {
       "id": "howto-3",
@@ -69,7 +71,36 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "at": "2026-11-16T13:02:43.266Z"
+      "at": "2026-11-16T13:02:43.266Z",
+      "retiredAt": "2026-11-17T04:29:08.034Z",
+      "retiredWhy": "Done 2026-11-17: e-node24 rebased onto v0.17.0, swept green on Node 24.22.3, landed at 4d881e1 with a per-commit container choice (the two pre-E3 commits checked on Node 22, the E3 commit on Node 24); commands.test is now the Node 24 container alone."
+    },
+    {
+      "id": "howto-4",
+      "kind": "howto",
+      "title": "Run all checks in the Node 24 container: tools/node24-container/run.sh <command>",
+      "text": "Since E3 landed (4d881e1, 2026-11-17) every package pins Node >=24.11.0 <25 with engine-strict, so checks run in tools/node24-container: a local image boe-node24-check:24.22.3-alpine3.24 (official node:24.22.3-alpine3.24 + git + bash + npm 11.16.0, Alpine like the production images). Maintainer does not want a second Node on the host (2026-11-13). From any checkout or tally worktree subfolder run: <repo>/tools/node24-container/run.sh sh -c 'npm ci && npm run check'. It runs as your uid, mounts the worktree and git common dir at their real paths, keeps the npm cache in <repo>/.temp/npm-cache, and passes /var/run/docker.sock with DOCKER_HOST and TESTCONTAINERS_HOST_OVERRIDE=localhost on host network so npm run test:integration works. tally commands.test uses it. tools/node22-container (Node 22.20.0) stays only to check a checkout of a Node 22 release (v0.17.0 and earlier, the rollback target); it goes once a release after the Node 24 release has shipped and the maintainer no longer needs Node 22 checks. node_modules installed in a container are Alpine builds; do not mix with host npm.",
+      "paths": [
+        "tools/node24-container",
+        "tools/node22-container",
+        "docs/records/config.json"
+      ],
+      "tags": [
+        "node24",
+        "checks",
+        "container"
+      ],
+      "refs": [
+        "DEC-48",
+        "DEC-57",
+        "howto-3"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T04:29:07.728Z",
+      "replaces": "howto-2"
     }
   ]
 }

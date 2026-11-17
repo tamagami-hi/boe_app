@@ -2,7 +2,7 @@
   "schema": 1,
   "purpose": "BeOnEdge gated investing app: client app (browser + Android APK), admin console, and backend API. In production with customer, financial, consent, and audit data. The public education site beonedge.in is a separate application.",
   "stack": [
-    "Node 22 ESM, Fastify, Kysely over pg, Zod (backend_controller)",
+    "Node 24 ESM (24.22.3 in production images and checks), Fastify, Kysely over pg, Zod (backend_controller)",
     "PostgreSQL only; plain SQL migrations",
     "React 19, Vite 6, TypeScript, Capacitor 8, TanStack Query, React Router 7, Tailwind v4 (frontend_stack_ts)",
     "Zod operation descriptors + generated OpenAPI (packages/contracts)",
@@ -49,10 +49,10 @@
     }
   ],
   "updated": {
-    "at": "2026-11-13T08:10:59.493Z",
+    "at": "2026-11-17T04:29:17.409Z",
     "by": {
       "track": "main",
-      "agent": "claude-opus-5-5"
+      "agent": "claude-opus-5-5 coordinator"
     }
   }
 }

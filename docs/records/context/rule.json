@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "rule",
-  "nextNumber": 55,
+  "nextNumber": 56,
   "entries": [
     {
       "id": "rule-1",
@@ -1079,7 +1079,9 @@
       "replaces": "rule-45",
       "section": "once",
       "source": "tally template, tailored for this repository on the operator's word (DEC-35)",
-      "template": "check-once"
+      "template": "check-once",
+      "retiredAt": "2026-11-17T04:29:17.119Z",
+      "retiredWhy": "replaced by rule-55"
     },
     {
       "id": "rule-53",
@@ -1116,6 +1118,24 @@
       "section": "once",
       "source": "tally template, tailored for this repository on the operator's word (DEC-35)",
       "template": "three-attempts"
+    },
+    {
+      "id": "rule-55",
+      "kind": "rule",
+      "title": "Check once",
+      "text": "While working, run the checks of the part you changed in the pinned Node 24 container (tools/node24-container/run.sh; howto-4), and the unit's npm run check before each commit. The whole sweep runs once, on a clean checkout, before a phase's close and before its final review: packages/contracts npm run check and npm run build; backend_controller npm run check; backend_controller npm run test:integration -- --coverage.enabled=false; frontend_stack_ts npm run check, npm run build:client and npm run build:admin. A landing's per-commit checks do not replace it. Record the sweep as tally evidence with its counts, and do not rerun it while the code is unchanged.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-17T04:29:17.119Z",
+      "replaces": "rule-52",
+      "section": "once",
+      "source": "tally template, tailored for this repository on the operator's word (DEC-35); container moved to Node 24 when E3 landed (DEC-57, 2026-11-17)",
+      "template": "check-once"
     }
   ]
 }
