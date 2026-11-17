@@ -45,7 +45,7 @@ export const ADMIN_NOTES: WhatsNewNotes = [
         heading: "Fixed",
         items: [
           { text: "You can no longer suspend or close your own account." },
-          { text: "A payout's transfer reference is optional." },
+          { text: "Payouts no longer ask for a transfer reference." },
           { text: "Opening a second tab no longer stops the first tab from saving." },
           { text: "A brief server outage no longer signs you out." },
         ],
