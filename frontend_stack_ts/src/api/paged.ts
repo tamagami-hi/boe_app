@@ -157,6 +157,11 @@ export const usePagedQuery = <TData extends ItemsPage>({
   }, [client, queryHash, fetchNextPage])
 
   useEffect(() => {
+    if (!isHeld || hasNextPage) return
+    releasePage(client.getQueryCache().get(queryHash))
+  }, [isHeld, hasNextPage, client, queryHash])
+
+  useEffect(() => {
     if (!loadAll || !hasNextPage || isFetchingNextPage || isError || isHeld) return
     readNextPage()
   }, [loadAll, hasNextPage, isFetchingNextPage, isError, isHeld, readNextPage])

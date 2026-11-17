@@ -26,7 +26,7 @@ const useFocusKeptWhileLoading = (isLoading: boolean): PressHandler => {
     if (isLoading) return
     const button = pressed.current
     pressed.current = null
-    if (button?.isConnected === true && hasLostFocus()) button.focus()
+    if (button?.isConnected === true && hasLostFocus()) button.focus({ preventScroll: true })
   }, [isLoading])
 
   return (event) => {
