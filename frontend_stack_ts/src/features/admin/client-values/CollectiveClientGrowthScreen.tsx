@@ -8,8 +8,9 @@ import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { useFundNames } from "~/features/admin/shared/fundNames"
-import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
+import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { DataList, DetailRow, Stat } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
@@ -75,6 +76,8 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
   const plan = staleBasis ? null : (preview.data ?? null)
   const committed = commitMutation.data ?? null
   const unknown = commit.outcome.kind === "unknown"
+  useUnloadGuard(isUnsavedHold(commit))
+  const keptAcrossPages = commit.persisted ? " also after leaving this page," : ""
   const locked = commit.pending || commit.held !== null || commit.unreadable || committed !== null
   const today = indiaToday()
   const futureDated = effectiveDate > today
@@ -168,6 +171,8 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
         />
       )}
 
+      <UnsavedHoldNotice write={commit} />
+
       {unknown && !commit.expired ? (
         <Alert
           tone="warning"
@@ -190,7 +195,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
             </span>
           }
         >
-          {`The reply did not arrive, so it is not known whether this batch was committed. The commit is held on this exact request, also after leaving this page. Check again sends it once more under the same key, and the same request can only ever be committed once.${
+          {`The reply did not arrive, so it is not known whether this batch was committed. The commit is held on this exact request,${keptAcrossPages} and Check again sends it once more under the same key, and the same request can only ever be committed once.${
             held === null ? "" : ` Held: ${funds.nameOf(held.fundId)}, dated ${formatDate(held.effectiveDate)}.`
           }`}
         </Alert>

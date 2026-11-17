@@ -10,6 +10,7 @@ import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { useFundNames } from "~/features/admin/shared/fundNames"
 import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
+import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -78,6 +79,7 @@ export const LedgerEntries = ({
   })
   const [asking, setAsking] = useState<LedgerRow | null>(null)
   const unsaved = isUnsavedHold(write)
+  useUnloadGuard(unsaved)
   const heldEntryId = write.held?.entryId ?? null
 
   useEffect(() => {

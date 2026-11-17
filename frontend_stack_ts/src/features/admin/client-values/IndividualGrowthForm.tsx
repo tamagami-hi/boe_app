@@ -6,6 +6,7 @@ import { useAdminInvestorPositions } from "~/features/admin/shared/adminQueries"
 import { useFundNames } from "~/features/admin/shared/fundNames"
 import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
+import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Button } from "~/ui/primitives/Button"
@@ -143,6 +144,7 @@ export const IndividualGrowthForm = ({
   }, [selectedPosition, draft.mode, signedPaise, invalidRate, rate])
 
   const unsaved = isUnsavedHold(write)
+  useUnloadGuard(unsaved)
 
   const append = (): void => {
     setAsking(null)

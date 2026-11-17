@@ -8,8 +8,9 @@ import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { useFundNames } from "~/features/admin/shared/fundNames"
-import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
+import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -92,6 +93,8 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
   const fundLabel = funds.nameOf(fundId)
   const committed = commitMutation.data ?? null
   const unknown = commit.outcome.kind === "unknown"
+  useUnloadGuard(isUnsavedHold(commit))
+  const keptAcrossPages = commit.persisted ? " also after leaving this page," : ""
   const locked = commit.pending || commit.held !== null || commit.unreadable || committed !== null
   const staleBasis = commit.outcome.kind === "rejected" && commit.outcome.code === "STATE_CONFLICT"
   const result = staleBasis || previewed === null ? null : (preview.data ?? null)
@@ -218,6 +221,8 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
         />
       )}
 
+      <UnsavedHoldNotice write={commit} />
+
       {unknown && !commit.expired ? (
         <Alert
           tone="warning"
@@ -233,7 +238,7 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
             </span>
           }
         >
-          {`The reply did not arrive, so it is not known whether this batch was written. Check again sends the same request under the same key, also after leaving this page, and it can only ever be written once.${
+          {`The reply did not arrive, so it is not known whether this batch was written. Check again sends the same request under the same key,${keptAcrossPages} and it can only ever be written once.${
             held === null
               ? ""
               : ` Held: ${funds.nameOf(held.fundId)}, ${String(held.items?.length ?? 0)} change(s), dated ${formatDate(held.effectiveDate)}.`

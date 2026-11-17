@@ -4,8 +4,9 @@ import { useState } from "react"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import { HeldWriteNotice, UnsavedHoldNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
+import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Button } from "~/ui/primitives/Button"
@@ -43,6 +44,7 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
   )
   const [isConfirming, setIsConfirming] = useState(false)
   const locked = write.held !== null || write.pending
+  useUnloadGuard(isUnsavedHold(write))
   const trimmed = reference.trim()
   const isValid = trimmed !== "" && (state === "paid" || FAILURE_CODE_PATTERN.test(trimmed))
 

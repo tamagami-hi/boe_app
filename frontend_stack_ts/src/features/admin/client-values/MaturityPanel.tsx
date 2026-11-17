@@ -8,6 +8,7 @@ import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { useFundNames } from "~/features/admin/shared/fundNames"
 import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
+import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -68,6 +69,7 @@ export const MaturityPanel = ({ userId, investorLabel, canWrite, positions, onUn
   const [settledKind, setSettledKind] = useState(() => settle.held?.kind ?? null)
 
   const unsaved = isUnsavedHold(mark) || isUnsavedHold(settle)
+  useUnloadGuard(unsaved)
   useEffect(() => {
     onUnsavedHold?.(unsaved)
     return () => {

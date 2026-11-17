@@ -299,6 +299,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
 })
 
 describe("a money or ledger write whose reply is lost", () => {
@@ -374,5 +375,22 @@ describe("a money or ledger write whose reply is lost", () => {
     expect(screen.getByLabelText(/^Amount in rupees/u).hasAttribute("disabled")).toBe(false)
     expect(window.sessionStorage.getItem(stored)).toBeNull()
     expect(sent).toHaveLength(0)
+  })
+
+  it("keeps a growth batch the tab could not save on this page: it says so and refuses to unload", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+    })
+    renderWith(<CollectiveClientGrowthScreen />)
+    await choose(/^Fund/u, FUND_ID)
+    type(/Rate in basis points/u, "250")
+    fireEvent.click(screen.getByRole("button", { name: "Preview the batch" }))
+    fireEvent.click(await screen.findByRole("button", { name: /Review and commit/u }))
+    fireEvent.click(lastButton("Commit the batch"))
+
+    expect(await screen.findByText("Kept on this page only")).toBeTruthy()
+    expect(screen.queryByText(/also after leaving this page/u)).toBeNull()
+    expect(screen.getByLabelText(/^Fund/u).hasAttribute("disabled")).toBe(true)
+    expect(window.dispatchEvent(new Event("beforeunload", { cancelable: true }))).toBe(false)
   })
 })

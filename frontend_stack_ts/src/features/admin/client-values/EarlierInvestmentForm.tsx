@@ -7,6 +7,7 @@ import { toPaise } from "~/domain/money"
 import { useFundNames } from "~/features/admin/shared/fundNames"
 import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
+import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
 import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { AmountInput } from "~/ui/primitives/AmountInput"
@@ -101,6 +102,7 @@ export const EarlierInvestmentForm = ({
   const unknown = record.outcome.kind === "unknown"
   const locked = !canWrite || holding || record.unreadable || recorded !== undefined
   const hold: RecordingHold = held === null ? "none" : isUnsavedHold(record) ? "unsaved" : "held"
+  useUnloadGuard(hold === "unsaved")
 
   useEffect(() => {
     onHoldChange?.(hold)
