@@ -55,7 +55,7 @@ const RequiredAdminMutationHeaders = z.strictObject({
 })
 const FundLifecycleHeaders = z.strictObject({
   ...OptionalAdminMutationHeaders.shape,
-  "if-match": z.string().regex(/^"?\d{1,15}"?$/u).optional(),
+  "if-match": z.string().optional(),
 })
 
 export const AdminFundAum = z.strictObject({

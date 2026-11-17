@@ -85,18 +85,12 @@ export const optionalIdempotencyKey = (request: FastifyRequest): string | null =
   return parsed.data
 }
 
-const IF_MATCH_VERSION = /^"?(\d{1,15})"?$/u
+const IF_MATCH_VERSION = /^(?:W\/)?"(\d{1,15})"$/u
 
 export const optionalIfMatchVersion = (request: FastifyRequest): number | undefined => {
   const value = request.headers["if-match"]
-  if (value === undefined || value === "") return undefined
   const captured = typeof value === "string" ? IF_MATCH_VERSION.exec(value.trim())?.[1] : undefined
-  if (captured === undefined) {
-    throw new AppError("VALIDATION_FAILED", {
-      fields: { "if-match": ["must be a quoted integer version"] },
-    })
-  }
-  return Number(captured)
+  return captured === undefined ? undefined : Number(captured)
 }
 
 const canonicalize = (value: unknown): unknown => {

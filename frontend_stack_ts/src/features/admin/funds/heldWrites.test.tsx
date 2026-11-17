@@ -268,7 +268,7 @@ const SCREENS = [
   { path: "/app-config", element: <AppConfigBuilderScreen /> },
 ] as const
 
-const open = (path: string): void => {
+const open = (path: string): QueryClient => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
@@ -287,6 +287,7 @@ const open = (path: string): void => {
       </ApiProvider>
     </QueryClientProvider>,
   )
+  return queryClient
 }
 
 const press = (name: string | RegExp): void => {
@@ -579,6 +580,26 @@ describe("changing the fund state from a page opened before another change", () 
     expect(sent.map(({ operationId, options }) => [operationId, options.ifMatch])).toEqual([
       ["transitionAdminFundLifecycle", '"7"'],
     ])
+  })
+
+  it("sends the version shown when the button was pressed, even if a newer one loads while the dialog is open", async () => {
+    writeReplies = [accepted]
+    const queryClient = open(`/funds/${FUND_ID}`)
+    await screen.findByRole("button", { name: "Archive" })
+    press("Archive")
+    await screen.findByRole("dialog")
+
+    fundDetail = { ...detailWith(SIZED), fund: { ...fundWith(SIZED), version: 8 } }
+    await queryClient.refetchQueries()
+    await waitFor(() => {
+      expect(screen.getByText("Concurrency version").parentElement).toHaveTextContent("8")
+    })
+    await confirmIn("Archive the fund")
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]?.options.ifMatch).toBe('"7"')
   })
 })
 

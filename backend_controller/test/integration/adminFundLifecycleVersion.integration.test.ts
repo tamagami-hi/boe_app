@@ -185,6 +185,34 @@ describe("changing a fund's state from the version the page was opened on", () =
     expect([resentPrior.statusCode, isReplay(resentPrior), dataOf(resentPrior)]).toEqual([200, true, dataOf(prior)])
     expect((await snapshotOf(fundId)).audits).toBe(2)
   })
+
+  test("checks a weak tag like a strong one", async () => {
+    const fundId = await createFund()
+    const opened = await versionOf(fundId)
+    await transition(fundId, "published")
+    const before = await snapshotOf(fundId)
+
+    const stale = await transition(fundId, "archived", `W/${quoted(opened)}`)
+    const afterStale = await snapshotOf(fundId)
+    const current = await transition(fundId, "archived", `W/${quoted(opened + 1)}`)
+
+    expect([stale.statusCode, errorOf(stale).code]).toEqual([409, "STATE_CONFLICT"])
+    expect(errorOf(stale).fields).toHaveProperty("if-match")
+    expect(afterStale).toEqual(before)
+    expect([current.statusCode, dataOf<Lifecycle>(current).status]).toEqual([200, "archived"])
+  })
+
+  test.each(["*", '"1", "2"', "not-a-version"])(
+    "leaves an If-Match it cannot read (%s) unchecked, as before this check existed",
+    async (ifMatch) => {
+      const fundId = await createFund()
+      await transition(fundId, "published")
+
+      const response = await transition(fundId, "archived", ifMatch)
+
+      expect([response.statusCode, dataOf<Lifecycle>(response).status]).toEqual([200, "archived"])
+    },
+  )
 })
 
 describe("simultaneous lifecycle changes of one fund", () => {

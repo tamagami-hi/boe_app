@@ -187,10 +187,16 @@ on Check again, because the two backends hash the request differently, so check 
 versions by hand.
 
 From 0.18.1 the backend also honours the `If-Match` fund version that every admin app since
-v0.15.4 sends with `PATCH /v1/admin/funds/{fundId}` (publish, pause, archive) and refuses a
-stale one with `409 STATE_CONFLICT`. Earlier backends ignore the header, so after an
-images-only rollback a stale change is again bounded only by the allowed transitions. The
-header is not part of the request hash, so a held change still replays across either move.
+v0.15.4 sends with `PATCH /v1/admin/funds/{fundId}` (publish, pause, archive): a strong `"n"`
+or weak `W/"n"` that is not the fund's current version is refused with `409 STATE_CONFLICT`,
+while `*`, a list or any other unreadable value is not checked, as before. A terms publish by
+another admin also moves that version, so an older page's pause or archive is refused too.
+Admin apps v0.15.4 to v0.17.1 show the refusal as "This fund changed while you were editing.
+It has been reloaded", but they do not reload, and v0.18.0 has no reload button on its
+refusal line, so a retry is refused again until the admin refreshes the page or reopens the
+app. Earlier backends ignore the header, so after an images-only rollback a stale change is
+again bounded only by the allowed transitions. The header is not part of the request hash,
+so a held change still replays across either move.
 
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.
