@@ -431,6 +431,9 @@ const ROWS: readonly Row[] = [
     write: "publishAdminAppConfig",
     path: "/app-config",
     act: async () => {
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /Publish this configuration/u })).toBeEnabled()
+      })
       press(/Publish this configuration/u)
       await confirmIn("Publish it")
     },
