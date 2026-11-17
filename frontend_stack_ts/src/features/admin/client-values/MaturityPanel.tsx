@@ -32,6 +32,7 @@ type Position = AdminInvestorPositionsData["items"][number]
 
 type Props = Readonly<{
   userId: string
+  investorLabel: string
   canWrite: boolean
   positions: readonly Position[]
   onUnsavedHold?: (unsaved: boolean) => void
@@ -44,7 +45,7 @@ const SETTLED_TEXT = {
 
 const noteOf = (text: string): Readonly<{ note?: string }> => (text.trim() === "" ? {} : { note: text.trim() })
 
-export const MaturityPanel = ({ userId, canWrite, positions, onUnsavedHold }: Props): React.ReactElement => {
+export const MaturityPanel = ({ userId, investorLabel, canWrite, positions, onUnsavedHold }: Props): React.ReactElement => {
   const funds = useFundNames()
   const maturities = useMaturityRecords(userId)
   const payouts = useWithdrawalPayouts(userId)
@@ -93,8 +94,8 @@ export const MaturityPanel = ({ userId, canWrite, positions, onUnsavedHold }: Pr
   const changeFund = (next: string): void => {
     setFundId(next)
     setWithdrawalRupees("")
-    mark.reset()
-    settle.reset()
+    if (!mark.unreadable) mark.reset()
+    if (!settle.unreadable) settle.reset()
   }
 
   const confirm = (): void => {
@@ -286,6 +287,7 @@ export const MaturityPanel = ({ userId, canWrite, positions, onUnsavedHold }: Pr
               <WithdrawalPayoutPanel
                 key={payout.id}
                 payout={payout}
+                investorLabel={investorLabel}
                 fundName={funds.nameOf(payout.fundId)}
                 canWrite={canWrite}
                 onReload={reload}
@@ -296,6 +298,7 @@ export const MaturityPanel = ({ userId, canWrite, positions, onUnsavedHold }: Pr
       </div>
       <MaturityPanelConfirm
         asking={asking}
+        investorLabel={investorLabel}
         fundName={funds.nameOf(fundId)}
         date={date}
         position={position}

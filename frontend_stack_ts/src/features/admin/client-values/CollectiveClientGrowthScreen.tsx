@@ -1,14 +1,15 @@
 import { useState } from "react"
 
-import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
-import { useIdempotencyKey } from "~/api/idempotency"
+import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
+import { useFundNames } from "~/features/admin/shared/fundNames"
+import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { DataList, DetailRow, Stat } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
@@ -30,8 +31,8 @@ import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 import { CatalogueFundPicker } from "./CatalogueFundPicker"
 import { CollectivePreviewTable } from "./CollectivePreviewTable"
 import { useCommitCollectiveClientGrowth, usePreviewCollectiveClientGrowth } from "./growthQueries"
-import type { CollectiveGrowthCommitInput } from "./growthQueries"
 import { DEFAULT_GROWTH_REASON, GROWTH_REASON_OPTIONS } from "./growthReasons"
+import { parseCollectiveCommit } from "./heldBodies"
 
 const MIN_BASIS_POINTS = -2_000
 const MAX_BASIS_POINTS = 2_000
@@ -39,52 +40,42 @@ const MAX_BASIS_POINTS = 2_000
 const STALE_BASIS_MESSAGE =
   "Someone changed a value in this fund after the preview was taken, so the preview is void. Nothing was written. Run a new preview and read it before committing."
 
-type CommitOutcome =
-  | Readonly<{ kind: "idle" }>
-  | Readonly<{ kind: "rejected"; message: string; stale: boolean }>
-  | Readonly<{ kind: "unknown" }>
+const UNSENT = "This batch could not be sent. Reload the page and try again."
 
-const IDLE: CommitOutcome = { kind: "idle" }
-
-const describeCommitRejection = (error: unknown): CommitOutcome => {
-  if (isUnknownWriteOutcome(error)) return { kind: "unknown" }
-  if (isApiError(error) && error.code === "STATE_CONFLICT") {
-    return { kind: "rejected", message: STALE_BASIS_MESSAGE, stale: true }
-  }
-  return {
-    kind: "rejected",
-    message: isApiError(error) ? error.message : "This batch could not be sent. Reload the page and try again.",
-    stale: false,
-  }
-}
+export const COLLECTIVE_GROWTH_SLOT = "collective-growth"
 
 const CollectiveClientGrowthScreen = (): React.ReactElement => {
-  const funds = useAdminFundCatalogue()
+  const funds = useFundNames()
   const preview = usePreviewCollectiveClientGrowth()
-  const commit = useCommitCollectiveClientGrowth()
+  const commitMutation = useCommitCollectiveClientGrowth()
+  const commit = useHeldWrite(commitMutation, UNSENT, {
+    slot: COLLECTIVE_GROWTH_SLOT,
+    parseBody: parseCollectiveCommit,
+    retention: "ordinary",
+  })
+  const held = commit.held?.body ?? null
 
-  const [fundId, setFundId] = useState("")
-  const [basisPoints, setBasisPoints] = useState("")
-  const [effectiveDate, setEffectiveDate] = useState(indiaToday)
-  const [reasonCode, setReasonCode] = useState<string>(DEFAULT_GROWTH_REASON)
-  const [note, setNote] = useState("")
+  const [fundId, setFundId] = useState(() => held?.fundId ?? "")
+  const [basisPoints, setBasisPoints] = useState(() =>
+    typeof held?.growthBasisPoints === "number" ? String(held.growthBasisPoints) : "",
+  )
+  const [effectiveDate, setEffectiveDate] = useState(() => held?.effectiveDate ?? indiaToday())
+  const [reasonCode, setReasonCode] = useState<string>(() => held?.reasonCode ?? DEFAULT_GROWTH_REASON)
+  const [note, setNote] = useState(() => held?.note ?? "")
   const [previewFailure, setPreviewFailure] = useState<string | null>(null)
-  const [attempt, setAttempt] = useState(0)
-  const [outcome, setOutcome] = useState<CommitOutcome>(IDLE)
-  const [held, setHeld] = useState<CollectiveGrowthCommitInput | null>(null)
   const [confirmingRestart, setConfirmingRestart] = useState(false)
   const [confirmingCommit, setConfirmingCommit] = useState(false)
 
-  const fund = (funds.data?.items ?? []).find((entry) => entry.id === fundId)
-  const fundLabel = fund?.name ?? fund?.slug ?? fundId
+  const fundLabel = funds.nameOf(fundId)
 
   const rate = Number(basisPoints)
   const invalidRate =
     !Number.isInteger(rate) || rate === 0 || rate < MIN_BASIS_POINTS || rate > MAX_BASIS_POINTS
-  const staleBasis = outcome.kind === "rejected" && outcome.stale
+  const staleBasis = commit.outcome.kind === "rejected" && commit.outcome.code === "STATE_CONFLICT"
   const plan = staleBasis ? null : (preview.data ?? null)
-  const committed = commit.data ?? null
-  const locked = commit.isPending || outcome.kind === "unknown" || committed !== null
+  const committed = commitMutation.data ?? null
+  const unknown = commit.outcome.kind === "unknown"
+  const locked = commit.pending || commit.held !== null || commit.unreadable || committed !== null
   const today = indiaToday()
   const futureDated = effectiveDate > today
 
@@ -100,13 +91,10 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
           reasonCode,
           ...(trimmedNote === "" ? {} : { note: trimmedNote }),
         }
-  const idempotencyKey = useIdempotencyKey({ body: commitBody, attempt })
 
   const clearPreview = (): void => {
     preview.reset()
     commit.reset()
-    setOutcome(IDLE)
-    setHeld(null)
   }
 
   const runPreview = (): void => {
@@ -128,29 +116,13 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
     )
   }
 
-  const sendCommit = (input: CollectiveGrowthCommitInput): void => {
-    setHeld(input)
-    setOutcome(IDLE)
-    commit.mutate(input, {
-      onError: (error) => {
-        setOutcome(describeCommitRejection(error))
-      },
-    })
-  }
-
   const runCommit = (): void => {
     setConfirmingCommit(false)
-    if (commitBody === null) return
-    sendCommit({ idempotencyKey, body: commitBody })
-  }
-
-  const checkAgain = (): void => {
-    if (held !== null) sendCommit(held)
+    if (commitBody !== null) commit.submit({ body: commitBody })
   }
 
   const startOver = (): void => {
     setConfirmingRestart(false)
-    setAttempt((current) => current + 1)
     clearPreview()
   }
 
@@ -173,25 +145,42 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
         </Alert>
       )}
 
-      {outcome.kind === "rejected" ? (
-        <Alert tone={outcome.stale ? "warning" : "error"} title="Nothing was written">
-          {outcome.message}
+      {commit.outcome.kind === "rejected" ? (
+        <Alert tone={staleBasis ? "warning" : "error"} title="Nothing was written">
+          {staleBasis ? STALE_BASIS_MESSAGE : commit.outcome.message}
         </Alert>
       ) : null}
 
-      {outcome.kind === "unknown" ? (
+      {commit.outcome.kind === "rejected" || (unknown && !commit.expired) ? null : (
+        <HeldWriteNotice
+          write={{
+            outcome: commit.outcome,
+            pending: commit.pending,
+            checkAgain: commit.checkAgain,
+            unreadable: commit.unreadable,
+            expired: commit.expired,
+          }}
+          subject="this batch was committed"
+          reloadLabel="Start over"
+          onReload={() => {
+            setConfirmingRestart(true)
+          }}
+        />
+      )}
+
+      {unknown && !commit.expired ? (
         <Alert
           tone="warning"
           title="Not confirmed"
           action={
             <span className={ACTION_ROW}>
-              <Button size="sm" loading={commit.isPending} onClick={checkAgain}>
+              <Button size="sm" loading={commit.pending} onClick={commit.checkAgain}>
                 Check again
               </Button>
               <Button
                 size="sm"
                 tone="secondary"
-                disabled={commit.isPending}
+                disabled={commit.pending}
                 onClick={() => {
                   setConfirmingRestart(true)
                 }}
@@ -201,9 +190,9 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
             </span>
           }
         >
-          The reply did not arrive, so it is not known whether this batch was committed. The commit is
-          held on this exact request. Check again sends it once more under the same key, and the same
-          request can only ever be committed once.
+          {`The reply did not arrive, so it is not known whether this batch was committed. The commit is held on this exact request, also after leaving this page. Check again sends it once more under the same key, and the same request can only ever be committed once.${
+            held === null ? "" : ` Held: ${funds.nameOf(held.fundId)}, dated ${formatDate(held.effectiveDate)}.`
+          }`}
         </Alert>
       ) : null}
 
@@ -362,10 +351,10 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                   )}
                 </FormField>
 
-                {committed === null && outcome.kind !== "unknown" ? (
+                {committed === null && !unknown ? (
                   <Button
                     disabled={locked || effectiveDate === "" || futureDated}
-                    loading={commit.isPending}
+                    loading={commit.pending}
                     onClick={() => {
                       setConfirmingCommit(true)
                     }}

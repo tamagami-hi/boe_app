@@ -9,8 +9,10 @@ import type { HttpClient } from "~/api/http"
 import { ApiProvider } from "~/app/providers/ApiProvider"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 import { indiaToday } from "~/domain/dates"
+import { BACKEND_IDEMPOTENCY_TTL_MS } from "~/features/admin/shared/heldWriteStore"
 
-import { EarlierInvestmentForm } from "./EarlierInvestmentForm"
+import CollectiveClientGrowthScreen from "./CollectiveClientGrowthScreen"
+import { EarlierInvestmentForm, recordingSlot } from "./EarlierInvestmentForm"
 import { IndividualGrowthForm } from "./IndividualGrowthForm"
 import { LedgerEntries } from "./LedgerEntries"
 import { MaturityPanel } from "./MaturityPanel"
@@ -89,12 +91,39 @@ const READS: Readonly<Record<string, () => unknown>> = {
   listAdminClientSipEarlyExits: () => ({ items: [] }),
   listAdminClientMaturities: () => ({ userId: USER_ID, items: maturities }),
   listAdminWithdrawalPayouts: () => ({ userId: USER_ID, items: [] }),
+  listAdminUsers: () => ({ items: [] }),
+}
+
+const TARGET = {
+  userId: USER_ID,
+  principalPaise: "1000000",
+  beforePaise: "1100000",
+  currentValuePaise: "1100000",
+  deltaPaise: "25000",
+  growthPaise: "125000",
+  afterPaise: "1125000",
+  newValuePaise: "1125000",
+}
+
+const ANSWERS: Readonly<Record<string, () => unknown>> = {
+  previewAdminCollectiveClientGrowth: () => ({
+    fundId: FUND_ID,
+    mode: "percentage",
+    basisHash: "b".repeat(64),
+    excludedCount: 0,
+    targetCount: 1,
+    totalDeltaPaise: "25000",
+    targets: [TARGET],
+    items: [TARGET],
+  }),
 }
 
 const sent: Sent[] = []
 
 const request = (operation: Operation, options?: Options): Promise<unknown> => {
   const read = READS[operation.operationId]
+  const answer = ANSWERS[operation.operationId]
+  if (answer !== undefined) return Promise.resolve({ data: answer(), meta: { requestId: "req", page: null } })
   if (operation.method === "GET") {
     return read === undefined
       ? Promise.reject(new Error(`no read for ${operation.operationId}`))
@@ -191,7 +220,7 @@ const CASES: readonly HeldWriteCase[] = [
   {
     name: "reverse a ledger entry",
     operationId: "reverseAdminClientLedgerEntry",
-    form: () => <LedgerEntries userId={USER_ID} canWrite />,
+    form: () => <LedgerEntries userId={USER_ID} investorLabel="Asha Verma" canWrite />,
     fill: async () => {
       fireEvent.click((await screen.findAllByRole("button", { name: "Reverse" }))[0]!)
       fireEvent.click(lastButton("Append the reversal"))
@@ -201,7 +230,7 @@ const CASES: readonly HeldWriteCase[] = [
   {
     name: "mark a position matured",
     operationId: "markAdminClientMatured",
-    form: () => <MaturityPanel userId={USER_ID} canWrite positions={[POSITION]} />,
+    form: () => <MaturityPanel userId={USER_ID} investorLabel="Asha Verma" canWrite positions={[POSITION]} />,
     fill: async () => {
       await choose(/^Position/u, FUND_ID)
       await waitFor(() => {
@@ -218,7 +247,7 @@ const CASES: readonly HeldWriteCase[] = [
     setUp: () => {
       maturities = [PENDING_MATURITY]
     },
-    form: () => <MaturityPanel userId={USER_ID} canWrite positions={[POSITION]} />,
+    form: () => <MaturityPanel userId={USER_ID} investorLabel="Asha Verma" canWrite positions={[POSITION]} />,
     fill: async () => {
       await choose(/^Position/u, FUND_ID)
       type(/^Withdrawal amount in rupees/u, "2000")
@@ -230,7 +259,15 @@ const CASES: readonly HeldWriteCase[] = [
   {
     name: "record a payout's transfer outcome",
     operationId: "updateAdminWithdrawalPayout",
-    form: () => <WithdrawalPayoutPanel payout={PAYOUT} fundName="Balanced Fund" canWrite onReload={() => undefined} />,
+    form: () => (
+      <WithdrawalPayoutPanel
+        payout={PAYOUT}
+        investorLabel="Asha Verma"
+        fundName="Balanced Fund"
+        canWrite
+        onReload={() => undefined}
+      />
+    ),
     fill: () => {
       type(/^Bank transfer reference/u, "TRANSFER-1")
       fireEvent.click(screen.getByRole("button", { name: "Record transfer outcome" }))
@@ -238,6 +275,19 @@ const CASES: readonly HeldWriteCase[] = [
       return Promise.resolve()
     },
     locked: () => screen.getByLabelText(/^Bank transfer reference/u),
+  },
+  {
+    name: "commit a whole-fund growth batch",
+    operationId: "commitAdminCollectiveClientGrowth",
+    form: () => <CollectiveClientGrowthScreen />,
+    fill: async () => {
+      await choose(/^Fund/u, FUND_ID)
+      type(/Rate in basis points/u, "250")
+      fireEvent.click(screen.getByRole("button", { name: "Preview the batch" }))
+      fireEvent.click(await screen.findByRole("button", { name: /Review and commit/u }))
+      fireEvent.click(lastButton("Commit the batch"))
+    },
+    locked: () => screen.getByLabelText(/Rate in basis points/u),
   },
 ]
 
@@ -280,4 +330,49 @@ describe("a money or ledger write whose reply is lost", () => {
       await isLocked(locked)
     },
   )
+
+  it("still offers Check again on a recorded investment held for days, because its receipt does not expire", async () => {
+    window.sessionStorage.setItem(
+      `beo.admin.held-write.v1:${recordingSlot(USER_ID)}`,
+      JSON.stringify({
+        adminId: ADMIN_ID,
+        idempotencyKey: "0f2c3a9e-1111-4222-8333-444455556666",
+        body: {
+          userId: USER_ID,
+          fundId: FUND_ID,
+          amountPaise: "500000",
+          effectiveDate: "2026-10-01",
+          reasonCode: "recorded_offline_investment",
+        },
+        heldAt: Date.now() - 3 * BACKEND_IDEMPOTENCY_TTL_MS,
+      }),
+    )
+    renderWith(<EarlierInvestmentForm userId={USER_ID} investorLabel="Asha Verma" />)
+
+    fireEvent.click(await screen.findByRole("button", { name: "Check again" }))
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]?.idempotencyKey).toBe("0f2c3a9e-1111-4222-8333-444455556666")
+  })
+
+  it("locks the record form on a held request it cannot read until a new attempt is confirmed", async () => {
+    const stored = `beo.admin.held-write.v1:${recordingSlot(USER_ID)}`
+    window.sessionStorage.setItem(
+      stored,
+      JSON.stringify({ adminId: ADMIN_ID, idempotencyKey: "0f2c3a9e-1111-4222-8333-444455556666", body: {} }),
+    )
+    renderWith(<EarlierInvestmentForm userId={USER_ID} investorLabel="Asha Verma" />)
+
+    expect(screen.getByText("Held request not readable")).toBeTruthy()
+    await isLocked(() => screen.getByLabelText(/^Amount in rupees/u))
+    expect(window.sessionStorage.getItem(stored)).not.toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: "Start a new attempt" }))
+    fireEvent.click(lastButton("Start a new attempt"))
+
+    expect(screen.getByLabelText(/^Amount in rupees/u).hasAttribute("disabled")).toBe(false)
+    expect(window.sessionStorage.getItem(stored)).toBeNull()
+    expect(sent).toHaveLength(0)
+  })
 })

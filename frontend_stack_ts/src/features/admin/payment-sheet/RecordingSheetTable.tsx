@@ -43,19 +43,14 @@ const STATUS_CHIPS: Readonly<Record<RowStatus, Readonly<{ label: string; tone: S
   recorded: { label: "Recorded", tone: "positive" },
   refused: { label: "Refused", tone: "negative" },
   unknown: { label: "Not confirmed", tone: "warning" },
-  expired: { label: "Check the record", tone: "warning" },
   unreadable: { label: "Check the record", tone: "warning" },
 }
 
 const UNKNOWN_HINT =
   "The reply did not arrive, so it is not known whether this was recorded. Check again sends the same request, and it can only ever apply once."
 
-const STALE_HINTS: Readonly<Record<"expired" | "unreadable", string>> = {
-  expired:
-    "This row has been held for more than a day, and the server keeps its answer for a day only, so Check again can no longer tell whether it was recorded. Check the client's ledger before recording it again.",
-  unreadable:
-    "A recording held in this tab for this row could not be read back, so it is not known whether it was recorded. Check the client's ledger before recording it again.",
-}
+const UNREADABLE_HINT =
+  "A recording held in this tab for this row could not be read back, so it is not known whether it was recorded. Check the client's ledger before recording it again."
 
 const UNSAVED_HINT =
   "Not saved in this tab: this row's request is kept only while the page stays open. Stay on this month until it is confirmed."
@@ -105,9 +100,9 @@ const StatusContent = ({ view, onCheckAgain, onRecordAnother, onReleaseStale }: 
           </Button>
         </>
       ) : null}
-      {status === "expired" || status === "unreadable" ? (
+      {status === "unreadable" ? (
         <>
-          <span className={FIELD_HINT}>{STALE_HINTS[status]}</span>
+          <span className={FIELD_HINT}>{UNREADABLE_HINT}</span>
           <Button
             size="sm"
             tone="ghost"

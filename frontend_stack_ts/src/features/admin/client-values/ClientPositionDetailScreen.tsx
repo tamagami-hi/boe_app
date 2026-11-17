@@ -39,6 +39,7 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
   const investor = useLinkedInvestor(userId, pickedLabel)
   const isChosen = userId !== "" && !investor.missing
   const isHolding = isMaturityUnsaved || isLedgerUnsaved || recordHold === "unsaved"
+  const investorLabel = investor.label === "" ? "The selected investor" : investor.label
 
   const resetInvestor = (next: string, label: string): void => {
     setUserId(next)
@@ -119,13 +120,14 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
             <MaturityPanel
               key={userId}
               userId={userId}
+              investorLabel={investorLabel}
               canWrite={canWrite}
               positions={positions.data.items}
               onUnsavedHold={setMaturityUnsaved}
             />
           )}
 
-          <SipEarlyExitList userId={userId} canWrite={canWrite} />
+          <SipEarlyExitList userId={userId} investorLabel={investorLabel} canWrite={canWrite} />
 
           <Section
             title="Record an investment"
@@ -134,7 +136,7 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
             <EarlierInvestmentForm
               key={userId}
               userId={userId}
-              investorLabel={investor.label === "" ? "The selected investor" : investor.label}
+              investorLabel={investorLabel}
               onHoldChange={setRecordHold}
             />
           </Section>
@@ -146,6 +148,7 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
             <LedgerEntries
               key={userId}
               userId={userId}
+              investorLabel={investorLabel}
               canWrite={canWrite}
               showFundNotice={false}
               onUnsavedHold={setLedgerUnsaved}

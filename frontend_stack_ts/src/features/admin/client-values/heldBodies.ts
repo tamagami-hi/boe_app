@@ -3,6 +3,7 @@ import type { z } from "zod"
 
 import {
   appendAdminIndividualClientGrowth,
+  commitAdminCollectiveClientGrowth,
   markAdminClientMatured,
   reinvestAdminClientMaturity,
   updateAdminWithdrawalPayout,
@@ -10,7 +11,12 @@ import {
 } from "~/api/generated/operations"
 import { asRecord, parseWith } from "~/features/admin/shared/heldWriteStore"
 
-import type { IndividualGrowthBody, IndividualGrowthHold } from "./growthQueries"
+import type {
+  CollectiveGrowthCommitBody,
+  CollectiveGrowthHold,
+  IndividualGrowthBody,
+  IndividualGrowthHold,
+} from "./growthQueries"
 import type { LedgerReversalBody } from "./ledgerReversalQueries"
 import type { MarkMaturityBody, PayoutUpdateInput, SettlementInput } from "./maturityQueries"
 import type { RecordedContributionBody } from "./recordingQueries"
@@ -36,6 +42,13 @@ const parseIndividualBody = parseWith<IndividualGrowthBody>(appendAdminIndividua
 
 export const parseIndividualGrowth = (value: unknown): IndividualGrowthHold | null => {
   const body = parseIndividualBody(asRecord(value)?.body)
+  return body === null ? null : { body }
+}
+
+const parseCollectiveBody = parseWith<CollectiveGrowthCommitBody>(commitAdminCollectiveClientGrowth.request.body)
+
+export const parseCollectiveCommit = (value: unknown): CollectiveGrowthHold | null => {
+  const body = parseCollectiveBody(asRecord(value)?.body)
   return body === null ? null : { body }
 }
 

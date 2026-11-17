@@ -53,6 +53,7 @@ const rejectionOf = (code: string | null, message: string): string =>
 
 export type LedgerEntriesProps = Readonly<{
   userId: string
+  investorLabel: string
   canWrite: boolean
   showRecordedAt?: boolean
   showFundNotice?: boolean
@@ -61,6 +62,7 @@ export type LedgerEntriesProps = Readonly<{
 
 export const LedgerEntries = ({
   userId,
+  investorLabel,
   canWrite,
   showRecordedAt = false,
   showFundNotice = true,
@@ -197,6 +199,7 @@ export const LedgerEntries = ({
       >
         {asking === null ? null : (
           <DataList>
+            <DetailRow label="Investor">{investorLabel}</DetailRow>
             <DetailRow label="Fund">{funds.nameOf(asking.fundId)}</DetailRow>
             <DetailRow label="Entry">{entryLabel(asking)}</DetailRow>
             <DetailRow label="Effective">{formatDate(asking.effectiveDate)}</DetailRow>

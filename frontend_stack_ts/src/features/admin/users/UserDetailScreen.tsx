@@ -42,6 +42,9 @@ const ORDER_TYPE_LABEL = {
   recorded_offline: "Recorded investment",
 } as const
 
+const labelOf = (user: Readonly<{ fullName: string; email: string }>): string =>
+  user.fullName === "" ? user.email : user.fullName
+
 const UserDetailScreen = (): React.ReactElement => {
   const { userId = "" } = useParams()
   const query = useAdminUser(userId)
@@ -179,7 +182,7 @@ const UserDetailScreen = (): React.ReactElement => {
                   <EarlierInvestmentForm
                     key={`${userId}:${prefill === null ? "blank" : `prefill-${String(prefill.id)}`}`}
                     userId={userId}
-                    investorLabel={data.user.fullName === "" ? data.user.email : data.user.fullName}
+                    investorLabel={labelOf(data.user)}
                     {...(prefill === null ? {} : { prefill: prefill.values })}
                     onHoldChange={setRecordHold}
                   />
@@ -190,6 +193,7 @@ const UserDetailScreen = (): React.ReactElement => {
             {data.roles.length === 0 ? (
               <SipScheduleSection
                 userId={userId}
+                investorLabel={labelOf(data.user)}
                 canStart={canRecordFor(data.user.accountState)}
                 onRecordMonth={recordMonth}
                 isRecordBlocked={recordHold !== "none"}
@@ -200,7 +204,7 @@ const UserDetailScreen = (): React.ReactElement => {
               <ClientMaturitySection userId={userId} canSet={canRecordFor(data.user.accountState)} />
             ) : null}
 
-            <ClientHubTabs userId={userId} isClient={data.roles.length === 0} />
+            <ClientHubTabs userId={userId} investorLabel={labelOf(data.user)} isClient={data.roles.length === 0} />
 
             {data.roles.length === 0 ? (
               <ClientContactsSection user={data.user} reloading={query.isFetching} onReload={reloadUser} />

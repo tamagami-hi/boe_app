@@ -51,8 +51,7 @@ export const InvestorPicker = ({
   if (denied) {
     return (
       <Alert tone="info" title="Investors cannot be listed">
-        This role cannot list investors, so one cannot be chosen here. A link from a client&apos;s page opens this with
-        the investor already chosen.
+        This role cannot list investors, so one cannot be chosen here.
       </Alert>
     )
   }

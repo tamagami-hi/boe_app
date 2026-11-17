@@ -453,16 +453,21 @@ describe("restoring held rows that can no longer be checked", () => {
     expect(sent).toHaveLength(1)
   })
 
-  it("does not check again a row held for longer than the server keeps its answer", () => {
+  it("still checks again a row held for days, because a recorded investment's receipt does not expire", async () => {
     reply = succeed
-    keepHeldRecording(ADMIN_ID, ashaJob, Date.now() - BACKEND_IDEMPOTENCY_TTL_MS - 60_000)
+    window.sessionStorage.setItem(
+      ashaKey,
+      JSON.stringify({ adminId: ADMIN_ID, ...ashaJob, heldAt: Date.now() - 3 * BACKEND_IDEMPOTENCY_TTL_MS }),
+    )
     const { result } = openRecorder()
 
-    expect(result.current.entries.get(asha.scheduleId)?.kind).toBe("expired")
+    expect(result.current.entries.get(asha.scheduleId)?.kind).toBe("unknown")
     act(() => {
       result.current.checkAgain(asha.scheduleId)
     })
-    expect(sent).toHaveLength(0)
-    expect(result.current.held.has(asha.scheduleId)).toBe(true)
+    await waitFor(() => {
+      expect(result.current.entries.get(asha.scheduleId)?.kind).toBe("recorded")
+    })
+    expect(sent.map((held) => held.idempotencyKey)).toEqual([ashaJob.idempotencyKey])
   })
 })

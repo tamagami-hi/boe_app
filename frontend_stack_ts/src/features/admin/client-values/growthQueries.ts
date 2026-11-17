@@ -26,10 +26,9 @@ export type CollectiveGrowthCommitBody = z.input<
   typeof commitAdminCollectiveClientGrowth.request.body
 >
 
-export type CollectiveGrowthCommitInput = Readonly<{
-  idempotencyKey: string
-  body: CollectiveGrowthCommitBody
-}>
+export type CollectiveGrowthHold = Readonly<{ body: CollectiveGrowthCommitBody }>
+
+export type CollectiveGrowthCommitInput = CollectiveGrowthHold & Readonly<{ idempotencyKey: string }>
 
 const refreshInvestorValues = async (queryClient: QueryClient, userId?: string): Promise<void> => {
   await Promise.all([

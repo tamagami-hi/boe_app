@@ -80,7 +80,11 @@ export const IndividualGrowthForm = ({
 }: IndividualGrowthFormProps): React.ReactElement => {
   const funds = useFundNames()
   const mutation = useIndividualClientGrowth()
-  const write = useHeldWrite(mutation, UNSENT, { slot: growthSlot(userId), parseBody: parseIndividualGrowth })
+  const write = useHeldWrite(mutation, UNSENT, {
+    slot: growthSlot(userId),
+    parseBody: parseIndividualGrowth,
+    retention: "ordinary",
+  })
   const today = indiaToday()
   const [draft, setDraft] = useState<Draft>(() => draftOf(write.held, today))
   const [fundId, setFundId] = useState(() => write.held?.body.fundId ?? initialFundId)
@@ -93,7 +97,7 @@ export const IndividualGrowthForm = ({
 
   const recorded = mutation.data
   const unknown = write.outcome.kind === "unknown"
-  const locked = write.held !== null || write.pending || recorded !== undefined
+  const locked = write.held !== null || write.pending || write.unreadable || recorded !== undefined
   const positionsFailed = userId !== "" && positions.data === undefined && positions.error != null
   const positionItems = positions.data?.items ?? []
   const selectedPosition = positionItems.find((position) => position.fundId === fundId) ?? null

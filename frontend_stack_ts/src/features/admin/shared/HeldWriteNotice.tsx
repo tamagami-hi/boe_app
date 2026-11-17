@@ -109,7 +109,7 @@ export const HeldWriteNotice = ({
   if (write.expired === true) {
     return (
       <StaleHoldNotice title="No longer checkable" reset={write.reset} onReload={onReload} reloadLabel={reloadLabel}>
-        {`This request has been held for more than a day, and the server keeps its answer for a day only, so Check again can no longer tell whether ${subject}. Check the record before entering it again.`}
+        {`This request has been held for longer than the server keeps its answer, so Check again can no longer tell whether ${subject}. Check the record before entering it again.`}
       </StaleHoldNotice>
     )
   }

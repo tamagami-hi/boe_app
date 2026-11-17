@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react"
 
-import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
-import { useIdempotencyKey } from "~/api/idempotency"
+import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
+import { useFundNames } from "~/features/admin/shared/fundNames"
+import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -25,7 +26,7 @@ import {
   useFundClientPositions,
   usePreviewCollectiveClientGrowth,
 } from "./growthQueries"
-import type { CollectiveGrowthCommitInput } from "./growthQueries"
+import { parseCollectiveCommit } from "./heldBodies"
 import { ListSkeleton } from "./ListSkeleton"
 import { ValueUpdatePreview } from "./ValueUpdatePreview"
 import { ValueUpdateSheetTable } from "./ValueUpdateSheetTable"
@@ -36,11 +37,6 @@ const VALUE_UPDATE_REASON = "monthly"
 
 const STALE_MESSAGE =
   "A value in this fund changed after the preview, so nothing was written. Reload the sheet, check the numbers and preview again."
-
-type CommitOutcome =
-  | Readonly<{ kind: "idle" }>
-  | Readonly<{ kind: "rejected"; message: string; stale: boolean }>
-  | Readonly<{ kind: "unknown" }>
 
 type Previewed = Readonly<{
   fundId: string
@@ -54,22 +50,11 @@ const SHEET_DESCRIPTION =
 const RESTART_DESCRIPTION =
   "Open one client's record in this fund first. If an update from this batch is listed, the batch was written, and writing again would apply the change twice. Starting over discards this preview."
 
-const IDLE: CommitOutcome = { kind: "idle" }
 const NO_POSITIONS: readonly SheetPosition[] = []
 
-const describeCommitRejection = (error: unknown): CommitOutcome => {
-  if (isUnknownWriteOutcome(error)) return { kind: "unknown" }
-  if (isApiError(error) && error.code === "STATE_CONFLICT") {
-    return { kind: "rejected", message: STALE_MESSAGE, stale: true }
-  }
-  return {
-    kind: "rejected",
-    message: isApiError(error)
-      ? error.message
-      : "This batch could not be sent. Reload the page and try again.",
-    stale: false,
-  }
-}
+const UNSENT = "This batch could not be sent. Reload the page and try again."
+
+export const VALUE_UPDATE_SLOT = "value-update"
 
 const describePreviewFailure = (error: unknown): string => {
   if (!isApiError(error)) return "We could not build a preview. A preview never writes anything."
@@ -79,19 +64,22 @@ const describePreviewFailure = (error: unknown): string => {
 }
 
 const ValueUpdateSheetScreen = (): React.ReactElement => {
-  const funds = useAdminFundCatalogue()
+  const funds = useFundNames()
   const preview = usePreviewCollectiveClientGrowth()
-  const commit = useCommitCollectiveClientGrowth()
-  const [fundId, setFundId] = useState("")
+  const commitMutation = useCommitCollectiveClientGrowth()
+  const commit = useHeldWrite(commitMutation, UNSENT, {
+    slot: VALUE_UPDATE_SLOT,
+    parseBody: parseCollectiveCommit,
+    retention: "ordinary",
+  })
+  const held = commit.held?.body ?? null
+  const [fundId, setFundId] = useState(() => held?.fundId ?? "")
   const positions = useFundClientPositions(fundId)
   const [inputs, setInputs] = useState<Readonly<Record<string, string>>>({})
   const [previewed, setPreviewed] = useState<Previewed | null>(null)
   const [previewFailure, setPreviewFailure] = useState<string | null>(null)
-  const [effectiveDate, setEffectiveDate] = useState(indiaToday)
-  const [note, setNote] = useState("")
-  const [attempt, setAttempt] = useState(0)
-  const [outcome, setOutcome] = useState<CommitOutcome>(IDLE)
-  const [held, setHeld] = useState<CollectiveGrowthCommitInput | null>(null)
+  const [effectiveDate, setEffectiveDate] = useState(() => held?.effectiveDate ?? indiaToday())
+  const [note, setNote] = useState(() => held?.note ?? "")
   const [confirmingCommit, setConfirmingCommit] = useState(false)
   const [confirmingRestart, setConfirmingRestart] = useState(false)
 
@@ -101,11 +89,11 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
     () => new Map((previewed?.snapshot ?? rows).map((row) => [row.userId, row.fullName])),
     [previewed, rows],
   )
-  const fund = (funds.data?.items ?? []).find((entry) => entry.id === fundId)
-  const fundLabel = fund?.name ?? fund?.slug ?? fundId
-  const committed = commit.data ?? null
-  const locked = commit.isPending || outcome.kind === "unknown" || committed !== null
-  const staleBasis = outcome.kind === "rejected" && outcome.stale
+  const fundLabel = funds.nameOf(fundId)
+  const committed = commitMutation.data ?? null
+  const unknown = commit.outcome.kind === "unknown"
+  const locked = commit.pending || commit.held !== null || commit.unreadable || committed !== null
+  const staleBasis = commit.outcome.kind === "rejected" && commit.outcome.code === "STATE_CONFLICT"
   const result = staleBasis || previewed === null ? null : (preview.data ?? null)
   const matches =
     result !== null &&
@@ -127,15 +115,12 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
           reasonCode: VALUE_UPDATE_REASON,
           ...(trimmedNote === "" ? {} : { note: trimmedNote }),
         }
-  const idempotencyKey = useIdempotencyKey({ body: commitBody, attempt })
 
   const clearPreview = (): void => {
     preview.reset()
     commit.reset()
     setPreviewed(null)
     setPreviewFailure(null)
-    setOutcome(IDLE)
-    setHeld(null)
   }
 
   const chooseFund = (next: string): void => {
@@ -169,23 +154,9 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
     void positions.refetch()
   }
 
-  const sendCommit = (input: CollectiveGrowthCommitInput): void => {
-    setHeld(input)
-    setOutcome(IDLE)
-    commit.mutate(input, {
-      onError: (error) => {
-        setOutcome(describeCommitRejection(error))
-      },
-    })
-  }
-
   const runCommit = (): void => {
     setConfirmingCommit(false)
-    if (commitBody !== null) sendCommit({ idempotencyKey, body: commitBody })
-  }
-
-  const checkAgain = (): void => {
-    if (held !== null) sendCommit(held)
+    if (commitBody !== null) commit.submit({ body: commitBody })
   }
 
   const askRestart = (): void => {
@@ -194,7 +165,6 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
 
   const startOver = (): void => {
     setConfirmingRestart(false)
-    setAttempt((current) => current + 1)
     clearPreview()
   }
 
@@ -223,33 +193,51 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
         </Alert>
       )}
 
-      {outcome.kind === "rejected" ? (
+      {commit.outcome.kind === "rejected" ? (
         <Alert
-          tone={outcome.stale ? "warning" : "error"}
+          tone={staleBasis ? "warning" : "error"}
           title="Nothing was written"
-          {...(outcome.stale ? { action: reloadAction } : {})}
+          {...(staleBasis ? { action: reloadAction } : {})}
         >
-          {outcome.message}
+          {staleBasis ? STALE_MESSAGE : commit.outcome.message}
         </Alert>
       ) : null}
 
-      {outcome.kind === "unknown" ? (
+      {commit.outcome.kind === "rejected" || (unknown && !commit.expired) ? null : (
+        <HeldWriteNotice
+          write={{
+            outcome: commit.outcome,
+            pending: commit.pending,
+            checkAgain: commit.checkAgain,
+            unreadable: commit.unreadable,
+            expired: commit.expired,
+          }}
+          subject="this batch was written"
+          reloadLabel="Start over"
+          onReload={askRestart}
+        />
+      )}
+
+      {unknown && !commit.expired ? (
         <Alert
           tone="warning"
           title="Not confirmed"
           action={
             <span className={ACTION_ROW}>
-              <Button size="sm" loading={commit.isPending} onClick={checkAgain}>
+              <Button size="sm" loading={commit.pending} onClick={commit.checkAgain}>
                 Check again
               </Button>
-              <Button size="sm" tone="secondary" disabled={commit.isPending} onClick={askRestart}>
+              <Button size="sm" tone="secondary" disabled={commit.pending} onClick={askRestart}>
                 Start over
               </Button>
             </span>
           }
         >
-          The reply did not arrive, so it is not known whether this batch was written. Check again sends
-          the same request under the same key, and it can only ever be written once.
+          {`The reply did not arrive, so it is not known whether this batch was written. Check again sends the same request under the same key, also after leaving this page, and it can only ever be written once.${
+            held === null
+              ? ""
+              : ` Held: ${funds.nameOf(held.fundId)}, ${String(held.items?.length ?? 0)} change(s), dated ${formatDate(held.effectiveDate)}.`
+          }`}
         </Alert>
       ) : null}
 
@@ -321,13 +309,13 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
         <ValueUpdatePreview
           targets={result.targets}
           totalDeltaPaise={result.totalDeltaPaise}
-          nameOf={(userId) => names.get(userId) ?? userId}
+          nameOf={(userId) => names.get(userId) ?? "Name not available"}
           effectiveDate={effectiveDate}
           today={today}
           note={note}
           locked={locked}
-          showCommit={committed === null && outcome.kind !== "unknown"}
-          committing={commit.isPending}
+          showCommit={committed === null && !unknown}
+          committing={commit.pending}
           onEffectiveDate={setEffectiveDate}
           onNote={setNote}
           onReview={() => {

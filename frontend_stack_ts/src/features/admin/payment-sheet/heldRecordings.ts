@@ -1,22 +1,13 @@
 import { isIdempotencyKey } from "~/api/idempotency"
-import {
-  asRecord,
-  clearHeldKeys,
-  dropOtherAdminsKeys,
-  heldAtOf,
-  parseJson,
-  sessionStore,
-} from "~/features/admin/shared/heldWriteStore"
+import { asRecord, clearHeldKeys, dropOtherAdminsKeys, parseJson, sessionStore } from "~/features/admin/shared/heldWriteStore"
 
 import { MONTHLY_REASON } from "./recordingSheet"
 import type { RecordingBody } from "./recordingSheet"
 
 export type HeldRecording = Readonly<{ idempotencyKey: string; userId: string; body: RecordingBody }>
 
-export type StoredRecording = HeldRecording & Readonly<{ heldAt: number | null }>
-
 export type HeldRecordingsRead = Readonly<{
-  held: ReadonlyMap<string, StoredRecording>
+  held: ReadonlyMap<string, HeldRecording>
   unreadable: readonly string[]
 }>
 
@@ -28,7 +19,7 @@ const storageKey = (scheduleId: string, month: string): string => `${PREFIX}:${m
 
 const isText = (value: unknown): value is string => typeof value === "string" && value !== ""
 
-const parseHeld = (raw: string, scheduleId: string, month: string): StoredRecording | null => {
+const parseHeld = (raw: string, scheduleId: string, month: string): HeldRecording | null => {
   const held = asRecord(parseJson(raw))
   const body = asRecord(held?.body)
   const link = asRecord(body?.sipScheduleLink)
@@ -42,7 +33,6 @@ const parseHeld = (raw: string, scheduleId: string, month: string): StoredRecord
     idempotencyKey,
     userId,
     body: { fundId, amountPaise, effectiveDate, reasonCode, sipScheduleLink: { scheduleId, month } },
-    heldAt: heldAtOf(held),
   }
 }
 
@@ -71,13 +61,13 @@ export const readHeldRecordings = (month: string, adminId: string): HeldRecordin
 export const loadHeldRecordings = (month: string, adminId: string): ReadonlyMap<string, HeldRecording> =>
   readHeldRecordings(month, adminId).held
 
-export const keepHeldRecording = (adminId: string, held: HeldRecording, heldAt: number = Date.now()): boolean => {
+export const keepHeldRecording = (adminId: string, held: HeldRecording): boolean => {
   const { scheduleId, month } = held.body.sipScheduleLink
   const store = sessionStore()
   if (store === null) return false
   try {
     const { idempotencyKey, userId, body } = held
-    store.setItem(storageKey(scheduleId, month), JSON.stringify({ adminId, idempotencyKey, userId, body, heldAt }))
+    store.setItem(storageKey(scheduleId, month), JSON.stringify({ adminId, idempotencyKey, userId, body }))
     return true
   } catch {
     return false

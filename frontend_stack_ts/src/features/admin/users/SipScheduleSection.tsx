@@ -59,6 +59,7 @@ const StateBadge = ({ state, closedEarlyOn }: Readonly<{ state: string; closedEa
 
 export type SipScheduleSectionProps = Readonly<{
   userId: string
+  investorLabel: string
   canStart: boolean
   onRecordMonth?: (schedule: AdminSipScheduleItem) => void
   isRecordBlocked?: boolean
@@ -66,6 +67,7 @@ export type SipScheduleSectionProps = Readonly<{
 
 export const SipScheduleSection = ({
   userId,
+  investorLabel,
   canStart,
   onRecordMonth,
   isRecordBlocked = false,
@@ -246,7 +248,7 @@ export const SipScheduleSection = ({
           />
         )}
       </Section>
-      <SipEarlyExitList userId={userId} canWrite={canWrite} />
+      <SipEarlyExitList userId={userId} investorLabel={investorLabel} canWrite={canWrite} />
     </>
   )
 }

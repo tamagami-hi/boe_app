@@ -7,10 +7,15 @@ export type HoldRead<TBody> =
   | Readonly<{ kind: "unreadable" }>
   | Readonly<{ kind: "held"; hold: StoredHold<TBody>; heldAt: number | null }>
 
+export type ReceiptRetention = "ordinary" | "durable"
+
 export const BACKEND_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000
 
-export const isPastReceiptLifetime = (heldAt: number | null, now: number): boolean =>
-  heldAt === null || now - heldAt >= BACKEND_IDEMPOTENCY_TTL_MS
+export const isPastReceiptLifetime = (
+  heldAt: number | null,
+  now: number,
+  retention: ReceiptRetention = "ordinary",
+): boolean => retention === "ordinary" && (heldAt === null || now - heldAt >= BACKEND_IDEMPOTENCY_TTL_MS)
 
 type SafeParser<T> = Readonly<{ safeParse: (value: unknown) => { success: true; data: T } | { success: false } }>
 

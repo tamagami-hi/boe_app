@@ -31,6 +31,7 @@ const COPY: Readonly<Record<MaturityAsk, Readonly<{ title: string; confirm: stri
 
 export type MaturityPanelConfirmProps = Readonly<{
   asking: MaturityAsk | null
+  investorLabel: string
   fundName: string
   date: string
   position: Position | undefined
@@ -41,6 +42,7 @@ export type MaturityPanelConfirmProps = Readonly<{
 
 export const MaturityPanelConfirm = ({
   asking,
+  investorLabel,
   fundName,
   date,
   position,
@@ -59,6 +61,7 @@ export const MaturityPanelConfirm = ({
       onCancel={onCancel}
     >
       <DataList>
+        <DetailRow label="Investor">{investorLabel}</DetailRow>
         <DetailRow label="Fund">{fundName}</DetailRow>
         <DetailRow label={asking === "mark" ? "Maturity date" : "Settlement date"}>
           {date === "" ? "" : formatDate(date)}

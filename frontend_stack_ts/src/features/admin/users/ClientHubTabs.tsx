@@ -19,16 +19,16 @@ const TABS_ID = "client-hub-records"
 
 type TabChoice = Readonly<{ requested: string | null; value: string | null }>
 
-type Props = Readonly<{ userId: string; isClient: boolean }>
+type Props = Readonly<{ userId: string; investorLabel: string; isClient: boolean }>
 
-export const ClientHubTabs = ({ userId, isClient }: Props): React.ReactElement | null => {
+export const ClientHubTabs = ({ userId, investorLabel, isClient }: Props): React.ReactElement | null => {
   const { hasAnyPermission } = useSession()
   const [searchParams] = useSearchParams()
   const requested = searchParams.get("tab")
   const [choice, setChoice] = useState<TabChoice>({ requested, value: requested })
   const [isTabHolding, setTabHolding] = useState(false)
-  if (choice.requested !== requested) setChoice({ requested, value: requested })
-  const selected = choice.requested === requested ? choice.value : requested
+  if (choice.requested !== requested && !isTabHolding) setChoice({ requested, value: requested })
+  const selected = choice.requested === requested || isTabHolding ? choice.value : requested
   const canReadValues = isClient && hasAnyPermission(["client_position.write", "client_values.read"])
   const items: readonly TabItem<HubTab>[] = [
     ...(canReadValues
@@ -60,8 +60,8 @@ export const ClientHubTabs = ({ userId, isClient }: Props): React.ReactElement |
         }}
       />
       <TabPanel id={TABS_ID} value={active}>
-        {active === "ledger" ? <ClientLedgerTab userId={userId} onUnsavedHold={setTabHolding} /> : null}
-        {active === "maturity" ? <ClientMaturityTab userId={userId} onUnsavedHold={setTabHolding} /> : null}
+        {active === "ledger" ? <ClientLedgerTab userId={userId} investorLabel={investorLabel} onUnsavedHold={setTabHolding} /> : null}
+        {active === "maturity" ? <ClientMaturityTab userId={userId} investorLabel={investorLabel} onUnsavedHold={setTabHolding} /> : null}
         {active === "emails" ? <ClientEmailsTab userId={userId} /> : null}
         {active === "support" ? <ClientSupportTab userId={userId} /> : null}
         {active === "reviews" ? <ClientReviewsTab userId={userId} /> : null}

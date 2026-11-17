@@ -74,6 +74,7 @@ export const EarlierInvestmentForm = ({
   const record = useHeldWrite(mutation, UNSENT, {
     slot: recordingSlot(userId),
     parseBody: parseRecordedContribution,
+    retention: "durable",
   })
   const held = record.held
 
@@ -98,7 +99,7 @@ export const EarlierInvestmentForm = ({
   const recorded = mutation.data
   const holding = held !== null || record.pending
   const unknown = record.outcome.kind === "unknown"
-  const locked = !canWrite || holding || recorded !== undefined
+  const locked = !canWrite || holding || record.unreadable || recorded !== undefined
   const hold: RecordingHold = held === null ? "none" : isUnsavedHold(record) ? "unsaved" : "held"
 
   useEffect(() => {

@@ -21,6 +21,7 @@ import { useUpdatePayout } from "./maturityQueries"
 
 type Props = Readonly<{
   payout: Omit<AdminWithdrawalPayout, "maturityId">
+  investorLabel: string
   fundName: string
   canWrite: boolean
   onReload: () => void
@@ -30,7 +31,7 @@ type Outcome = "paid" | "failed"
 
 const FAILURE_CODE_PATTERN = /^[A-Za-z0-9_.:-]{1,80}$/u
 
-export const WithdrawalPayoutPanel = ({ payout, fundName, canWrite, onReload }: Props): React.ReactElement => {
+export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrite, onReload }: Props): React.ReactElement => {
   const write = useHeldWrite(useUpdatePayout(payout.userId), "The payout status could not be sent. Reload the page and try again.", {
     slot: `payout:${payout.id}`,
     parseBody: parsePayoutUpdate,
@@ -137,6 +138,7 @@ export const WithdrawalPayoutPanel = ({ payout, fundName, canWrite, onReload }: 
         }}
       >
         <DataList>
+          <DetailRow label="Investor">{investorLabel}</DetailRow>
           <DetailRow label="Fund">{fundName}</DetailRow>
           <DetailRow label="Withdrawal" emphasis="lead">
             <MoneyValue amount={toPaise(payout.amountPaise)} size="sm" showDecimals />

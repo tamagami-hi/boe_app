@@ -5,7 +5,7 @@ import { isApiError, isUnknownRetryOutcome, isUnknownWriteOutcome, type FieldErr
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { useSession } from "~/app/providers/SessionProvider"
 
-import { isPastReceiptLifetime, keepHold, readHold, releaseHold } from "./heldWriteStore"
+import { isPastReceiptLifetime, keepHold, readHold, releaseHold, type ReceiptRetention } from "./heldWriteStore"
 
 export type HeldWriteOutcome<TResult> =
   | Readonly<{ kind: "idle" }>
@@ -30,9 +30,10 @@ export type HeldWrite<TBody, TResult> = Readonly<{
 export type HeldWritePersistence<TBody> = Readonly<{
   slot: string
   parseBody: (value: unknown) => TBody | null
+  retention?: ReceiptRetention
 }>
 
-type HoldPlace = Readonly<{ slot: string; adminId: string }>
+type HoldPlace = Readonly<{ slot: string; adminId: string; retention: ReceiptRetention }>
 
 type Hold<TBody> = Readonly<{ body: TBody; idempotencyKey: string; place: HoldPlace | null; heldAt: number | null }>
 
@@ -48,7 +49,12 @@ const NO_FIELDS: FieldErrors = {}
 const NOTHING_RESTORED: Restored<never> = { hold: null, unreadableAt: null, expired: false }
 
 const placeOf = (persist: HeldWritePersistence<unknown> | undefined, adminId: string | null): HoldPlace | null =>
-  persist === undefined || adminId === null ? null : { slot: persist.slot, adminId }
+  persist === undefined || adminId === null
+    ? null
+    : { slot: persist.slot, adminId, retention: persist.retention ?? "ordinary" }
+
+const isPastLifetime = ({ place, heldAt }: Hold<unknown>, now: number): boolean =>
+  place !== null && isPastReceiptLifetime(heldAt, now, place.retention)
 
 const restore = <TBody>(persist: HeldWritePersistence<TBody> | undefined, adminId: string | null): Restored<TBody> => {
   const place = placeOf(persist, adminId)
@@ -56,15 +62,12 @@ const restore = <TBody>(persist: HeldWritePersistence<TBody> | undefined, adminI
   const read = readHold(place.slot, place.adminId, persist.parseBody)
   if (read.kind === "none") return NOTHING_RESTORED
   if (read.kind === "unreadable") return { hold: null, unreadableAt: place, expired: false }
-  return {
-    hold: { body: read.hold.body, idempotencyKey: read.hold.idempotencyKey, place, heldAt: read.heldAt },
-    unreadableAt: null,
-    expired: isPastReceiptLifetime(read.heldAt, Date.now()),
-  }
+  const hold = { body: read.hold.body, idempotencyKey: read.hold.idempotencyKey, place, heldAt: read.heldAt }
+  return { hold, unreadableAt: null, expired: isPastLifetime(hold, Date.now()) }
 }
 
 const keep = ({ body, idempotencyKey, place, heldAt }: Hold<unknown>): boolean =>
-  place !== null && heldAt !== null && keepHold(place.slot, place.adminId, { idempotencyKey, body }, heldAt)
+  place !== null && keepHold(place.slot, place.adminId, { idempotencyKey, body }, heldAt ?? undefined)
 
 const release = ({ place }: Hold<unknown>): void => {
   if (place !== null) releaseHold(place.slot)
@@ -141,7 +144,7 @@ export const useHeldWrite = <TBody extends object, TResult>(
     checkAgain: () => {
       const held = current.current
       if (held === null) return
-      if (isPastReceiptLifetime(held.heldAt, Date.now())) {
+      if (isPastLifetime(held, Date.now())) {
         setExpired(true)
         return
       }
