@@ -49,8 +49,6 @@ export const Sheet = ({
   const id = useId()
   const panel = useRef<HTMLDivElement | null>(null)
   const restoreTo = useRef<HTMLElement | null>(null)
-  const dismiss = useRef(onDismiss)
-  dismiss.current = onDismiss
 
   useEffect(() => {
     if (!open) return
@@ -68,15 +66,7 @@ export const Sheet = ({
     const previousOverflow = body.style.overflow
     body.style.overflow = "hidden"
 
-    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
-      if (event.key !== "Escape") return
-      event.preventDefault()
-      dismiss.current()
-    }
-    document.addEventListener("keydown", onKeyDown)
-
     return () => {
-      document.removeEventListener("keydown", onKeyDown)
       body.style.overflow = previousOverflow
       restoreTo.current?.focus()
     }

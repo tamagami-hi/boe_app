@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { lockDevice, unlockDevice } from "~/app/native/deviceLock"
@@ -44,6 +45,23 @@ const tree = (seen: WhatsNewSeen, other = false): React.ReactElement => (
 
 const sheet = (): HTMLElement | null => screen.queryByRole("dialog", { name: "What's new" })
 
+const pressEscape = (): void => {
+  fireEvent.keyDown(document.body, { key: "Escape" })
+}
+
+const ClosableDialog = (): React.ReactElement => {
+  const [open, setOpen] = useState(true)
+  return (
+    <Modal
+      open={open}
+      title="Top dialog"
+      onDismiss={() => {
+        setOpen(false)
+      }}
+    />
+  )
+}
+
 beforeEach(() => {
   window.localStorage.clear()
   session.userId = ASHA
@@ -65,9 +83,10 @@ describe("What's new prompt", () => {
 
   it.each([
     ["Done", (): void => { fireEvent.click(screen.getByRole("button", { name: "Done" })) }],
-    ["Escape", (): void => { fireEvent.keyDown(window, { key: "Escape" }) }],
+    ["Escape", pressEscape],
   ])("does not show them again to the same user after closing with %s and reloading", (_how, closeSheet) => {
     const first = render(tree(browserSeen()))
+    expect(sheet()).not.toBeNull()
     act(closeSheet)
     expect(sheet()).toBeNull()
     first.unmount()
@@ -99,6 +118,27 @@ describe("What's new prompt", () => {
     view.rerender(tree(seen, false))
 
     expect(sheet()).not.toBeNull()
+  })
+
+  it("closes only the top dialog on one Escape and keeps the notes open and unseen", () => {
+    const seen = browserSeen()
+    const stacked = (top: boolean): React.ReactElement => (
+      <OverlayStackProvider>
+        <WhatsNewPrompt seen={seen} notes={NOTES} />
+        {top ? <ClosableDialog /> : null}
+      </OverlayStackProvider>
+    )
+    const view = render(stacked(false))
+    expect(sheet()).not.toBeNull()
+
+    view.rerender(stacked(true))
+    expect(screen.queryByRole("dialog", { name: "Top dialog" })).not.toBeNull()
+
+    act(pressEscape)
+
+    expect(screen.queryByRole("dialog", { name: "Top dialog" })).toBeNull()
+    expect(sheet()).not.toBeNull()
+    expect(seen.lastSeen("client", ASHA)).toBeNull()
   })
 
   it("waits while the device is locked, then shows", () => {

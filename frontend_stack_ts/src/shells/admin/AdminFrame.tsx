@@ -8,6 +8,7 @@ import { Modal } from "~/app/overlays/Modal"
 import { useSession } from "~/app/providers/SessionProvider"
 import { MaturityDuePrompt } from "~/features/admin/maturities/MaturityDuePrompt"
 import { useAuthPort } from "~/features/auth/authPort"
+import { ADMIN_NOTES } from "~/features/whats-new/adminNotes"
 import { WhatsNewPrompt } from "~/features/whats-new/WhatsNewPrompt"
 import { hasAll, hasAny } from "~/domain/permissions"
 import {
@@ -174,7 +175,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
         }}
       />
 
-      <WhatsNewPrompt />
+      <WhatsNewPrompt notes={ADMIN_NOTES} />
 
       <Modal
         open={moreOpen}

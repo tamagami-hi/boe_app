@@ -502,7 +502,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     title: "What's new",
     access: "session",
     role: "admin",
-    element: () => import("~/features/whats-new/WhatsNewScreen"),
+    element: () => import("~/features/admin/account/AccountWhatsNewScreen"),
     back: { kind: "parent", path: ADMIN_ACCOUNT_PATH },
   },
   {

@@ -8,17 +8,16 @@ import { Button } from "~/ui/primitives/Button"
 
 import type { WhatsNewNotes as Notes } from "./whatsNewEntry"
 import { WhatsNewNotes } from "./WhatsNewNotes"
-import { whatsNewNotes } from "./whatsNewNotes"
 import { browserWhatsNewSeen, type WhatsNewSeen } from "./whatsNewSeen"
 
 export type WhatsNewPromptProps = Readonly<{
+  notes: Notes
   seen?: WhatsNewSeen
-  notes?: Notes
 }>
 
 export const WhatsNewPrompt = ({
+  notes,
   seen = browserWhatsNewSeen,
-  notes = whatsNewNotes(),
 }: WhatsNewPromptProps): React.ReactElement | null => {
   const { status, principal, scope } = useSession()
   const { depth } = useOverlayStack()
@@ -27,7 +26,7 @@ export const WhatsNewPrompt = ({
   const [shownTo, setShownTo] = useState<string | null>(null)
 
   const latest = notes[0]
-  const userId = status === "authenticated" ? (principal?.userId ?? null) : null
+  const userId = status === "authenticated" && principal?.accountState === "active" ? principal.userId : null
   const openFor = userId !== null && shownTo === userId ? userId : null
   const isDue =
     openFor === null && userId !== null && depth === 0 && !locked && seen.lastSeen(scope, userId) !== latest.id

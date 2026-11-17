@@ -21,10 +21,10 @@ export const ADMIN_TOPBAR = [
 ].join(" ")
 
 export const ADMIN_TITLE =
-  "flex-1 font-display text-lg font-normal tracking-display text-fg lg:hidden"
+  "min-w-0 flex-1 truncate font-display text-lg font-normal tracking-display text-fg lg:hidden"
 
 export const ADMIN_ACTION = [
-  "min-h-target rounded-full border-0 bg-parchment px-4",
+  "min-h-target flex-none whitespace-nowrap rounded-full border-0 bg-parchment px-4",
   "shadow-[0_0_0_1px_var(--be-hairline-strong),var(--be-ambient-1)]",
   "font-ui text-sm font-semibold text-fg-muted cursor-pointer",
   "transition-[color,transform] duration-200 ease-spring",

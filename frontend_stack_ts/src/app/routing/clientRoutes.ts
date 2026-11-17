@@ -302,7 +302,7 @@ export const CLIENT_ROUTES: RouteManifest = [
     title: "What's new",
     access: "session",
     role: "client",
-    element: () => import("~/features/whats-new/WhatsNewScreen"),
+    element: () => import("~/features/whats-new/ClientWhatsNewScreen"),
     back: { kind: "parent", path: "/profile" },
   },
   {
