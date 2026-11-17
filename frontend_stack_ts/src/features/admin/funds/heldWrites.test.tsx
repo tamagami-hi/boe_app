@@ -4,7 +4,15 @@ import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TransportError } from "~/api/errors"
-import type { getAdminAppConfig, getAdminApplication, listAdminFaqs } from "~/api/generated/operations"
+import type {
+  getAdminAppConfig,
+  getAdminApplication,
+  getAdminFund,
+  listAdminFaqs,
+  listAdminFunds,
+  listAdminFundStocks,
+  previewAdminCollectiveAumGrowth,
+} from "~/api/generated/operations"
 import type { DataOf, HttpClient } from "~/api/http"
 import { ApiProvider } from "~/app/providers/ApiProvider"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
@@ -12,13 +20,27 @@ import { ToastProvider } from "~/app/providers/ToastProvider"
 import AppConfigBuilderScreen from "~/features/admin/app-config/AppConfigBuilderScreen"
 import ApplicationDetailScreen from "~/features/admin/applications/ApplicationDetailScreen"
 import FaqListScreen from "~/features/admin/content/FaqListScreen"
+import CollectiveAumGrowthScreen from "~/features/admin/fund-aum/CollectiveAumGrowthScreen"
+import FundAumScreen from "~/features/admin/fund-aum/FundAumScreen"
 
+import FundCreateScreen from "./FundCreateScreen"
+import FundHoldingsScreen from "./FundHoldingsScreen"
+import FundWorkspaceScreen from "./FundWorkspaceScreen"
+
+type Fund = DataOf<typeof getAdminFund>["fund"]
 type Sent = Readonly<{ operationId: string; options: Readonly<Record<string, unknown>> }>
 type Operation = Readonly<{ operationId: string; method: string }>
 
 const ADMIN_ID = "00000000-0000-4000-8000-0000000000a1"
+const FUND_ID = "11111111-1111-4111-8111-111111111111"
+const VERSION_1 = "22222222-2222-4222-8222-222222222221"
+const VERSION_2 = "22222222-2222-4222-8222-222222222222"
+const DISCLOSURE_1 = "33333333-3333-4333-8333-333333333331"
+const DISCLOSURE_2 = "33333333-3333-4333-8333-333333333332"
+const STOCK_ID = "44444444-4444-4444-8444-444444444444"
 const FAQ_ID = "55555555-5555-4555-8555-555555555555"
 const APPLICATION_ID = "66666666-6666-4666-8666-666666666666"
+const SNAPSHOT_ID = "77777777-7777-4777-8777-777777777777"
 const AT = "2026-11-01T10:00:00.000Z"
 
 vi.mock("~/app/providers/SessionProvider", () => ({
@@ -28,6 +50,108 @@ vi.mock("~/app/providers/SessionProvider", () => ({
     hasAllPermissions: () => true,
   }),
 }))
+
+const fundWith = (aum: Fund["aum"]): Fund => ({
+  id: FUND_ID,
+  slug: "balanced-growth",
+  status: "published",
+  name: "Balanced Growth",
+  category: "Hybrid",
+  objective: "Steady growth",
+  riskLevel: "moderate",
+  returnTier: null,
+  currency: "INR",
+  minimumSipPaise: "50000",
+  minimumPurchasePaise: "500000",
+  currentVersion: 2,
+  currentVersionId: VERSION_2,
+  aum,
+  stockCount: 1,
+  publishedAt: AT,
+  createdAt: AT,
+  updatedAt: AT,
+  version: 7,
+})
+
+const detailWith = (aum: Fund["aum"]): DataOf<typeof getAdminFund> => ({
+  fund: fundWith(aum),
+  versions: [
+    {
+      id: VERSION_1,
+      version: 1,
+      name: "Balanced Growth",
+      category: "Hybrid",
+      objective: "Old objective",
+      riskLevel: "low",
+      returnTier: "low",
+      currency: "INR",
+      minimumSipPaise: "10000",
+      minimumPurchasePaise: "100000",
+      minimumDurationMonths: 6,
+      recommendedHoldingMonths: 12,
+      disclosureVersionId: DISCLOSURE_1,
+      createdAt: AT,
+    },
+    {
+      id: VERSION_2,
+      version: 2,
+      name: "Balanced Growth",
+      category: "Hybrid",
+      objective: "Steady growth",
+      riskLevel: "moderate",
+      returnTier: null,
+      currency: "INR",
+      minimumSipPaise: "50000",
+      minimumPurchasePaise: "500000",
+      minimumDurationMonths: 24,
+      recommendedHoldingMonths: 36,
+      disclosureVersionId: DISCLOSURE_2,
+      createdAt: AT,
+    },
+  ],
+  stocks: [],
+  disclosures: [
+    { id: DISCLOSURE_2, version: 2, title: "Risk disclosure", body: "Read the scheme documents.", effectiveFrom: AT, createdAt: AT },
+    { id: DISCLOSURE_1, version: 1, title: "Old disclosure", body: "Old body.", effectiveFrom: AT, createdAt: AT },
+  ],
+})
+
+const SIZED = { aumPaise: "100000000", asOfDate: "2026-11-01", updatedAt: AT }
+
+const STOCKS: DataOf<typeof listAdminFundStocks> = {
+  items: [
+    {
+      id: STOCK_ID,
+      stockName: "Infosys",
+      quarterLabel: "Q3 FY27",
+      weightPercent: "12.5",
+      state: "active",
+      sortOrder: 0,
+      exitedAt: null,
+      createdAt: AT,
+      updatedAt: AT,
+    },
+  ],
+}
+
+const CATALOGUE: DataOf<typeof listAdminFunds> = {
+  items: [fundWith(SIZED)],
+  summary: { total: 1, byState: { draft: 0, published: 1, paused: 0, archived: 0 } },
+}
+
+const PREVIEW: DataOf<typeof previewAdminCollectiveAumGrowth> = {
+  basisHash: "a".repeat(64),
+  items: [
+    {
+      fundId: FUND_ID,
+      basisSnapshotId: SNAPSHOT_ID,
+      basisRevision: 1,
+      beforeAumPaise: "100000000",
+      deltaPaise: "2500000",
+      afterAumPaise: "102500000",
+    },
+  ],
+}
 
 const FAQS: DataOf<typeof listAdminFaqs> = {
   items: [
@@ -72,15 +196,22 @@ const APP_CONFIG: DataOf<typeof getAdminAppConfig> = {
   publishedBy: ADMIN_ID,
 }
 
+let fundDetail = detailWith(SIZED)
 const sent: Sent[] = []
 let writeReplies: (() => Promise<unknown>)[] = []
 
 const timedOut = (): Promise<unknown> => Promise.reject(new TransportError("timeout", "The request timed out."))
+const accepted = (): Promise<unknown> => Promise.resolve({ data: undefined, meta: { page: null } })
 
 const READS: Readonly<Record<string, () => unknown>> = {
+  getAdminFund: () => fundDetail,
+  listAdminFundStocks: () => STOCKS,
+  getAdminFundAumHistory: () => ({ items: [] }),
+  listAdminFunds: () => CATALOGUE,
   listAdminFaqs: () => FAQS,
   getAdminApplication: () => APPLICATION,
   getAdminAppConfig: () => APP_CONFIG,
+  previewAdminCollectiveAumGrowth: () => PREVIEW,
 }
 
 const request = async (operation: Operation, options: Readonly<Record<string, unknown>> = {}): Promise<unknown> => {
@@ -93,6 +224,11 @@ const request = async (operation: Operation, options: Readonly<Record<string, un
 const api = { request } as unknown as HttpClient
 
 const SCREENS = [
+  { path: "/funds/new", element: <FundCreateScreen /> },
+  { path: "/funds/:fundId", element: <FundWorkspaceScreen /> },
+  { path: "/funds/:fundId/holdings", element: <FundHoldingsScreen /> },
+  { path: "/funds/:fundId/aum", element: <FundAumScreen /> },
+  { path: "/aum/collective", element: <CollectiveAumGrowthScreen /> },
   { path: "/faqs", element: <FaqListScreen /> },
   { path: "/applications/:applicationId", element: <ApplicationDetailScreen /> },
   { path: "/app-config", element: <AppConfigBuilderScreen /> },
@@ -137,21 +273,109 @@ const keyOf = (entry: Sent | undefined): unknown => entry?.options.idempotencyKe
 beforeEach(() => {
   sent.length = 0
   writeReplies = []
+  fundDetail = detailWith(SIZED)
   window.sessionStorage.clear()
 })
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
 })
 
 type Row = Readonly<{
   write: string
   path: string
+  aum?: Fund["aum"]
   act: () => Promise<void>
   locked: () => HTMLElement
 }>
 
 const ROWS: readonly Row[] = [
+  {
+    write: "createAdminFund",
+    path: "/funds/new",
+    act: async () => {
+      type(/^Slug/u, "steady-income")
+      type(/^Name/u, "Steady Income")
+      type(/^Category/u, "Debt")
+      type(/^Disclosure title/u, "Risk disclosure")
+      type(/^Disclosure body/u, "Read the scheme documents.")
+      press("Review the new fund")
+      await confirmIn("Create the fund")
+    },
+    locked: () => screen.getByLabelText(/^Slug/u),
+  },
+  {
+    write: "publishAdminFundVersion",
+    path: `/funds/${FUND_ID}`,
+    act: async () => {
+      type(/^Name/u, "Balanced Growth Plus")
+      press("Publish version")
+      await Promise.resolve()
+    },
+    locked: () => screen.getByLabelText(/^Name/u),
+  },
+  {
+    write: "transitionAdminFundLifecycle",
+    path: `/funds/${FUND_ID}`,
+    act: async () => {
+      press("Pause")
+      await confirmIn("Pause the fund")
+    },
+    locked: () => screen.getByRole("button", { name: "Archive" }),
+  },
+  {
+    write: "addAdminFundStock",
+    path: `/funds/${FUND_ID}/holdings`,
+    act: async () => {
+      type(/^Stock name/u, "HDFC Bank")
+      press(/Add the holding/u)
+      await Promise.resolve()
+    },
+    locked: () => screen.getByLabelText(/^Stock name/u),
+  },
+  {
+    write: "exitAdminFundStock",
+    path: `/funds/${FUND_ID}/holdings`,
+    act: async () => {
+      press("Exit")
+      await confirmIn("Mark it exited")
+    },
+    locked: () => screen.getByRole("button", { name: "Edit" }),
+  },
+  {
+    write: "initializeAdminFundAum",
+    path: `/funds/${FUND_ID}/aum`,
+    aum: null,
+    act: async () => {
+      type(/^Opening AUM/u, "250000")
+      press("Review the opening AUM")
+      await confirmIn("Record opening AUM")
+    },
+    locked: () => screen.getByLabelText(/^Opening AUM/u),
+  },
+  {
+    write: "appendAdminFundAumGrowth",
+    path: `/funds/${FUND_ID}/aum`,
+    act: async () => {
+      type(/^New fund size/u, "1500000")
+      press("Review fund size change")
+      await confirmIn("Update fund size")
+    },
+    locked: () => screen.getByLabelText(/^New fund size/u),
+  },
+  {
+    write: "commitAdminCollectiveAumGrowth",
+    path: "/aum/collective",
+    act: async () => {
+      press("Balanced Growth")
+      type(/^Rate in basis points/u, "250")
+      press("Preview the batch")
+      fireEvent.click(await screen.findByRole("button", { name: /Commit 1 fund size/u }))
+      await confirmIn("Commit the batch")
+    },
+    locked: () => screen.getByLabelText(/^Rate in basis points/u),
+  },
   {
     write: "createAdminFaq",
     path: "/faqs",
@@ -212,8 +436,9 @@ const ROWS: readonly Row[] = [
   },
 ]
 
-describe("admin FAQ, application and config writes when the reply is lost", () => {
+describe("admin fund, AUM, FAQ, application and config writes when the reply is lost", () => {
   it.each(ROWS)("$write stays Not confirmed with its inputs locked, and Check again resends the same key", async (row) => {
+    if (row.aum !== undefined) fundDetail = detailWith(row.aum)
     open(row.path)
     await screen.findByRole("heading", { level: 1 })
     await waitFor(() => {
@@ -235,5 +460,48 @@ describe("admin FAQ, application and config writes when the reply is lost", () =
     expect(keyOf(sent[1])).toBe(keyOf(sent[0]))
     expect(sent[1]?.options).toEqual(sent[0]?.options)
     expect(row.locked()).toBeDisabled()
+  })
+})
+
+describe("publishing new terms", () => {
+  it("sends every other field of the latest version and its disclosure when one field changed", async () => {
+    writeReplies = [accepted]
+    open(`/funds/${FUND_ID}`)
+    await screen.findByRole("button", { name: "Publish version" })
+
+    type(/^Name/u, "Balanced Growth Plus")
+    press("Publish version")
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+
+    expect(sent[0]?.options.body).toEqual({
+      name: "Balanced Growth Plus",
+      category: "Hybrid",
+      objective: "Steady growth",
+      riskLevel: "moderate",
+      returnTier: null,
+      minimumSipPaise: 50_000,
+      minimumPurchasePaise: 500_000,
+      minimumDurationMonths: 24,
+      recommendedHoldingMonths: 36,
+      disclosure: { title: "Risk disclosure", body: "Read the scheme documents." },
+    })
+  })
+})
+
+describe("default effective dates", () => {
+  it.each([
+    { form: "new fund", path: "/funds/new", aum: SIZED, label: /^As of date/u },
+    { form: "opening AUM", path: `/funds/${FUND_ID}/aum`, aum: null, label: /^As of date/u },
+    { form: "fund size", path: `/funds/${FUND_ID}/aum`, aum: SIZED, label: /^As of date/u },
+    { form: "collective AUM", path: "/aum/collective", aum: SIZED, label: /^As of\W*$/u },
+  ])("the $form form starts on the India day at 23:30 UTC", async ({ path, aum, label }) => {
+    vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true })
+    vi.setSystemTime(new Date("2026-11-16T23:30:00.000Z"))
+    fundDetail = detailWith(aum)
+    open(path)
+
+    expect(await screen.findByLabelText(label)).toHaveValue("2026-11-17")
   })
 })

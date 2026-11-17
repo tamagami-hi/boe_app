@@ -4,6 +4,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDate, formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
+import { FundNotFound } from "~/features/admin/funds/FundNotFound"
 import { useAdminAumHistory, useAdminFund } from "~/features/admin/shared/queries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -31,6 +32,7 @@ const FundAumHistoryScreen = (): React.ReactElement => {
 
       <AsyncBoundary
         query={history}
+        fallback={<FundNotFound />}
         skeleton={
           <Card>
             <Skeleton height="1rem" width="45%" />
