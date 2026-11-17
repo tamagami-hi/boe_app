@@ -2008,6 +2008,9 @@
             "frontend_stack_ts/src/app/routing/clientRoutes.ts",
             "frontend_stack_ts/src/app/routing/adminRoutes.ts"
           ],
+          "covers": [
+            "P-NEWS"
+          ],
           "landedAt": "2026-11-17T12:15:48.424Z"
         },
         {
@@ -2024,6 +2027,9 @@
           "brief": "finding-60 LOWs, finding-62 429 wording, finding-55 deep-URL spinner, review-42 panel nits, overlays painting above the lock screen, and Escape right after a dialog opens.",
           "paths": [
             "frontend_stack_ts/src"
+          ],
+          "covers": [
+            "P-LOWS"
           ],
           "landedAt": "2026-11-17T16:13:43.047Z"
         },
@@ -2369,6 +2375,10 @@
     {
       "commit": "1ac5fef",
       "note": "Plan: monthly release cycle (DEC-67 replaced): one minor per monthly session, 0.18.x for the rest of November, v0.19.0 in December; production at v0.15.4."
+    },
+    {
+      "commit": "d9b6d55",
+      "note": "Release v0.18.1 cut by the maintainer with release_manager/status.sh (tag v0.18.1): the M19 November patches (16 lanes plus the docs pass), VERSION only."
     }
   ]
 }
