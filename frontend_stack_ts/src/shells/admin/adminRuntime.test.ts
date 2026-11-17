@@ -10,6 +10,7 @@ import { createAdminRuntime } from "~/shells/admin/adminRuntime"
 import type { AdminRuntime } from "~/shells/admin/adminRuntime"
 
 const ACCESS_KEY = "boe.admin.accessToken"
+const PRINCIPAL_KEY = "boe.admin.principal"
 const REFRESH_KEY = "boe.admin.refreshToken"
 const INSTALLATION_KEY = "boe.admin.installationId"
 const CLIENT_INSTALLATION_KEY = "boe.client.installationId"
@@ -227,6 +228,11 @@ const readSession = (runtime: AdminRuntime): Promise<unknown> => {
   return runtime.http.request(getAdminSession, {}).catch(() => null)
 }
 
+const signOut = (runtime: AdminRuntime): Promise<unknown> => {
+  runtime.tokenStore.set("admin", "principal", JSON.stringify(OPERATOR))
+  return runtime.logout()
+}
+
 describe("admin session end", () => {
   const originalFetch = globalThis.fetch
 
@@ -245,17 +251,20 @@ describe("admin session end", () => {
       way: "the operator signs out",
       status: 200,
       body: { ok: true, data: null, error: null, meta: META },
-      end: (runtime: AdminRuntime) => runtime.logout(),
+      end: signOut,
+      ends: [],
     },
-    { way: "the server revokes the session", status: 401, body: failure("SESSION_INVALID"), end: readSession },
-    { way: "the session expires and the refresh fails", status: 401, body: failure("AUTHENTICATION_REQUIRED"), end: readSession },
-  ])("leaves no held write in the tab when $way", async ({ status, body, end }) => {
+    { way: "the server revokes the session", status: 401, body: failure("SESSION_INVALID"), end: readSession, ends: [{ scope: "admin", reason: "revoked" }] },
+    { way: "the session expires and the refresh fails", status: 401, body: failure("AUTHENTICATION_REQUIRED"), end: readSession, ends: [{ scope: "admin", reason: "expired" }] },
+  ])("leaves no held write in the tab when $way", async ({ status, body, end, ends }) => {
     holdClientWrites()
     expect(heldWritesInTab()).toBe(2)
     stubFetch(status, body)
+    const ended = listenForSessionEnd()
 
     await end(createAdminRuntime())
 
+    expect(ended()).toEqual(ends)
     expect(heldWritesInTab()).toBe(0)
     expect(sessionStorage.length).toBe(0)
   })
@@ -322,6 +331,11 @@ const routeFetch = (routes: Readonly<Record<string, readonly Reply[]>>): Sent[] 
   }
   return sent
 }
+
+const settle = (): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 0)
+  })
 
 const listenForSessionEnd = (): (() => readonly unknown[]) => {
   const seen: unknown[] = []
@@ -411,14 +425,17 @@ describe("admin cookie refresh after another admin signs in to the browser", () 
     })
     const ended = listenForSessionEnd()
     const runtime = signedInTab()
+    localStorage.setItem(PRINCIPAL_KEY, JSON.stringify(OTHER_OPERATOR))
 
     await expect(archiveFaq(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
+    await settle()
 
     expect(sent.map(({ route }) => route)).toEqual([ARCHIVE, CSRF])
     expect(ended()).toEqual([{ scope: "admin", reason: "revoked" }])
     expect(runtime.tokenStore.read("admin", "principal")).toBeNull()
     expect(runtime.tokenStore.read("admin", "csrfToken")).toBeNull()
     expect(heldWritesInTab()).toBe(0)
+    expect(localStorage.getItem(PRINCIPAL_KEY)).toBe(JSON.stringify(OTHER_OPERATOR))
   })
 
   it("ends the tab's session without resending when the refresh names another admin than the CSRF recovery did", async () => {
@@ -438,7 +455,7 @@ describe("admin cookie refresh after another admin signs in to the browser", () 
     expect(runtime.tokenStore.read("admin", "csrfToken")).toBeNull()
   })
 
-  it("neither refreshes nor resends a later write once the tab's session ended because another admin took the cookies", async () => {
+  it("sends neither a later write nor a sign-out once the tab's session ended because another admin took the cookies", async () => {
     const sent = routeFetch({
       [ARCHIVE]: [[401, failure("AUTHENTICATION_REQUIRED")], [401, failure("AUTHENTICATION_REQUIRED")], [200, ARCHIVED]],
       [CSRF]: [[200, csrfFor(OTHER_OPERATOR)]],
@@ -448,14 +465,11 @@ describe("admin cookie refresh after another admin signs in to the browser", () 
     const runtime = signedInTab()
     await expect(archiveFaq(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
 
-    await expect(archiveFaq(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
+    await expect(archiveFaq(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED", status: 401 })
+    await runtime.logout()
 
-    expect(sent.map(({ route }) => route)).toEqual([ARCHIVE, CSRF, ARCHIVE])
-    expect(sent[2]?.headers.get("x-csrf-token")).toBeNull()
-    expect(ended()).toEqual([
-      { scope: "admin", reason: "revoked" },
-      { scope: "admin", reason: "revoked" },
-    ])
+    expect(sent.map(({ route }) => route)).toEqual([ARCHIVE, CSRF])
+    expect(ended()).toEqual([{ scope: "admin", reason: "revoked" }])
     expect(runtime.tokenStore.read("admin", "principal")).toBeNull()
   })
 

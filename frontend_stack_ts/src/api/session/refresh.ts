@@ -10,7 +10,7 @@ export type RefreshCoordinator = Readonly<{
   inFlight: (scope: SessionScope) => boolean
 }>
 
-const userIdOf = (principal: string): string | null => {
+export const userIdOf = (principal: string): string | null => {
   try {
     const parsed: unknown = JSON.parse(principal)
     if (typeof parsed !== "object" || parsed === null) return null

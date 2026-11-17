@@ -223,7 +223,7 @@ export const createClientRuntime = (): ClientRuntime => {
 
   const nativeRestore = async (): Promise<Principal | null> => {
     const principal = cachedPrincipal()
-    if (principal === null) return null
+    if (principal === null || heldUserId(tokenStore, "client") === null) return null
     if (tokenStore.read("client", "accessToken") !== null) return principal
     const outcome = await refreshCoordinator.refreshOnce("client")
     return outcome === "rotated" ? principal : null

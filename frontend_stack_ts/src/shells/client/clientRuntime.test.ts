@@ -338,20 +338,16 @@ describe("client cookie refresh after another client signs in to the browser", (
     expect(runtime.tokenStore.read("client", "csrfToken")).toBeNull()
   })
 
-  it("neither refreshes nor resends a later write once the tab's session ended because another client took the cookies", async () => {
+  it("sends no later write once the tab's session ended because another client took the cookies", async () => {
     const sent = routeFetch({ [REVIEW]: [EXPIRED, EXPIRED, SUBMITTED], [CSRF]: [[200, csrfFor(OTHER_INVESTOR)]], [REFRESH]: [[200, refreshedAs(OTHER_INVESTOR)]] })
     const ended = listenForSessionEnd()
     const runtime = signedInTab()
     await expect(submitReview(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
 
-    await expect(submitReview(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
+    await expect(submitReview(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED", status: 401 })
 
-    expect(sent.map(({ route }) => route)).toEqual([REVIEW, CSRF, REVIEW])
-    expect(sent[2]?.headers.get("x-csrf-token")).toBeNull()
-    expect(ended()).toEqual([
-      { scope: "client", reason: "revoked" },
-      { scope: "client", reason: "revoked" },
-    ])
+    expect(sent.map(({ route }) => route)).toEqual([REVIEW, CSRF])
+    expect(ended()).toEqual([{ scope: "client", reason: "revoked" }])
     expect(runtime.tokenStore.read("client", "principal")).toBeNull()
   })
 

@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query"
 
 import { isOutage } from "~/api/errors"
 import { subscribeToSessionInvalidated } from "~/api/session/scope"
+import { endSessionOnOtherTabSignIn } from "~/api/session/sessionEnd"
 import type { SessionScope } from "~/api/session/scope"
 import type { TokenStore } from "~/api/session/tokenStore"
 import type { PermissionCode, RoleCode } from "~/domain/permissions"
@@ -64,6 +65,12 @@ export const SessionProvider = ({
   })
   const [restoreNonce, setRestoreNonce] = useState(0)
   const lastUserId = useRef<string | null>(null)
+  const signedInUserId = state.principal?.userId ?? null
+
+  useEffect(
+    () => (signedInUserId === null ? undefined : endSessionOnOtherTabSignIn(scope, tokenStore)),
+    [scope, tokenStore, signedInUserId],
+  )
 
   useEffect(() => {
     if (state.principal === null) return

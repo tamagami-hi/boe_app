@@ -7,6 +7,10 @@ export type CredentialField = (typeof CREDENTIAL_FIELDS)[number]
 
 export const SECRET_FIELDS: readonly CredentialField[] = ["accessToken", "refreshToken"]
 
+const SHARED_FIELDS: readonly CredentialField[] = CREDENTIAL_FIELDS.filter(
+  (field) => !SECRET_FIELDS.includes(field),
+)
+
 export type ScopeCredentials = Readonly<Record<CredentialField, string | null>>
 
 export type CredentialPersistence = Readonly<{
@@ -40,7 +44,7 @@ const emptyCredentials = (): ScopeCredentials => ({
   csrfToken: null,
 })
 
-const storageKey = (scope: SessionScope, field: CredentialField): string =>
+export const credentialStorageKey = (scope: SessionScope, field: CredentialField): string =>
   `boe.${scope}.${field}`
 
 export const createWebPersistence = (): CredentialPersistence => ({
@@ -65,7 +69,7 @@ export const purgeLegacyLocalSecrets = (): void => {
   if (typeof localStorage === "undefined") return
   for (const scope of SESSION_SCOPES) {
     for (const field of SECRET_FIELDS) {
-      localStorage.removeItem(storageKey(scope, field))
+      localStorage.removeItem(credentialStorageKey(scope, field))
     }
   }
 }
@@ -99,11 +103,22 @@ export const createTokenStore = (options: TokenStoreOptions): TokenStore => {
 
   const persistField = (scope: SessionScope, field: CredentialField, value: string): void => {
     if (!shouldPersist(field)) return
-    void options.persistence.write(storageKey(scope, field), value).catch(() => undefined)
+    void options.persistence.write(credentialStorageKey(scope, field), value).catch(() => undefined)
   }
 
   const removeField = (scope: SessionScope, field: CredentialField): void => {
-    void options.persistence.remove(storageKey(scope, field)).catch(() => undefined)
+    void options.persistence.remove(credentialStorageKey(scope, field)).catch(() => undefined)
+  }
+
+  const removeIfStillHeld = async (
+    scope: SessionScope,
+    field: CredentialField,
+    held: string | null,
+  ): Promise<void> => {
+    const key = credentialStorageKey(scope, field)
+    const persisted = await options.persistence.read(key).catch(() => null)
+    if (persisted === null || persisted !== held || current(scope)[field] !== null) return
+    await options.persistence.remove(key).catch(() => undefined)
   }
 
   const runHydration = async (): Promise<void> => {
@@ -123,7 +138,7 @@ export const createTokenStore = (options: TokenStoreOptions): TokenStore => {
       const next: Record<CredentialField, string | null> = { ...emptyCredentials() }
       for (const field of CREDENTIAL_FIELDS) {
         if (!shouldPersist(field)) continue
-        next[field] = await options.persistence.read(storageKey(scope, field)).catch(() => null)
+        next[field] = await options.persistence.read(credentialStorageKey(scope, field)).catch(() => null)
       }
       writeMemory(scope, next)
     }
@@ -150,8 +165,10 @@ export const createTokenStore = (options: TokenStoreOptions): TokenStore => {
     },
 
     clear: (scope) => {
+      const held = current(scope)
       writeMemory(scope, emptyCredentials())
-      for (const field of CREDENTIAL_FIELDS) removeField(scope, field)
+      for (const field of SECRET_FIELDS) removeField(scope, field)
+      for (const field of SHARED_FIELDS) void removeIfStillHeld(scope, field, held[field])
     },
 
     hydrate: () => {

@@ -3,9 +3,10 @@ import type { z } from "zod"
 import { readError, readResponseMeta } from "~/api/envelope"
 import type { ResponseMeta } from "~/api/envelope"
 import { ApiError, ConfigurationMismatchError, TransportError } from "~/api/errors"
-import { emitSessionInvalidated } from "~/api/session/scope"
 import type { SessionScope } from "~/api/session/scope"
+import { heldUserId, holdsUser } from "~/api/session/refresh"
 import type { RefreshCoordinator } from "~/api/session/refresh"
+import { endSession } from "~/api/session/sessionEnd"
 import type { TokenStore } from "~/api/session/tokenStore"
 import { isIdempotencyKey } from "~/api/idempotency"
 import { resolveApiBase } from "~/lib/env"
@@ -136,6 +137,21 @@ export const MAINTENANCE_MESSAGE = "BeOnEdge is being updated. Please try again 
 
 const isMaintenanceResponse = (response: Response): boolean =>
   response.status === 503 && response.headers.get(MAINTENANCE_HEADER) === "1"
+
+const SESSIONLESS_AUTH_CHANNELS: readonly string[] = ["public", "public-token"]
+
+const requiresSession = (
+  operation: Pick<AnyOperation, "authChannel">,
+  unauthenticated: boolean | undefined,
+): boolean => unauthenticated !== true && !SESSIONLESS_AUTH_CHANNELS.includes(operation.authChannel)
+
+const sessionRequired = (): ApiError =>
+  new ApiError({
+    code: "AUTHENTICATION_REQUIRED",
+    message: "Sign in to continue.",
+    status: 401,
+    retryable: false,
+  })
 
 export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
   const fetchImpl = deps.fetchImpl ?? globalThis.fetch.bind(globalThis)
@@ -318,30 +334,34 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
     }
   }
 
-  const endSession = (reason: "expired" | "revoked"): void => {
-    deps.tokenStore.clear(deps.scope)
-    emitSessionInvalidated({ scope: deps.scope, reason })
-  }
+  const stillHolds = (sender: string | null): boolean =>
+    sender !== null && holdsUser(deps.tokenStore, deps.scope, sender)
 
   const sendWithAuthRecovery = async <TOperation extends AnyOperation>(
     operation: TOperation,
     options: RequestOptions<TOperation>,
+    sender: string | null,
   ): Promise<Result<TOperation>> => {
+    if (requiresSession(operation, options.unauthenticated) && !stillHolds(sender)) {
+      throw sessionRequired()
+    }
     try {
       return await sendOnce(operation, options)
     } catch (error) {
       if (options.unauthenticated === true) throw error
       if (!(error instanceof ApiError) || error.status !== 401) throw error
+      if (!stillHolds(sender)) throw error
 
       if (error.code === "SESSION_INVALID") {
-        endSession("revoked")
+        endSession(deps.tokenStore, deps.scope, "revoked")
         throw error
       }
       if (error.code !== "AUTHENTICATION_REQUIRED") throw error
 
       const outcome = await deps.refreshCoordinator.refreshOnce(deps.scope)
+      if (!stillHolds(sender)) throw error
       if (outcome === "rotated") return await sendOnce(operation, options)
-      endSession(outcome === "replaced" ? "revoked" : "expired")
+      endSession(deps.tokenStore, deps.scope, outcome === "replaced" ? "revoked" : "expired")
       throw error
     }
   }
@@ -352,11 +372,12 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
   ): Promise<Result<TOperation>> => {
     const retryable = operation.method === "GET"
     const attempts = retryable ? READ_RETRY_DELAYS_MS.length + 1 : 1
+    const sender = heldUserId(deps.tokenStore, deps.scope)
 
     let lastError: unknown = null
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
-        return await sendWithAuthRecovery(operation, options)
+        return await sendWithAuthRecovery(operation, options, sender)
       } catch (error) {
         lastError = error
         const delay = READ_RETRY_DELAYS_MS[attempt]

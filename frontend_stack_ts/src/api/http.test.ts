@@ -6,7 +6,8 @@ import { createSuccessEnvelopeSchema } from "@beonedge/contracts"
 import { createHttpClient, READ_RETRY_DELAYS_MS } from "~/api/http"
 import type { AnyOperation } from "~/api/http"
 import { ApiError, ConfigurationMismatchError, TransportError } from "~/api/errors"
-import { createRefreshCoordinator } from "~/api/session/refresh"
+import { requestPasswordReset } from "~/api/generated/operations"
+import { createRefreshCoordinator, heldUserId } from "~/api/session/refresh"
 import type { RefreshOutcome } from "~/api/session/refresh"
 import { createTokenStore, createWebPersistence } from "~/api/session/tokenStore"
 import { SESSION_INVALIDATED_EVENT } from "~/api/session/scope"
@@ -61,8 +62,14 @@ const jsonResponse = (body: unknown, status: number, headers: Record<string, str
     headers: { "content-type": "application/json", ...headers },
   })
 
-const newTokenStore = () =>
-  createTokenStore({ persistence: createWebPersistence(), persistSecrets: false })
+const SENDER = "00000000-0000-4000-8000-0000000000a1"
+const OTHER_USER = "00000000-0000-4000-8000-0000000000b2"
+
+const newTokenStore = (holder: string | null = SENDER) => {
+  const tokenStore = createTokenStore({ persistence: createWebPersistence(), persistSecrets: false })
+  if (holder !== null) tokenStore.set("client", "principal", JSON.stringify({ userId: holder }))
+  return tokenStore
+}
 
 interface Harness {
   readonly fetchImpl: ReturnType<typeof vi.fn>
@@ -72,11 +79,11 @@ interface Harness {
   readonly client: ReturnType<typeof createHttpClient>
 }
 
-const harness = (refreshOutcome: RefreshOutcome = "rotated"): Harness => {
+const harness = (refreshOutcome: RefreshOutcome = "rotated", holder: string | null = SENDER): Harness => {
   const fetchImpl = vi.fn()
   const refreshExecute = vi.fn(() => Promise.resolve(refreshOutcome))
   const sleep = vi.fn(() => Promise.resolve())
-  const tokenStore = newTokenStore()
+  const tokenStore = newTokenStore(holder)
   const client = createHttpClient({
     scope: "client",
     tokenStore,
@@ -91,6 +98,18 @@ const harness = (refreshOutcome: RefreshOutcome = "rotated"): Harness => {
 beforeEach(() => {
   localStorage.clear()
 })
+
+const listenForSessionEnd = (): (() => readonly string[]) => {
+  const seen: string[] = []
+  const listener = (event: Event): void => {
+    seen.push((event as CustomEvent<{ reason: string }>).detail.reason)
+  }
+  window.addEventListener(SESSION_INVALIDATED_EVENT, listener)
+  return () => {
+    window.removeEventListener(SESSION_INVALIDATED_EVENT, listener)
+    return seen
+  }
+}
 
 describe("request construction", () => {
   it("substitutes path parameters and encodes them", async () => {
@@ -285,18 +304,13 @@ describe("session recovery", () => {
     tokenStore.set("client", "accessToken", "stale")
     fetchImpl.mockResolvedValue(jsonResponse(errorBody("SESSION_INVALID", false), 401))
 
-    const seen: string[] = []
-    const listener = (event: Event): void => {
-      seen.push((event as CustomEvent<{ reason: string }>).detail.reason)
-    }
-    window.addEventListener(SESSION_INVALIDATED_EVENT, listener)
+    const ended = listenForSessionEnd()
 
     await expect(client.request(readOperation, { params: { probeId: "p1" } })).rejects.toBeInstanceOf(
       ApiError,
     )
 
-    window.removeEventListener(SESSION_INVALIDATED_EVENT, listener)
-    expect(seen).toEqual(["revoked"])
+    expect(ended()).toEqual(["revoked"])
     expect(tokenStore.read("client", "accessToken")).toBeNull()
   })
 
@@ -313,16 +327,88 @@ describe("session recovery", () => {
     expect(tokenStore.read("client", "accessToken")).toBe("kept")
   })
 
-  it("ends the session when the rotation itself fails", async () => {
-    const { fetchImpl, tokenStore, client } = harness("unauthenticated")
+  it("ends the session once when the rotation itself fails, and a 401 that lands after the end does not end it again", async () => {
+    const { fetchImpl, refreshExecute, tokenStore, client } = harness("unauthenticated")
     tokenStore.set("client", "accessToken", "stale")
-    fetchImpl.mockResolvedValue(jsonResponse(errorBody("AUTHENTICATION_REQUIRED", false), 401))
+    const answerLate: { reply: (response: Response) => void } = { reply: () => undefined }
+    fetchImpl
+      .mockResolvedValueOnce(jsonResponse(errorBody("AUTHENTICATION_REQUIRED", false), 401))
+      .mockReturnValueOnce(
+        new Promise<Response>((resolve) => {
+          answerLate.reply = resolve
+        }),
+      )
+    const ended = listenForSessionEnd()
 
-    await expect(client.request(readOperation, { params: { probeId: "p1" } })).rejects.toBeInstanceOf(
-      ApiError,
-    )
+    const first = client.request(readOperation, { params: { probeId: "p1" } })
+    const late = client.request(readOperation, { params: { probeId: "p2" } })
+    await expect(first).rejects.toBeInstanceOf(ApiError)
+    answerLate.reply(jsonResponse(errorBody("AUTHENTICATION_REQUIRED", false), 401))
+    await expect(late).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
 
     expect(tokenStore.read("client", "accessToken")).toBeNull()
+    expect(refreshExecute).toHaveBeenCalledTimes(1)
+    expect(ended()).toEqual(["expired"])
+  })
+
+  it("does not resend after a rotation when the tab holds another user than the one who sent", async () => {
+    const fetchImpl = vi.fn()
+    const tokenStore = newTokenStore()
+    const refreshExecute = vi.fn(() => {
+      tokenStore.update("client", { accessToken: "rotated", principal: JSON.stringify({ userId: OTHER_USER }) })
+      return Promise.resolve<RefreshOutcome>("rotated")
+    })
+    const client = createHttpClient({
+      scope: "client",
+      tokenStore,
+      refreshCoordinator: createRefreshCoordinator(refreshExecute),
+      baseUrl: () => "https://api.test",
+      fetchImpl,
+      sleep: () => Promise.resolve(),
+    })
+    fetchImpl
+      .mockResolvedValueOnce(jsonResponse(errorBody("AUTHENTICATION_REQUIRED", false), 401))
+      .mockResolvedValue(jsonResponse(successBody("written"), 201))
+    const ended = listenForSessionEnd()
+
+    await expect(
+      client.request(writeOperation, { body: { amountPaise: "200" }, idempotencyKey: "abcdefgh1234" }),
+    ).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
+
+    expect(refreshExecute).toHaveBeenCalledTimes(1)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(ended()).toEqual([])
+    expect(heldUserId(tokenStore, "client")).toBe(OTHER_USER)
+  })
+})
+
+describe("session guard", () => {
+  it("refuses a signed-in request while the tab holds no user and sends nothing, but lets unauthenticated and public calls out", async () => {
+    const { fetchImpl, refreshExecute, client } = harness("rotated", null)
+    const ended = listenForSessionEnd()
+
+    await expect(client.request(readOperation, { params: { probeId: "p1" } })).rejects.toMatchObject({
+      code: "AUTHENTICATION_REQUIRED",
+      status: 401,
+    })
+    await expect(
+      client.request(writeOperation, { body: { amountPaise: "200" }, idempotencyKey: "abcdefgh1234" }),
+    ).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED", status: 401 })
+    expect(fetchImpl).not.toHaveBeenCalled()
+
+    fetchImpl.mockResolvedValueOnce(jsonResponse(successBody("ok"), 200))
+    await client.request(readOperation, { params: { probeId: "p1" }, unauthenticated: true })
+    fetchImpl.mockResolvedValueOnce(
+      jsonResponse({ ok: true, data: { status: "accepted" }, error: null, meta: META }, 202),
+    )
+    await client.request(requestPasswordReset, { body: { email: "investor@example.com" } })
+
+    expect(fetchImpl.mock.calls.map(([url]) => String(url))).toEqual([
+      "https://api.test/v1/probe/p1",
+      "https://api.test/v1/auth/password/forgot",
+    ])
+    expect(refreshExecute).not.toHaveBeenCalled()
+    expect(ended()).toEqual([])
   })
 })
 
