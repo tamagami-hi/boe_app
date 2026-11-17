@@ -26,6 +26,7 @@ import { ListSkeleton } from "./ListSkeleton"
 import { MaturityPanelConfirm, type MaturityAsk } from "./MaturityPanelConfirm"
 import { parseMarkMaturity, parseSettlement } from "./heldBodies"
 import { useMarkMaturity, useMaturityRecords, useSettleMaturity, useWithdrawalPayouts } from "./maturityQueries"
+import { useReloadPayoutOutcomes } from "./payoutOutcomeQueries"
 import { paiseToRupeeText, parsePositiveRupees } from "./rupeeAmount"
 import { WithdrawalPayoutPanel } from "./WithdrawalPayoutPanel"
 
@@ -50,6 +51,7 @@ export const MaturityPanel = ({ userId, investorLabel, canWrite, positions, onUn
   const funds = useFundNames()
   const maturities = useMaturityRecords(userId)
   const payouts = useWithdrawalPayouts(userId)
+  const reloadOutcomes = useReloadPayoutOutcomes(userId)
   const mark = useHeldWrite(useMarkMaturity(userId), "The maturity could not be sent. Reload the page and try again.", {
     slot: `maturity-mark:${userId}`,
     parseBody: parseMarkMaturity,
@@ -98,6 +100,7 @@ export const MaturityPanel = ({ userId, investorLabel, canWrite, positions, onUn
   const reload = (): void => {
     void maturities.refetch()
     void payouts.refetch()
+    reloadOutcomes()
   }
 
   const changeFund = (next: string): void => {

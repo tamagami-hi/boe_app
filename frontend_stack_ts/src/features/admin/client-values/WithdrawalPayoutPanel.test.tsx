@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ApiError } from "~/api/errors"
 import type { HttpClient } from "~/api/http"
+import { qk } from "~/api/queryKeys"
 import { ApiProvider } from "~/app/providers/ApiProvider"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 
@@ -48,7 +49,7 @@ const replyOf = (data: unknown): Reply => ({ data, meta: { requestId: "req", pag
 const calls: string[] = []
 const sent: unknown[] = []
 
-const renderCards = (outcomes: () => Promise<Reply>): void => {
+const renderCards = (outcomes: () => Promise<Reply>): QueryClient => {
   const request = (operation: Operation, options?: Options): Promise<Reply> => {
     calls.push(operation.operationId)
     if (operation.operationId === OUTCOMES) return outcomes()
@@ -80,6 +81,7 @@ const renderCards = (outcomes: () => Promise<Reply>): void => {
       </QueryClientProvider>
     </MemoryRouter>,
   )
+  return queryClient
 }
 
 beforeEach(() => {
@@ -124,6 +126,22 @@ describe("a payout card's outcome date", () => {
     expect(screen.getAllByText(/ on \d/u)).toHaveLength(2)
     expect(screen.getByText("Awaiting transfer confirmation")).toBeTruthy()
     expect(calls).toEqual([OUTCOMES])
+  })
+
+  it("shows nothing for a card the read still lists as pending, then the paid date once the read is refreshed", async () => {
+    const replies = [
+      { payoutId: PAID_ID, state: "pending", paidAt: null, failedAt: null },
+      { payoutId: PAID_ID, state: "paid", paidAt: "2026-11-16T20:00:00.000Z", failedAt: null },
+    ].map((paid) => replyOf({ userId: USER_ID, items: [paid, { payoutId: FAILED_ID, state: "failed", paidAt: null, failedAt: "2026-11-15T19:00:00.000Z" }] }))
+    const queryClient = renderCards(() => Promise.resolve(replies[Math.min(calls.length, replies.length) - 1]!))
+
+    expect(await screen.findByText("Failed on 16 Nov 2026")).toBeTruthy()
+    expect(screen.queryByText(/^Paid /u)).toBeNull()
+
+    await queryClient.invalidateQueries({ queryKey: qk.admin.clientWithdrawalPayoutOutcomes(USER_ID) })
+    expect(await screen.findByText("Paid on 17 Nov 2026")).toBeTruthy()
+    expect(screen.queryByText(/date unavailable/u)).toBeNull()
+    expect(calls).toEqual([OUTCOMES, OUTCOMES])
   })
 
   it("says the date is unavailable when the read is refused, and the pending card's outcome form still records", async () => {

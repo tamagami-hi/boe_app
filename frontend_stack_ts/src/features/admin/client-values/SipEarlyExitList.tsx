@@ -11,6 +11,7 @@ import { STACK_LG } from "~/ui/recipes/layout"
 import { CARD_TITLE } from "~/ui/recipes/text"
 
 import { useClientSipEarlyExits, type AdminSipEarlyExitItem } from "./earlyExitQueries"
+import { useReloadPayoutOutcomes } from "./payoutOutcomeQueries"
 import { WithdrawalPayoutPanel } from "./WithdrawalPayoutPanel"
 
 const dateOf = (isoDate: string): string => formatDate(`${isoDate}T00:00:00Z`)
@@ -58,6 +59,7 @@ export type SipEarlyExitListProps = Readonly<{ userId: string; investorLabel: st
 
 export const SipEarlyExitList = ({ userId, investorLabel, canWrite }: SipEarlyExitListProps): React.ReactElement | null => {
   const exits = useClientSipEarlyExits(userId)
+  const reloadOutcomes = useReloadPayoutOutcomes(userId)
   if (userId === "" || exits.data?.items.length === 0) return null
 
   return (
@@ -84,6 +86,7 @@ export const SipEarlyExitList = ({ userId, investorLabel, canWrite }: SipEarlyEx
                 canWrite={canWrite}
                 onReload={() => {
                   void exits.refetch()
+                  reloadOutcomes()
                 }}
               />
             ))}
