@@ -57,7 +57,9 @@ VPS. Never report a deployment or device check from a unit-test result.
    `adminNotes.ts` a new first entry whose `id` is the new version, but only for
    an audience that has something to tell; the other gets no entry and sees no
    sheet. Each build treats its newest entry as the current release, and the
-   copy follows `RULES.md` "Product, copy, and accessibility".
+   copy follows `RULES.md` "Product, copy, and accessibility". Keep earlier
+   entries in place and in order: the sheet shows every entry newer than the
+   one a user last closed, so a user whose entry is gone sees only the newest.
 2. Use `release_manager/status.sh` to inspect/prepare Git and release state.
 3. Production export requires a clean, tagged, published release commit; prepare
    that through the maintainer's release flow before exporting.

@@ -8,7 +8,7 @@ import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 
 import type { WhatsNewNotes } from "./whatsNewEntry"
 import { WhatsNewPrompt } from "./WhatsNewPrompt"
-import { createWhatsNewSeen, type SeenStorage, type WhatsNewSeen } from "./whatsNewSeen"
+import { createWhatsNewSeen, type SeenStorage, type WhatsNewSeen, whatsNewSeenKey } from "./whatsNewSeen"
 
 const ASHA = "11111111-1111-4111-8111-111111111111"
 const RAVI = "22222222-2222-4222-8222-222222222222"
@@ -34,14 +34,23 @@ const NOTES: WhatsNewNotes = [
   { id: "0.18.1", sections: [{ heading: "New", items: [{ text: "Fund pages." }] }] },
 ]
 
+const TWO_RELEASES: WhatsNewNotes = [
+  { id: "0.18.2", sections: [{ heading: "Fixed", items: [{ text: "Faster sign-in." }] }] },
+  ...NOTES,
+]
+
 const browserSeen = (): WhatsNewSeen => createWhatsNewSeen(() => window.localStorage)
 
-const tree = (seen: WhatsNewSeen, other = false): React.ReactElement => (
+const tree = (seen: WhatsNewSeen, other = false, notes = NOTES): React.ReactElement => (
   <OverlayStackProvider>
     <Modal open={other} title="Another dialog" onDismiss={() => undefined} />
-    <WhatsNewPrompt seen={seen} notes={NOTES} />
+    <WhatsNewPrompt seen={seen} notes={notes} />
   </OverlayStackProvider>
 )
+
+const storeLastSeen = (entryId: string): void => {
+  window.localStorage.setItem(whatsNewSeenKey("client", ASHA), entryId)
+}
 
 const sheet = (): HTMLElement | null => screen.queryByRole("dialog", { name: "What's new" })
 
@@ -174,5 +183,40 @@ describe("What's new prompt", () => {
     render(tree(seen))
 
     expect(sheet()).toBeNull()
+  })
+
+  it("shows every unseen release, newest first, to a user with no record and marks the newest seen", () => {
+    const seen = browserSeen()
+    render(tree(seen, false, TWO_RELEASES))
+
+    const headings = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)
+    expect(headings).toEqual(["Version 0.18.2", "Version 0.18.1"])
+    expect(screen.getByText("Faster sign-in.")).not.toBeNull()
+    expect(screen.getByText("Fund pages.")).not.toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+
+    expect(sheet()).toBeNull()
+    expect(seen.lastSeen("client", ASHA)).toBe("0.18.2")
+  })
+
+  it("shows only the releases newer than the one already seen", () => {
+    storeLastSeen("0.18.1")
+    render(tree(browserSeen(), false, TWO_RELEASES))
+
+    expect(sheet()).not.toBeNull()
+    expect(screen.getByText("Version 0.18.2")).not.toBeNull()
+    expect(screen.getByText("Faster sign-in.")).not.toBeNull()
+    expect(screen.queryByText("Fund pages.")).toBeNull()
+  })
+
+  it("shows only the newest release when the stored id is not in the notes", () => {
+    storeLastSeen("0.19.0-rolled-back")
+    render(tree(browserSeen(), false, TWO_RELEASES))
+
+    expect(sheet()).not.toBeNull()
+    expect(screen.getByText("Version 0.18.2")).not.toBeNull()
+    expect(screen.getByText("Faster sign-in.")).not.toBeNull()
+    expect(screen.queryByText("Fund pages.")).toBeNull()
   })
 })

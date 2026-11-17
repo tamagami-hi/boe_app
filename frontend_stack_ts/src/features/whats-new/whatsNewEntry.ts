@@ -17,7 +17,15 @@ export const notePlatform = (): WhatsNewPlatform => (isNative() ? "android" : "w
 const showsOn = (item: WhatsNewItem, platform: WhatsNewPlatform): boolean =>
   item.platform === undefined || item.platform === platform
 
-export const forPlatform = (entry: WhatsNewEntry, platform: WhatsNewPlatform): WhatsNewEntry => ({
+export const unseenEntries = (notes: WhatsNewNotes, lastSeenId: string | null): WhatsNewNotes | null => {
+  if (lastSeenId === null) return notes
+  const seenAt = notes.findIndex((entry) => entry.id === lastSeenId)
+  if (seenAt === -1) return [notes[0]]
+  const [newest, ...older] = notes.slice(0, seenAt)
+  return newest === undefined ? null : [newest, ...older]
+}
+
+export const forPlatform =(entry: WhatsNewEntry, platform: WhatsNewPlatform): WhatsNewEntry => ({
   id: entry.id,
   sections: entry.sections
     .map((section) => ({
