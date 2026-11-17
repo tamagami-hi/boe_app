@@ -181,7 +181,10 @@ From 0.18.1 the admin app sends the fund terms version it started from as the
 `expectedVersion` query parameter of `POST /v1/admin/funds/{fundId}/versions`, and the
 backend refuses a stale one with `409 STATE_CONFLICT`. Earlier backends ignore the query
 string, so after an images-only rollback a newer admin APK still publishes terms, checked
-only by its own re-read of the fund before sending, as in 0.18.0.
+only by its own re-read of the fund before sending, as in 0.18.0. A publish that reached
+the server and was left Not confirmed across a rollback or roll-forward stays Not confirmed
+on Check again, because the two backends hash the request differently, so check the fund's
+versions by hand.
 
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.

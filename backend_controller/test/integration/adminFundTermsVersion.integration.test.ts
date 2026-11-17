@@ -174,15 +174,19 @@ describe("simultaneous publishes of fund terms", () => {
     try {
       await writer.query("begin")
       await writer.query("select id from funds where id = $1 for update", [fundId])
-      const pending = Promise.all([publish(fundId, "Tab one", 1), publish(fundId, "Tab two", 1)])
+      const names = ["Tab one", "Tab two"]
+      const pending = Promise.all(names.map((name) => publish(fundId, name, 1)))
       await waitForBlockedPublishes(2)
       await writer.query("commit")
 
       const responses = await pending
 
       expect(responses.map((response) => response.statusCode).sort()).toEqual([201, 409])
+      const loser = responses.find((response) => response.statusCode === 409)!
+      expect(errorOf(loser).fields).toHaveProperty("expectedVersion")
       const after = await stateOf(fundId)
       expect([after.versions, after.audits]).toEqual([before.versions + 1, before.audits + 1])
+      expect(after.row.name).toBe(names[responses.findIndex((response) => response.statusCode === 201)])
     } finally {
       await writer.query("rollback")
       writer.release()

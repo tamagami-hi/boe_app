@@ -517,6 +517,23 @@ describe("publishing new terms", () => {
     expect(sent[0]?.options.query).toEqual({ expectedVersion: 2 })
   })
 
+  it("starts from and sends the version the fund points to, even when a newer version exists", async () => {
+    writeReplies = [accepted]
+    const newer = withVersion3()
+    fundDetail = { ...newer, fund: detailWith(SIZED).fund }
+    open(`/funds/${FUND_ID}`)
+    await screen.findByRole("button", { name: "Publish version" })
+
+    type(/^Name/u, "Balanced Growth Plus")
+    press("Publish version")
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+
+    expect(sent[0]?.options.query).toEqual({ expectedVersion: 2 })
+    expect(sent[0]?.options.body).toMatchObject({ minimumDurationMonths: 24 })
+  })
+
   it("says newer terms were published when the server refuses the version the form started from, and reloads them", async () => {
     writeReplies = [staleTerms]
     open(`/funds/${FUND_ID}`)

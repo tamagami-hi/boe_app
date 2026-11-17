@@ -16,14 +16,13 @@ export type LatestTerms =
 const NONE: LatestTerms = { kind: "none" }
 const UNREADABLE: LatestTerms = { kind: "unreadable" }
 
-const newestOf = (versions: readonly FundVersion[]): FundVersion | null =>
-  versions.reduce<FundVersion | null>((newest, entry) => (newest === null || entry.version > newest.version ? entry : newest), null)
+const currentOf = (detail: FundDetail): FundVersion | undefined =>
+  detail.versions.find((entry) => entry.version === detail.fund.currentVersion)
 
 export const latestTermsOf = (detail: FundDetail): LatestTerms => {
-  const latest = newestOf(detail.versions)
-  const { currentVersion } = detail.fund
-  if (latest === null) return currentVersion === null ? NONE : UNREADABLE
-  if (currentVersion !== null && !detail.versions.some((entry) => entry.version === currentVersion)) return UNREADABLE
+  if (detail.fund.currentVersion === null) return detail.versions.length === 0 ? NONE : UNREADABLE
+  const latest = currentOf(detail)
+  if (latest === undefined) return UNREADABLE
   const disclosure = detail.disclosures.find((entry) => entry.id === latest.disclosureVersionId)
   if (disclosure === undefined) return UNREADABLE
   return {
