@@ -2,7 +2,7 @@ import type { z } from "zod"
 
 import { readError, readResponseMeta } from "~/api/envelope"
 import type { ResponseMeta } from "~/api/envelope"
-import { ApiError, ConfigurationMismatchError, TransportError } from "~/api/errors"
+import { ApiError, ConfigurationMismatchError, TransportError, withoutRetry } from "~/api/errors"
 import type { SessionScope } from "~/api/session/scope"
 import { heldUserId, holdsUser } from "~/api/session/refresh"
 import type { RefreshCoordinator } from "~/api/session/refresh"
@@ -126,7 +126,7 @@ const retryAfterFrom = (response: Response): number | undefined => {
 }
 
 const isRetryableFailure = (error: unknown): boolean => {
-  if (error instanceof TransportError) return error.kind === "timeout" || error.kind === "offline"
+  if (error instanceof TransportError) return error.retryable
   if (error instanceof ApiError) return error.status >= 500 && error.retryable
   return false
 }
@@ -208,7 +208,7 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
     try {
       return JSON.parse(raw) as unknown
     } catch {
-      if (response.status >= 500) return null
+      if (response.status >= 500 || response.status === 429) return null
       throw new TransportError("malformed", "The server returned a body that is not valid JSON.")
     }
   }
@@ -217,9 +217,10 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
     const meta = readResponseMeta(body)
     const parsed = readError(body)
     if (parsed === null) {
+      const rateLimited = response.status === 429
       return new ApiError({
-        code: "INTERNAL_ERROR",
-        message: "The server returned an unrecognised error.",
+        code: rateLimited ? "RATE_LIMITED" : "INTERNAL_ERROR",
+        message: rateLimited ? "Too many requests just now. Wait a moment and try again." : "The server returned an unrecognised error.",
         status: response.status,
         retryable: response.status >= 500,
         ...(meta.requestId === null ? {} : { requestId: meta.requestId }),
@@ -364,7 +365,9 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
       }
       if (error.code !== "AUTHENTICATION_REQUIRED") throw error
 
-      const outcome = await deps.refreshCoordinator.refreshOnce(deps.scope)
+      const outcome = await deps.refreshCoordinator.refreshOnce(deps.scope).catch((failure: unknown) => {
+        throw withoutRetry(failure)
+      })
       if (!stillHolds(sender)) throw error
       if (outcome === "rotated") return await sendOnce(operation, options)
       endSession(deps.tokenStore, deps.scope, outcome === "replaced" ? "revoked" : "expired")

@@ -38,12 +38,14 @@ export type TransportErrorKind = "timeout" | "offline" | "malformed"
 export class TransportError extends Error {
   public readonly kind: TransportErrorKind
   public readonly requestId: string | null
+  public readonly retryable: boolean
 
-  public constructor(kind: TransportErrorKind, message: string, requestId?: string) {
+  public constructor(kind: TransportErrorKind, message: string, requestId?: string, retryable = kind !== "malformed") {
     super(message)
     this.name = "TransportError"
     this.kind = kind
     this.requestId = requestId ?? null
+    this.retryable = retryable
   }
 }
 
@@ -68,9 +70,23 @@ export const hasCode = (value: unknown, ...codes: readonly ErrorCode[]): boolean
   isApiError(value) && codes.includes(value.code)
 
 export const isRetryable = (value: unknown): boolean => {
-  if (isTransportError(value)) return value.kind !== "malformed"
+  if (isTransportError(value)) return value.retryable
   if (isApiError(value)) return value.retryable
   return false
+}
+
+export const withoutRetry = (value: unknown): unknown => {
+  if (isTransportError(value)) return new TransportError(value.kind, value.message, value.requestId ?? undefined, false)
+  if (!isApiError(value)) return value
+  return new ApiError({
+    code: value.code,
+    message: value.message,
+    status: value.status,
+    retryable: false,
+    ...(value.fields === null ? {} : { fields: value.fields }),
+    ...(value.retryAfterSeconds === null ? {} : { retryAfterSeconds: value.retryAfterSeconds }),
+    ...(value.requestId === null ? {} : { requestId: value.requestId }),
+  })
 }
 
 export const isSessionEnded = (value: unknown): boolean =>
@@ -100,3 +116,6 @@ export const isOutage = (value: unknown): boolean => {
   if (isTransportError(value)) return value.kind === "timeout" || value.kind === "offline"
   return isApiError(value) && value.status >= 500
 }
+
+export const isTemporaryFailure = (value: unknown): boolean =>
+  isOutage(value) || (isApiError(value) && value.status === 429)

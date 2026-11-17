@@ -18,6 +18,7 @@ import { createRefreshCoordinator, heldUserId } from "~/api/session/refresh"
 import type { RefreshOutcome } from "~/api/session/refresh"
 import { createTokenStore, createWebPersistence } from "~/api/session/tokenStore"
 import { SESSION_INVALIDATED_EVENT } from "~/api/session/scope"
+import { createQueryClient } from "~/app/providers/QueryProvider"
 
 const ProbeData = z.strictObject({ value: z.string() })
 const ProbeEnvelope = createSuccessEnvelopeSchema(ProbeData)
@@ -450,6 +451,32 @@ describe("session guard", () => {
     ])
     expect(refreshExecute).not.toHaveBeenCalled()
     expect(ended()).toEqual([])
+  })
+})
+
+const queryRetries = (error: unknown): boolean => {
+  const retry = createQueryClient().getDefaultOptions().queries?.retry
+  return typeof retry === "function" ? retry(0, error as Error) : retry === true
+}
+
+describe("a refresh that meets an outage", () => {
+  it.each([
+    { way: "a lost connection", outage: () => new TransportError("offline", "BeOnEdge could not be reached.") },
+    { way: "a proxy's 502 page", outage: () => new ApiError({ code: "INTERNAL_ERROR", message: "Bad gateway", status: 502, retryable: true }) },
+  ])("fails a read once with $way: one send and one refresh, retried neither by the transport nor by the query", async ({ outage }) => {
+    const { fetchImpl, refreshExecute, sleep, client } = harness()
+    fetchImpl.mockImplementation(() => Promise.resolve(jsonResponse(errorBody("AUTHENTICATION_REQUIRED", false), 401)))
+    refreshExecute.mockImplementation(() => Promise.reject(outage()))
+
+    const failure = await client
+      .request(readOperation, { params: { probeId: "p1" } })
+      .catch((error: unknown) => error)
+
+    expect(isOutage(failure)).toBe(true)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(refreshExecute).toHaveBeenCalledTimes(1)
+    expect(sleep).not.toHaveBeenCalled()
+    expect(queryRetries(failure)).toBe(false)
   })
 })
 

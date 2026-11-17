@@ -9,7 +9,7 @@ import {
   webLogout,
   webRefresh,
 } from "~/api/generated/operations"
-import { isOutage } from "~/api/errors"
+import { isTemporaryFailure } from "~/api/errors"
 import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
@@ -147,7 +147,7 @@ export const createAdminRuntime = (): AdminRuntime => {
       rotationId.value = crypto.randomUUID()
       return "rotated"
     } catch (error) {
-      if (isOutage(error)) throw error
+      if (isTemporaryFailure(error)) throw error
       return "unauthenticated"
     }
   }
@@ -187,7 +187,7 @@ export const createAdminRuntime = (): AdminRuntime => {
       rotationId.value = crypto.randomUUID()
       return "rotated"
     } catch (error) {
-      if (isOutage(error)) throw error
+      if (isTemporaryFailure(error)) throw error
       return "unauthenticated"
     }
   }
@@ -298,8 +298,8 @@ export const createAdminRuntime = (): AdminRuntime => {
     }
   }
 
-  const clearUnlessOutage = (error: unknown): void => {
-    if (!isOutage(error)) tokenStore.clear("admin")
+  const clearUnlessTemporary = (error: unknown): void => {
+    if (!isTemporaryFailure(error)) tokenStore.clear("admin")
   }
 
   const readCookieSession = async (): Promise<Principal> => {
@@ -307,7 +307,7 @@ export const createAdminRuntime = (): AdminRuntime => {
       const { data } = await http.request(getAdminSession, {})
       return principalFrom(data)
     } catch (error) {
-      clearUnlessOutage(error)
+      clearUnlessTemporary(error)
       throw error
     }
   }
@@ -327,7 +327,7 @@ export const createAdminRuntime = (): AdminRuntime => {
       tokenStore.update("admin", { csrfToken: data.csrfToken, principal: recoveredText })
       stored.wrote(recoveredText)
     } catch (error) {
-      clearUnlessOutage(error)
+      clearUnlessTemporary(error)
       return null
     }
 

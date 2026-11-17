@@ -8,7 +8,7 @@ import {
   nativeLogout,
   nativeRefresh,
 } from "~/api/generated/operations"
-import { isOutage } from "~/api/errors"
+import { isTemporaryFailure } from "~/api/errors"
 import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
@@ -102,7 +102,7 @@ export const createClientRuntime = (): ClientRuntime => {
       rotationId.value = crypto.randomUUID()
       return "rotated"
     } catch (error) {
-      if (isOutage(error)) throw error
+      if (isTemporaryFailure(error)) throw error
       return "unauthenticated"
     }
   }
@@ -136,7 +136,7 @@ export const createClientRuntime = (): ClientRuntime => {
       rotationId.value = crypto.randomUUID()
       return "rotated"
     } catch (error) {
-      if (isOutage(error)) throw error
+      if (isTemporaryFailure(error)) throw error
       return "unauthenticated"
     }
   }
@@ -254,7 +254,7 @@ export const createClientRuntime = (): ClientRuntime => {
       })
       return principal
     } catch (error) {
-      if (!isOutage(error)) tokenStore.clear("client")
+      if (!isTemporaryFailure(error)) tokenStore.clear("client")
       return null
     }
   }

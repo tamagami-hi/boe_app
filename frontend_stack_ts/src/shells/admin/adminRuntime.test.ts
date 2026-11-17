@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { isUnknownWriteOutcome } from "~/api/errors"
+import { isUnknownRetryOutcome, isUnknownWriteOutcome } from "~/api/errors"
 import { archiveAdminFaq, getAdminSession } from "~/api/generated/operations"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { heldUserId } from "~/api/session/refresh"
@@ -357,6 +357,9 @@ const replyWith = (status: number, body: unknown): Response => {
 const PROXY_502_PAGE =
   "<html><head><title>502 Bad Gateway</title></head><body><center><h1>502 Bad Gateway</h1></center><hr><center>nginx</center></body></html>"
 
+const NGINX_429_PAGE =
+  "<html><head><title>429 Too Many Requests</title></head><body><center><h1>429 Too Many Requests</h1></center><hr><center>nginx</center></body></html>"
+
 const whileSending = (route: string, act: () => void): void => {
   const send = globalThis.fetch
   globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
@@ -598,6 +601,39 @@ describe("admin refresh that meets an outage while a held write is checked again
     const writes = sent.filter(({ route }) => route === ARCHIVE)
     expect(writes.map(({ headers }) => headers.get("idempotency-key"))).toEqual([WRITE_KEY, WRITE_KEY, WRITE_KEY])
   })
+
+  it.each([
+    { way: "nginx's 429 page", limited: [429, NGINX_429_PAGE] },
+    { way: "a JSON RATE_LIMITED", limited: [429, failure("RATE_LIMITED")] },
+  ] as const)("keeps the admin and the held writes, and Check again unknown, when the browser's CSRF recovery meets $way", async ({ limited }) => {
+    holdClientWrites()
+    const sent = routeFetch({ [ARCHIVE]: [[401, failure("AUTHENTICATION_REQUIRED")]], [CSRF]: [limited] })
+    const ended = listenForSessionEnd()
+    const runtime = signedInTab()
+
+    const again = await archiveFaq(runtime).catch((error: unknown) => error)
+
+    expect(again).toMatchObject({ code: "RATE_LIMITED", status: 429 })
+    expect(isUnknownRetryOutcome(again)).toBe(true)
+    expect(sent.map(({ route }) => route)).toEqual([ARCHIVE, CSRF])
+    expect(ended()).toEqual([])
+    expect(heldUserId(runtime.tokenStore, "admin")).toBe(OPERATOR.userId)
+    expect(heldWritesInTab()).toBe(2)
+  })
+
+  it("ends the admin APK's session and clears the held writes when the refresh is refused with 401", async () => {
+    holdClientWrites()
+    const sent = routeFetch({ [ARCHIVE]: [[401, failure("AUTHENTICATION_REQUIRED")]], [NATIVE_REFRESH]: [[401, failure("AUTHENTICATION_REQUIRED")]] })
+    const ended = listenForSessionEnd()
+    const runtime = signedInApk()
+
+    await expect(archiveFaq(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED", status: 401 })
+
+    expect(sent.map(({ route }) => route)).toEqual([ARCHIVE, NATIVE_REFRESH])
+    expect(ended()).toEqual([{ scope: "admin", reason: "expired" }])
+    expect(heldUserId(runtime.tokenStore, "admin")).toBeNull()
+    expect(heldWritesInTab()).toBe(0)
+  })
 })
 
 const ADMIN_SESSION = "GET /v1/admin/session"
@@ -678,6 +714,8 @@ describe("admin browser restore", () => {
     { way: "meets a proxy's 502 page on the CSRF recovery", routes: { [CSRF]: [[502, PROXY_502_PAGE]] }, settles: "resolves", holds: OTHER_ADMIN_ID, heldWrites: 2, expectation: "keeps the stored admin and the held writes" },
     { way: "meets a proxy's 502 page on the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[502, PROXY_502_PAGE]] }, settles: "rejects", holds: OPERATOR.userId, heldWrites: 2, expectation: "keeps the admin and the held writes to restore again" },
     { way: "meets a body that breaks off on the CSRF recovery", routes: { [CSRF]: [[200, BODY_BREAKS_OFF]] }, settles: "resolves", holds: OTHER_ADMIN_ID, heldWrites: 2, expectation: "keeps the stored admin and the held writes" },
+    { way: "has its session read's refresh meet a proxy's 502 page", routes: { [CSRF]: [[200, csrfFor(OPERATOR)], [502, PROXY_502_PAGE]], [ADMIN_SESSION]: [[401, failure("AUTHENTICATION_REQUIRED")]] }, settles: "rejects", holds: OPERATOR.userId, heldWrites: 2, expectation: "keeps the admin and the held writes to restore again" },
+    { way: "has its session read's refresh meet nginx's 429 page", routes: { [CSRF]: [[200, csrfFor(OPERATOR)], [429, NGINX_429_PAGE]], [ADMIN_SESSION]: [[401, failure("AUTHENTICATION_REQUIRED")]] }, settles: "rejects", holds: OPERATOR.userId, heldWrites: 2, expectation: "keeps the admin and the held writes to restore again" },
   ] as const)("$expectation when a restore over a stored principal $way", async ({ routes, settles, holds, heldWrites }) => {
     holdClientWrites()
     routeFetch(routes)

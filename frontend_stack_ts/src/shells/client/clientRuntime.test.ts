@@ -453,4 +453,16 @@ describe("client cookie refresh after another client signs in to the browser", (
     expect(heldUserId(runtime.tokenStore, "client")).toBe(INVESTOR.userId)
     expect(runtime.tokenStore.read("client", "csrfToken")).toBe("csrf-of-the-tab")
   })
+
+  it("ends the tab's session when the CSRF recovery refuses the refresh with 401", async () => {
+    const sent = routeFetch({ [REVIEW]: [EXPIRED, SUBMITTED], [CSRF]: [EXPIRED] })
+    const ended = listenForSessionEnd()
+    const runtime = signedInTab()
+
+    await expect(submitReview(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED", status: 401 })
+
+    expect(sent.map(({ route }) => route)).toEqual([REVIEW, CSRF])
+    expect(ended()).toEqual([{ scope: "client", reason: "expired" }])
+    expect(runtime.tokenStore.read("client", "principal")).toBeNull()
+  })
 })
