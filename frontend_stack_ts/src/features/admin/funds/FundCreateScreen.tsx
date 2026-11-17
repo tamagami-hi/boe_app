@@ -12,6 +12,7 @@ import { formatDate, indiaToday } from "~/domain/dates"
 import { tooManyRequestsMessage } from "~/domain/failure"
 import { toPaise } from "~/domain/money"
 import { paiseToRupeeText, parseRupees } from "~/features/admin/client-values/rupeeAmount"
+import { LEAVE_HELD_WRITE } from "~/features/admin/shared/HeldWriteLeaveGuard"
 import { useHeldDone } from "~/features/admin/shared/useHeldDone"
 import { PersistedHoldNotices, isHeldOrUnreadable } from "~/features/admin/shared/PersistedHoldNotices"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
@@ -103,7 +104,7 @@ const FundCreateScreen = (): React.ReactElement => {
         write={create}
         subject="the fund was created"
         onReload={() => {
-          void navigate("/funds")
+          void navigate("/funds", { state: LEAVE_HELD_WRITE })
         }}
         reloadLabel="Check the fund list"
         restartWarning="Check the fund list first. If a fund with this slug is listed, it was created, and a new attempt will be refused for that slug. A new attempt cannot be matched to the unconfirmed one."

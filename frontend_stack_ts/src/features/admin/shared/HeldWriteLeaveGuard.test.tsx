@@ -11,10 +11,12 @@ import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 import { SessionProvider, useSession } from "~/app/providers/SessionProvider"
 import type { Principal } from "~/app/providers/SessionProvider"
 import { ADMIN_HOME_PATH, ADMIN_LOGIN_PATH, ADMIN_ROUTES } from "~/app/routing/adminRoutes"
+import { dropRequestSignalsInThisFile } from "~/app/routing/dataRouterTestSupport"
 import { RequireSession } from "~/app/routing/guards"
 
 import { HeldWriteLeaveGuard } from "./HeldWriteLeaveGuard"
 import { useHeldDone } from "./useHeldDone"
+import { SurvivingHeldWriteScope, useHasUnsettledHeldWrite } from "./unsettledHeldWrites"
 import { useHeldWrite } from "./useHeldWrite"
 import type { HeldWritePersistence } from "./useHeldWrite"
 
@@ -42,16 +44,7 @@ const parseBody = (value: unknown): Body | null => {
 
 const PERSIST: HeldWritePersistence<Body> = { slot: "growth:asha", parseBody }
 
-const NodeRequest = globalThis.Request
-
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(input, init === undefined ? undefined : { ...init, signal: null })
-    }
-  },
-)
+dropRequestSignalsInThisFile()
 
 const hardwareBack = vi.hoisted((): { handler: ((canGoBack: boolean) => void) | null } => ({ handler: null }))
 
@@ -67,10 +60,12 @@ vi.mock("~/platform/lifecycle", () => ({
 let replies: (() => Promise<string>)[] = []
 let persist: HeldWritePersistence<Body> | undefined
 let isFormBehindSession = true
+let doneRedirect: string | null = "/users"
+let hasFrameHold = false
 
 const timedOut = (): Promise<string> => Promise.reject(new TransportError("timeout", "The request timed out."))
 
-const GrowthForm = (): React.ReactElement => {
+const HeldButton = ({ label, status }: Readonly<{ label: string; status: string }>): React.ReactElement => {
   const navigate = useNavigate()
   const write = useHeldWrite<Body, string>(
     useMutation({ mutationFn: () => (replies.shift() ?? timedOut)() }),
@@ -78,21 +73,37 @@ const GrowthForm = (): React.ReactElement => {
     persist,
   )
   useHeldDone(write.outcome, () => {
-    void navigate("/users", { replace: true })
+    if (doneRedirect !== null) void navigate(doneRedirect, { replace: true })
   })
   return (
     <>
-      <p>Growth form</p>
       <button
         type="button"
         onClick={() => {
           write.submit({ userId: "asha", rateBasisPoints: "125" })
         }}
       >
-        Append the adjustment
+        {label}
       </button>
-      {write.outcome.kind === "unknown" ? <p>Not confirmed</p> : null}
+      {write.outcome.kind === "unknown" ? <p>{status}</p> : null}
     </>
+  )
+}
+
+const GrowthForm = (): React.ReactElement => (
+  <>
+    <p>Growth form</p>
+    <HeldButton label="Append the adjustment" status="Not confirmed" />
+  </>
+)
+
+const FrameHold = (): React.ReactElement => {
+  const isHoldingPrompts = useHasUnsettledHeldWrite()
+  return (
+    <SurvivingHeldWriteScope value>
+      <HeldButton label="Confirm the maturity choice" status="Maturity choice not confirmed" />
+      {isHoldingPrompts ? <p>Console prompts held back</p> : null}
+    </SurvivingHeldWriteScope>
   )
 }
 
@@ -129,6 +140,7 @@ const Console = (): React.ReactElement => (
           <Link to="/users">Users</Link>
         </nav>
         <SignOut />
+        {hasFrameHold ? <FrameHold /> : null}
         <Routes>
           <Route path={FORM_PATH} element={isFormBehindSession ? signedIn(<GrowthForm />) : <GrowthForm />} />
           <Route path={PARENT_PATH} element={signedIn(<p>Client values</p>)} />
@@ -164,6 +176,8 @@ beforeEach(() => {
   replies = []
   persist = undefined
   isFormBehindSession = true
+  doneRedirect = "/users"
+  hasFrameHold = false
   localStorage.clear()
   sessionStorage.clear()
 })
@@ -226,7 +240,7 @@ describe("leaving an admin screen that holds an unconfirmed write", () => {
 
     pressBack()
     const prompt = await screen.findByRole("dialog", { name: LEAVE_PROMPT })
-    expect(within(prompt).getByText(/saved on this device/)).toBeTruthy()
+    expect(within(prompt).getByText(/keeps it in this tab/)).toBeTruthy()
     expect(screen.getByText("Not confirmed")).toBeTruthy()
     expect(screen.queryByText("Client values")).toBeNull()
 
@@ -237,5 +251,35 @@ describe("leaving an admin screen that holds an unconfirmed write", () => {
     pressBack()
     fireEvent.click(within(await screen.findByRole("dialog", { name: LEAVE_PROMPT })).getByRole("button", { name: "Leave anyway" }))
     await screen.findByText("Client values")
+  })
+
+  it("lets the click through when a write still sending settles while the question is open", async () => {
+    doneRedirect = null
+    let answer: (value: string) => void = () => undefined
+    replies = [() => new Promise<string>((resolve) => (answer = resolve))]
+    await openForm()
+    fireEvent.click(screen.getByRole("button", { name: "Append the adjustment" }))
+
+    fireEvent.click(screen.getByRole("link", { name: "Users" }))
+    await screen.findByRole("dialog", { name: LEAVE_PROMPT })
+    act(() => {
+      answer("appended")
+    })
+    await screen.findByText("Users directory")
+    expect(leavePrompt()).toBeNull()
+  })
+
+  it("does not ask for a hold in the console frame, which stays mounted across screens, but still holds the prompts back", async () => {
+    hasFrameHold = true
+    await openForm()
+    fireEvent.click(screen.getByRole("button", { name: "Confirm the maturity choice" }))
+    await screen.findByText("Maturity choice not confirmed")
+    expect(screen.getByText("Console prompts held back")).toBeTruthy()
+
+    fireEvent.click(screen.getByRole("link", { name: "Users" }))
+    await screen.findByText("Users directory")
+    expect(leavePrompt()).toBeNull()
+    expect(screen.getByText("Maturity choice not confirmed")).toBeTruthy()
+    expect(screen.getByText("Console prompts held back")).toBeTruthy()
   })
 })

@@ -1,11 +1,14 @@
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react"
+import { Link, Route, RouterProvider, Routes, createMemoryRouter } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ApiError, TransportError } from "~/api/errors"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { emitSessionInvalidated } from "~/api/session/scope"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
+import { dropRequestSignalsInThisFile } from "~/app/routing/dataRouterTestSupport"
 
+import { HeldWriteLeaveGuard } from "~/features/admin/shared/HeldWriteLeaveGuard"
 import { BACKEND_IDEMPOTENCY_TTL_MS } from "~/features/admin/shared/heldWriteStore"
 
 import { keepHeldRecording } from "./heldRecordings"
@@ -22,7 +25,7 @@ const ADMIN_ID = "a0a0a0a0-0000-4000-8000-000000000001"
 const OTHER_ADMIN_ID = "b0b0b0b0-0000-4000-8000-000000000002"
 
 vi.mock("~/app/providers/SessionProvider", () => ({
-  useSession: () => ({ principal: { userId: ADMIN_ID }, scope: "admin" }),
+  useSession: () => ({ status: "authenticated", principal: { userId: ADMIN_ID }, scope: "admin" }),
 }))
 
 const replyFor = (held: HeldRecording): Reply => ({
@@ -94,6 +97,8 @@ vi.mock("~/features/admin/shared/queries", () => ({
     refetch: () => undefined,
   }),
 }))
+
+dropRequestSignalsInThisFile()
 
 const succeed = (held: HeldRecording): Promise<Reply> => Promise.resolve(replyFor(held))
 
@@ -481,5 +486,37 @@ describe("restoring held rows that can no longer be checked", () => {
       expect(result.current.entries.get(asha.scheduleId)?.kind).toBe("recorded")
     })
     expect(sent.map((held) => held.idempotencyKey)).toEqual([ashaJob.idempotencyKey])
+  })
+})
+
+describe("leaving the sheet while a row is held", () => {
+  it("counts a row sent without a confirmed reply as an unsettled held write, so the console asks before leaving", async () => {
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <OverlayStackProvider>
+              <Link to="/users">Users</Link>
+              <Routes>
+                <Route path="/client-values/payment-sheet" element={<PaymentSheetScreen />} />
+                <Route path="/users" element={<p>Users directory</p>} />
+              </Routes>
+              <HeldWriteLeaveGuard />
+            </OverlayStackProvider>
+          ),
+        },
+      ],
+      { initialEntries: ["/client-values/payment-sheet"] },
+    )
+    render(<RouterProvider router={router} />)
+    reply = timeOut
+    tick("Asha Rao")
+    recordTicked()
+    expect(await screen.findByText("Not confirmed")).toBeTruthy()
+
+    fireEvent.click(screen.getByRole("link", { name: "Users" }))
+    expect(await screen.findByRole("dialog", { name: "Stay on this page?" })).toBeTruthy()
+    expect(screen.queryByText("Users directory")).toBeNull()
   })
 })

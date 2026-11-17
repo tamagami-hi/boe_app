@@ -7,7 +7,7 @@ import { findRoute, navBarEntries, navGroups, navRoutes } from "~/app/routing/ro
 import { Modal } from "~/app/overlays/Modal"
 import { useSession } from "~/app/providers/SessionProvider"
 import { MaturityDuePrompt } from "~/features/admin/maturities/MaturityDuePrompt"
-import { useHasUnsettledHeldWrite } from "~/features/admin/shared/unsettledHeldWrites"
+import { SurvivingHeldWriteScope, useHasUnsettledHeldWrite } from "~/features/admin/shared/unsettledHeldWrites"
 import { useAuthPort } from "~/features/auth/authPort"
 import { ADMIN_NOTES } from "~/features/whats-new/adminNotes"
 import { WhatsNewPrompt } from "~/features/whats-new/WhatsNewPrompt"
@@ -170,12 +170,14 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
         ) : null}
       </nav>
 
-      <MaturityDuePrompt
-        dismissed={maturityPromptDismissedFor !== null && maturityPromptDismissedFor === session.principal?.userId}
-        onDismiss={() => {
-          setMaturityPromptDismissedFor(session.principal?.userId ?? null)
-        }}
-      />
+      <SurvivingHeldWriteScope value>
+        <MaturityDuePrompt
+          dismissed={maturityPromptDismissedFor !== null && maturityPromptDismissedFor === session.principal?.userId}
+          onDismiss={() => {
+            setMaturityPromptDismissedFor(session.principal?.userId ?? null)
+          }}
+        />
+      </SurvivingHeldWriteScope>
 
       <WhatsNewPrompt notes={ADMIN_NOTES} isHeldBack={isHoldingWrite} />
 
