@@ -442,7 +442,9 @@ describe("a money or ledger write whose reply is lost", () => {
     expect(await screen.findByText("Kept on this page only")).toBeTruthy()
     expect(screen.queryByText(/also after leaving this page/u)).toBeNull()
     expect(screen.getByLabelText(/^Fund/u).hasAttribute("disabled")).toBe(true)
-    expect(window.dispatchEvent(new Event("beforeunload", { cancelable: true }))).toBe(false)
+    await waitFor(() => {
+      expect(window.dispatchEvent(new Event("beforeunload", { cancelable: true }))).toBe(false)
+    })
   })
 })
 
