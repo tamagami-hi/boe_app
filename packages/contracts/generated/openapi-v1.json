@@ -13550,6 +13550,14 @@
             }
           },
           {
+            "name": "if-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "x-csrf-token",
             "in": "header",
             "required": true,

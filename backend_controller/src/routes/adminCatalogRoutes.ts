@@ -6,7 +6,7 @@ import { z } from "zod"
 
 import { CACHE_PREFIXES, type Cache } from "../cache/cache.js"
 import type { UnitOfWork } from "../db/database.js"
-import type { IdempotencyRepository } from "../db/repositories.js"
+import type { Fund, IdempotencyRepository } from "../db/repositories.js"
 import type { Database, FundState } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import { computeAumBasisHash } from "../domain/admin/fundAumGrowth.js"
@@ -26,6 +26,7 @@ import {
   isoOrNull,
   limitSchema,
   optionalIdempotencyKey,
+  optionalIfMatchVersion,
   reasonCodeSchema,
   runAdminMutation,
   searchSchema,
@@ -119,6 +120,9 @@ const publishVersionQuerySchema = z
 const STALE_TERMS_MESSAGE =
   "Newer terms were published for this fund after you opened it. Reload the fund, check its terms, and publish again."
 
+const STALE_FUND_MESSAGE =
+  "This fund changed after you opened it, so its state was not changed. Reload the fund, check its state, and try again."
+
 const stockSchema = z
   .object({
     stockName: shortText.min(1),
@@ -205,6 +209,14 @@ const requirePublishedFrom = async (
   throw new AppError("STATE_CONFLICT", {
     message: STALE_TERMS_MESSAGE,
     fields: { expectedVersion: ["is not the fund's current terms version"] },
+  })
+}
+
+const requireFundVersion = (fund: Fund, expectedVersion: number | undefined): void => {
+  if (expectedVersion === undefined || Number(fund.version) === expectedVersion) return
+  throw new AppError("STATE_CONFLICT", {
+    message: STALE_FUND_MESSAGE,
+    fields: { "if-match": ["is not the fund's current version"] },
   })
 }
 
@@ -687,6 +699,7 @@ const patchFundState = async (deps: AdminCatalogDeps, request: FastifyRequest, r
   requireAnyPermission(principal, ["funds.write"])
   const fundId = fundIdOf(request)
   const nextState: FundState = parseOrThrow(lifecycleSchema, request.body).status
+  const expectedVersion = optionalIfMatchVersion(request)
   const now = deps.clock()
 
   return mutate(
@@ -700,6 +713,7 @@ const patchFundState = async (deps: AdminCatalogDeps, request: FastifyRequest, r
     async (tx) => {
       const fund = await deps.catalogRepository.lock(tx, fundId)
       if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
+      requireFundVersion(fund, expectedVersion)
       if (!ALLOWED_TRANSITIONS[fund.state].includes(nextState)) throw new AppError("STATE_CONFLICT")
       if (nextState === "published" && fund.current_published_version_id === null) {
         throw new AppError("STATE_CONFLICT")

@@ -186,6 +186,12 @@ the server and was left Not confirmed across a rollback or roll-forward stays No
 on Check again, because the two backends hash the request differently, so check the fund's
 versions by hand.
 
+From 0.18.1 the backend also honours the `If-Match` fund version that every admin app since
+v0.15.4 sends with `PATCH /v1/admin/funds/{fundId}` (publish, pause, archive) and refuses a
+stale one with `409 STATE_CONFLICT`. Earlier backends ignore the header, so after an
+images-only rollback a stale change is again bounded only by the allowed transitions. The
+header is not part of the request hash, so a held change still replays across either move.
+
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.
 

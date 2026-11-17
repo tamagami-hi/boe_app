@@ -85,13 +85,15 @@ export const optionalIdempotencyKey = (request: FastifyRequest): string | null =
   return parsed.data
 }
 
-export const parseIfMatchVersion = (request: FastifyRequest): number => {
+const IF_MATCH_VERSION = /^"?(\d{1,15})"?$/u
+
+export const optionalIfMatchVersion = (request: FastifyRequest): number | undefined => {
   const value = request.headers["if-match"]
-  const match = typeof value === "string" ? /^"?(\d+)"?$/u.exec(value.trim()) : null
-  const captured = match?.[1]
+  if (value === undefined || value === "") return undefined
+  const captured = typeof value === "string" ? IF_MATCH_VERSION.exec(value.trim())?.[1] : undefined
   if (captured === undefined) {
     throw new AppError("VALIDATION_FAILED", {
-      fields: { "if-match": ["a quoted integer version is required"] },
+      fields: { "if-match": ["must be a quoted integer version"] },
     })
   }
   return Number(captured)

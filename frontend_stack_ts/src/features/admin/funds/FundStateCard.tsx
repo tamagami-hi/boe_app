@@ -67,6 +67,9 @@ const rejectionText = (code: string | null, message: string): string => {
   return message
 }
 
+const isStaleRefusal = (outcome: HeldWrite<LifecycleInput, void>["outcome"]): boolean =>
+  outcome.kind === "rejected" && outcome.code === "STATE_CONFLICT" && outcome.fields["if-match"] !== undefined
+
 const Row = ({ label, children }: Readonly<{ label: string; children: React.ReactNode }>): React.ReactElement => (
   <div className={LIST_ROW}>
     <span className={LIST_LABEL}>{label}</span>
@@ -85,18 +88,19 @@ export type FundStateCardProps = Readonly<{
 export const FundStateCard = ({ detail, lifecycle, canWrite, isLocked, onReload }: FundStateCardProps): React.ReactElement => {
   const { show } = useToast()
   const canOpen = useRouteAccess()
-  const [confirming, setConfirming] = useState<LifecycleStatus | null>(null)
+  const [confirming, setConfirming] = useState<LifecycleInput | null>(null)
   const [requested, setRequested] = useState<LifecycleStatus | null>(null)
   const { fund } = detail
   const fundName = fund.name ?? fund.slug
   const { outcome, held } = lifecycle
   const heldStatus = held?.status ?? requested
+  const isStale = isStaleRefusal(outcome)
 
   useHeldDone(outcome, () => {
     show(requested === null ? "Fund state changed." : TRANSITION[requested].done)
   })
 
-  const transition = confirming === null ? null : TRANSITION[confirming]
+  const transition = confirming === null ? null : TRANSITION[confirming.status]
 
   return (
     <Card>
@@ -124,9 +128,30 @@ export const FundStateCard = ({ detail, lifecycle, canWrite, isLocked, onReload 
           reloadLabel="Reload the fund"
         />
       ) : null}
-      {outcome.kind === "rejected" ? (
+      {outcome.kind === "rejected" && !isStale ? (
         <Alert tone="error" title="State unchanged">
           {rejectionText(outcome.code, outcome.message)}
+        </Alert>
+      ) : null}
+      {isStale ? (
+        <Alert
+          tone="warning"
+          title="State unchanged"
+          action={
+            <Button
+              size="sm"
+              tone="secondary"
+              onClick={() => {
+                lifecycle.reset()
+                onReload()
+              }}
+            >
+              Reload the fund
+            </Button>
+          }
+        >
+          This fund was changed after this page loaded, so its state was not changed. Reload the fund to see its current
+          state before changing it.
         </Alert>
       ) : null}
 
@@ -148,7 +173,7 @@ export const FundStateCard = ({ detail, lifecycle, canWrite, isLocked, onReload 
                 loading={lifecycle.pending && heldStatus === status}
                 disabled={isLocked || (status === "published" && fund.currentVersion === null)}
                 onClick={() => {
-                  setConfirming(status)
+                  setConfirming({ status, version: fund.version })
                 }}
               >
                 {TRANSITION[status].label}
@@ -167,8 +192,8 @@ export const FundStateCard = ({ detail, lifecycle, canWrite, isLocked, onReload 
         onConfirm={() => {
           if (confirming === null) return
           setConfirming(null)
-          setRequested(confirming)
-          lifecycle.submit({ status: confirming, version: fund.version })
+          setRequested(confirming.status)
+          lifecycle.submit(confirming)
         }}
         onCancel={() => {
           setConfirming(null)

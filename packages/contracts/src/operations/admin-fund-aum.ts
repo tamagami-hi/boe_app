@@ -53,6 +53,10 @@ const RequiredAdminMutationHeaders = z.strictObject({
   "idempotency-key": IdempotencyKey,
   "x-csrf-token": z.string().min(1),
 })
+const FundLifecycleHeaders = z.strictObject({
+  ...OptionalAdminMutationHeaders.shape,
+  "if-match": z.string().regex(/^"?\d{1,15}"?$/u).optional(),
+})
 
 export const AdminFundAum = z.strictObject({
   aumPaise: Paise,
@@ -537,7 +541,7 @@ export const transitionAdminFundLifecycle = defineOperation({
   request: {
     body: AdminFundLifecycleBody,
     params: FundIdParams,
-    headers: OptionalAdminMutationHeaders,
+    headers: FundLifecycleHeaders,
     mediaType: "application/json",
     maxBodyBytes: MAX_JSON_BODY_BYTES,
   },

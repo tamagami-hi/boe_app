@@ -226,6 +226,17 @@ const staleTerms = (): Promise<unknown> =>
     }),
   )
 
+const staleFund = (): Promise<unknown> =>
+  Promise.reject(
+    new ApiError({
+      code: "STATE_CONFLICT",
+      message: "This fund changed after you opened it, so its state was not changed.",
+      status: 409,
+      retryable: true,
+      fields: { "if-match": ["is not the fund's current version"] },
+    }),
+  )
+
 const READS: Readonly<Record<string, () => unknown>> = {
   getAdminFund: () => fundDetail,
   listAdminFundStocks: () => STOCKS,
@@ -548,6 +559,26 @@ describe("publishing new terms", () => {
     expect(await screen.findByRole("button", { name: "Start again from version 3" })).toBeEnabled()
     expect(screen.getByLabelText(/^Name/u)).toHaveValue("Balanced Growth Plus")
     expect(sent.map(({ options }) => options.query)).toEqual([{ expectedVersion: 2 }])
+  })
+})
+
+describe("changing the fund state from a page opened before another change", () => {
+  it("says the fund changed when the server refuses its version, and Reload the fund shows the current state", async () => {
+    writeReplies = [staleFund]
+    open(`/funds/${FUND_ID}`)
+    await screen.findByRole("button", { name: "Archive" })
+    press("Archive")
+    await confirmIn("Archive the fund")
+    await screen.findByText(/This fund was changed after this page loaded/u)
+
+    fundDetail = { ...detailWith(SIZED), fund: { ...fundWith(SIZED), status: "paused", version: 8 } }
+    press("Reload the fund")
+
+    expect(await screen.findByRole("button", { name: "Publish" })).toBeEnabled()
+    expect(screen.queryByText(/This fund was changed after this page loaded/u)).toBeNull()
+    expect(sent.map(({ operationId, options }) => [operationId, options.ifMatch])).toEqual([
+      ["transitionAdminFundLifecycle", '"7"'],
+    ])
   })
 })
 

@@ -9558,6 +9558,7 @@ export interface operations {
             query?: never;
             header: {
                 "idempotency-key"?: string;
+                "if-match"?: string;
                 "x-csrf-token": string;
             };
             path: {
