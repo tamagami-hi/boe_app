@@ -286,8 +286,13 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
           report({ ok: false, kind: "timeout", status: null })
           throw new TransportError("timeout", "The request timed out while reading the response.")
         }
-        report({ ok: false, kind: "malformed", status: response.status })
-        throw cause
+        if (cause instanceof TransportError) {
+          report({ ok: false, kind: "malformed", status: response.status })
+          throw cause
+        }
+        if (options.signal?.aborted === true) throw cause
+        report({ ok: false, kind: "offline", status: null })
+        throw new TransportError("offline", "The connection to BeOnEdge was lost while reading the response.")
       }
 
       if (isMaintenanceResponse(response)) {

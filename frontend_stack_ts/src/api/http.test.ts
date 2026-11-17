@@ -75,6 +75,34 @@ const PROXY_502_PAGE =
 const proxyPage = (status: number): Response =>
   new Response(PROXY_502_PAGE, { status, headers: { "content-type": "text/html" } })
 
+const brokenOffBody = (status: number): Response =>
+  new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"ok":true,"data":'))
+        controller.error(new TypeError("network error"))
+      },
+    }),
+    { status, headers: { "content-type": "application/json" } },
+  )
+
+const bodyAwaitingAbort = (signal: AbortSignal | null | undefined): Response => {
+  const pending: Pick<Response, "ok" | "status" | "headers" | "text"> = {
+    ok: true,
+    status: 200,
+    headers: new Headers(),
+    text: () =>
+      new Promise<string>((_resolve, reject) => {
+        const abort = (): void => {
+          reject(new DOMException("The operation was aborted.", "AbortError"))
+        }
+        if (signal?.aborted === true) abort()
+        else signal?.addEventListener("abort", abort)
+      }),
+  }
+  return pending as Response
+}
+
 const SENDER = "00000000-0000-4000-8000-0000000000a1"
 const OTHER_USER = "00000000-0000-4000-8000-0000000000b2"
 
@@ -464,9 +492,41 @@ describe("response handling", () => {
     expect(isOutage(failure)).toBe(true)
   })
 
-  it("keeps a keyed write that meets a proxy's 502 page unknown, on the first send and on Check again with the same key", async () => {
+  it("counts a body that breaks off mid-read, with no deadline or cancel, as a lost connection and an outage", async () => {
     const { fetchImpl, client } = harness()
-    fetchImpl.mockImplementation(() => Promise.resolve(proxyPage(502)))
+    fetchImpl.mockImplementation(() => Promise.resolve(brokenOffBody(200)))
+
+    const failure = await client
+      .request(readOperation, { params: { probeId: "p1" } })
+      .catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(TransportError)
+    expect((failure as TransportError).kind).toBe("offline")
+    expect(isOutage(failure)).toBe(true)
+  })
+
+  it("leaves a cancel by the caller during the body read as the caller's own cancel, sent once", async () => {
+    const { fetchImpl, client } = harness()
+    fetchImpl.mockImplementation((_url: string, init: RequestInit) => Promise.resolve(bodyAwaitingAbort(init.signal)))
+    const caller = new AbortController()
+
+    const pending = client
+      .request(readOperation, { params: { probeId: "p1" }, signal: caller.signal, timeoutMs: 50 })
+      .catch((error: unknown) => error)
+    caller.abort()
+    const failure = await pending
+
+    expect(failure).toMatchObject({ name: "AbortError" })
+    expect(isOutage(failure)).toBe(false)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { way: "a proxy's 502 page", reply: () => proxyPage(502) },
+    { way: "a body that breaks off mid-read", reply: () => brokenOffBody(201) },
+  ])("keeps a keyed write that meets $way unknown, on the first send and on Check again with the same key", async ({ reply }) => {
+    const { fetchImpl, client } = harness()
+    fetchImpl.mockImplementation(() => Promise.resolve(reply()))
     const send = (): Promise<unknown> =>
       client
         .request(writeOperation, { body: { amountPaise: "200" }, idempotencyKey: "abcdefgh1234" })

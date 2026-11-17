@@ -333,10 +333,25 @@ const routeFetch = (routes: Readonly<Record<string, readonly Reply[]>>): Sent[] 
   return sent
 }
 
-const replyWith = (status: number, body: unknown): Response =>
-  typeof body === "string"
+const BODY_BREAKS_OFF = Symbol("body breaks off")
+
+const brokenOffBody = (status: number): Response =>
+  new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"ok":true,"data":'))
+        controller.error(new TypeError("network error"))
+      },
+    }),
+    { status, headers: { "content-type": "application/json" } },
+  )
+
+const replyWith = (status: number, body: unknown): Response => {
+  if (body === BODY_BREAKS_OFF) return brokenOffBody(status)
+  return typeof body === "string"
     ? new Response(body, { status, headers: { "content-type": "text/html" } })
     : new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
+}
 
 const PROXY_502_PAGE =
   "<html><head><title>502 Bad Gateway</title></head><body><center><h1>502 Bad Gateway</h1></center><hr><center>nginx</center></body></html>"
@@ -589,6 +604,7 @@ describe("admin browser restore", () => {
     { way: "meets an outage on the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[500, failure("INTERNAL_ERROR")]] }, settles: "rejects", holds: OPERATOR.userId, heldWrites: 2, expectation: "keeps the admin and the held writes to restore again" },
     { way: "meets a proxy's 502 page on the CSRF recovery", routes: { [CSRF]: [[502, PROXY_502_PAGE]] }, settles: "resolves", holds: OTHER_ADMIN_ID, heldWrites: 2, expectation: "keeps the stored admin and the held writes" },
     { way: "meets a proxy's 502 page on the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[502, PROXY_502_PAGE]] }, settles: "rejects", holds: OPERATOR.userId, heldWrites: 2, expectation: "keeps the admin and the held writes to restore again" },
+    { way: "meets a body that breaks off on the CSRF recovery", routes: { [CSRF]: [[200, BODY_BREAKS_OFF]] }, settles: "resolves", holds: OTHER_ADMIN_ID, heldWrites: 2, expectation: "keeps the stored admin and the held writes" },
   ] as const)("$expectation when a restore over a stored principal $way", async ({ routes, settles, holds, heldWrites }) => {
     holdClientWrites()
     routeFetch(routes)
