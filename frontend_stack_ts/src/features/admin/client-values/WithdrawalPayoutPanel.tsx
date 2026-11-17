@@ -19,6 +19,7 @@ import { STACK_LG } from "~/ui/recipes/layout"
 
 import { parsePayoutUpdate } from "./heldBodies"
 import { useUpdatePayout } from "./maturityQueries"
+import { PayoutOutcomeDate } from "./PayoutOutcomeDate"
 
 type Props = Readonly<{
   payout: Omit<AdminWithdrawalPayout, "maturityId">
@@ -72,6 +73,9 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
           {fundName} · {formatDate(payout.effectiveDate)} · {payout.state}
         </p>
         <MoneyValue amount={toPaise(payout.amountPaise)} size="sm" showDecimals />
+        {payout.state === "pending" ? null : (
+          <PayoutOutcomeDate userId={payout.userId} payoutId={payout.id} state={payout.state} />
+        )}
         {detail === null ? null : <p>{detail}</p>}
         {payout.state === "failed" ? (
           <Alert tone="info" title="Transfer failed">

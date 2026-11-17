@@ -87,6 +87,8 @@ export const qk = {
     clientLedgerPage: (userId: string) => ["admin", "investor", userId, "ledger-page"] as const,
     clientSipSchedules: (userId: string) => ["admin", "investor", userId, "sip-schedules"] as const,
     clientSipEarlyExits: (userId: string) => ["admin", "investor", userId, "sip-early-exits"] as const,
+    clientWithdrawalPayoutOutcomes: (userId: string) =>
+      ["admin", "investor", userId, "withdrawal-payout-outcomes"] as const,
     sipEarlyExitPreview: (userId: string, scheduleId: string) =>
       ["admin", "investor", userId, "sip-early-exit-preview", scheduleId] as const,
     recordingSheetRoot: () => ["admin", "recording-sheet"] as const,

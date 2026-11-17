@@ -36,6 +36,7 @@ const WITHDRAWAL_ROUTE = `${MATURITIES_ROUTE}/:maturityId/withdrawal`
 const REINVESTMENT_ROUTE = `${MATURITIES_ROUTE}/:maturityId/reinvestment`
 const PAYOUTS_ROUTE = "/v1/admin/clients/:userId/withdrawal-payouts"
 const PAYOUT_STATUS_ROUTE = `${PAYOUTS_ROUTE}/:payoutId/status`
+const PAYOUT_OUTCOMES_ROUTE = "/v1/admin/clients/:userId/withdrawal-payout-outcomes"
 const READ_PERMISSIONS = ["client_position.write", "client_values.read"]
 const userParams = z.strictObject({ userId: uuidParam })
 const maturityParams = userParams.extend({ maturityId: uuidParam })
@@ -179,9 +180,27 @@ const listPayouts = async (deps: AdminMaturityDeps, request: FastifyRequest, rep
   })
 }
 
+const listPayoutOutcomes = async (deps: AdminMaturityDeps, request: FastifyRequest, reply: FastifyReply) => {
+  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
+  requireAnyPermission(principal, READ_PERMISSIONS)
+  const { userId } = parseOrThrow(userParams, request.params)
+  const query = parseOrThrow(listQuery, request.query)
+  const rows = await deps.maturityRepository.listWithdrawalPayoutOutcomes(deps.database, { userId, limit: query.limit })
+  return reply.sendData({
+    userId,
+    items: rows.map((row) => ({
+      payoutId: row.payoutId,
+      state: row.state,
+      paidAt: row.paidAt === null ? null : row.paidAt.toISOString(),
+      failedAt: row.failedAt === null ? null : row.failedAt.toISOString(),
+    })),
+  })
+}
+
 export const registerAdminMaturityRoutes = (application: FastifyInstance, deps: AdminMaturityDeps): void => {
   application.get(MATURITIES_ROUTE, (request, reply) => listMaturities(deps, request, reply))
   application.get(PAYOUTS_ROUTE, (request, reply) => listPayouts(deps, request, reply))
+  application.get(PAYOUT_OUTCOMES_ROUTE, (request, reply) => listPayoutOutcomes(deps, request, reply))
   application.post(MATURITIES_ROUTE, (request, reply) => markMatured(deps, request, reply))
   application.post(WITHDRAWAL_ROUTE, (request, reply) => settle(deps, request, reply, true))
   application.post(REINVESTMENT_ROUTE, (request, reply) => settle(deps, request, reply, false))

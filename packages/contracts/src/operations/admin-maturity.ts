@@ -85,6 +85,13 @@ export const AdminWithdrawalPayout = z.strictObject({
   createdAt: IsoDateTime,
 })
 export type AdminWithdrawalPayout = z.infer<typeof AdminWithdrawalPayout>
+export const AdminWithdrawalPayoutOutcome = z.strictObject({
+  payoutId: Uuid,
+  state: AdminWithdrawalPayout.shape.state,
+  paidAt: IsoDateTime.nullable(),
+  failedAt: IsoDateTime.nullable(),
+})
+export type AdminWithdrawalPayoutOutcome = z.infer<typeof AdminWithdrawalPayoutOutcome>
 const SettlementData = z.strictObject({
   entryId: Uuid,
   payoutId: Uuid.nullable(),
@@ -144,6 +151,19 @@ export const listAdminWithdrawalPayouts = defineOperation({
   success: { status: 200, schema: createSuccessEnvelopeSchema(z.strictObject({ userId: Uuid, items: z.array(AdminWithdrawalPayout) })) },
   errorCodes: ADMIN_READ_ERRORS,
 })
+export const listAdminWithdrawalPayoutOutcomes = defineOperation({
+  ...AdminOperation,
+  operationId: "listAdminWithdrawalPayoutOutcomes",
+  method: "GET",
+  path: "/v1/admin/clients/{userId}/withdrawal-payout-outcomes",
+  idempotency: "none",
+  request: { params: UserParams, query: z.strictObject({ limit: AdminLimit }) },
+  success: {
+    status: 200,
+    schema: createSuccessEnvelopeSchema(z.strictObject({ userId: Uuid, items: z.array(AdminWithdrawalPayoutOutcome) })),
+  },
+  errorCodes: ADMIN_READ_ERRORS,
+})
 export const updateAdminWithdrawalPayout = defineOperation({
   ...AdminOperation,
   operationId: "updateAdminWithdrawalPayout",
@@ -160,5 +180,6 @@ export const ADMIN_MATURITY_OPERATIONS = Object.freeze([
   withdrawAdminClientMaturity,
   reinvestAdminClientMaturity,
   listAdminWithdrawalPayouts,
+  listAdminWithdrawalPayoutOutcomes,
   updateAdminWithdrawalPayout,
 ])

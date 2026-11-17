@@ -68,6 +68,13 @@ export interface WithdrawalPayoutRow {
   readonly createdAt: Date
 }
 
+export interface WithdrawalPayoutOutcomeRow {
+  readonly payoutId: string
+  readonly state: WithdrawalState
+  readonly paidAt: Date | null
+  readonly failedAt: Date | null
+}
+
 export interface SettlementEntryInput {
   readonly userId: string
   readonly fundId: string
@@ -106,6 +113,10 @@ export interface MaturityRepository {
     tx: Transaction,
     input: Readonly<{ userId: string; limit: number }>,
   ) => Promise<readonly WithdrawalPayoutRow[]>
+  listWithdrawalPayoutOutcomes: (
+    tx: Transaction,
+    input: Readonly<{ userId: string; limit: number }>,
+  ) => Promise<readonly WithdrawalPayoutOutcomeRow[]>
   markPayoutPaid: (
     tx: Transaction,
     input: Readonly<{
@@ -343,6 +354,21 @@ export const createMaturityRepository = (): MaturityRepository => ({
       transferReference: row.transferReference,
       createdAt: row.createdAt,
     }))
+  },
+
+  listWithdrawalPayoutOutcomes: async (tx, input) => {
+    const result = await sql<WithdrawalPayoutOutcomeRow>`
+      select
+        w.id as "payoutId",
+        w.state::text as "state",
+        w.paid_at as "paidAt",
+        w.failed_at as "failedAt"
+      from withdrawal_operations w
+      where w.user_id = ${input.userId}
+      order by w.created_at desc, w.id desc
+      limit ${input.limit}
+    `.execute(tx)
+    return result.rows
   },
 
   markPayoutPaid: async (tx, input) => {

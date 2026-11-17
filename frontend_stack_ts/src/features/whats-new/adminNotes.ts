@@ -39,6 +39,7 @@ export const ADMIN_NOTES: WhatsNewNotes = [
           },
           { text: "Fund amounts are entered in rupees." },
           { text: "Overview tiles open filtered lists." },
+          { text: "Payout cards show the paid date." },
         ],
       },
       {

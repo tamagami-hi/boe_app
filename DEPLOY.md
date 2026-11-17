@@ -164,6 +164,8 @@ images-only rollback to a backend from before 074 (for example v0.17.0 or v0.18.
   v0.18.0 admin web shows "Held request not readable" for it (v0.17.0 keeps no held writes
   and ignores it). Check the payout list before starting a new attempt.
 
+Payout outcome dates (0.18.1) add only the route `GET /v1/admin/clients/{userId}/withdrawal-payout-outcomes`, with no migration: older admin apps never call it and every existing payout response keeps its shape, and a new admin app against a backend without it gets `404`, so its paid or failed payout cards say "Paid date unavailable" or "Failure date unavailable" while the outcome form keeps working.
+
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.
 
