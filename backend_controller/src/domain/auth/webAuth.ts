@@ -15,6 +15,8 @@
  * the CSRF token, the refresh chain and the accepted session channel are all
  * per-scope, so neither audience's cookie can authenticate the other's request.
  */
+import { randomUUID } from "node:crypto"
+
 import type { FastifyReply, FastifyRequest } from "fastify"
 import type { Kysely } from "kysely"
 
@@ -61,6 +63,14 @@ const ACCESS_TOKEN_TTL_MS = 10 * 60 * 1000
 const REFRESH_IDLE_MS = 30 * 24 * 60 * 60 * 1000
 const SESSION_ABSOLUTE_MS = 90 * 24 * 60 * 60 * 1000
 const REFRESH_GRACE_MS = 30 * 1000
+const SIGN_IN_ROTATION_ID = "sign-in"
+
+const sessionCsrfToken = (
+  refreshKey: Buffer,
+  sessionId: string,
+  generation: number,
+  lastRotationId: string | null,
+): string => deriveCsrfToken(refreshKey, sessionId, generation, lastRotationId ?? SIGN_IN_ROTATION_ID)
 
 export interface WebAuthConfig {
   readonly cookieSecure: boolean
@@ -379,9 +389,11 @@ const issueWebLoginSession = async <TPrincipal>(
   if (rejection !== null) return { kind: "rejected", outcome: rejection }
 
   const now = deps.clock()
+  const sessionId = randomUUID()
   const refreshRaw = generateInitialRefreshToken()
-  const csrfRaw = generateInitialRefreshToken()
+  const csrfRaw = sessionCsrfToken(deps.refreshKey, sessionId, 0, null)
   const created = await deps.authSessionRepository.createWebSession(tx, {
+    sessionId,
     userId: user.id as UserId,
     channel: scope.channel,
     refreshTokenHash: hashToken(refreshRaw),
@@ -590,21 +602,44 @@ export const webRefresh = async <TPrincipal>(
     session.previous_csrf_token_hash === null
       ? null
       : Buffer.from(session.previous_csrf_token_hash as unknown as Uint8Array)
-  const previousCsrfMatches =
-    previousCsrf !== null && bytesEqual(hashToken(input.presentedCsrf), previousCsrf)
+  const presentedCsrfHash = hashToken(input.presentedCsrf)
+  const replayedCsrf = deriveCsrfToken(deps.refreshKey, session.id, Number(session.generation), input.rotationId)
+  const previousCsrfMatches = previousCsrf !== null && bytesEqual(presentedCsrfHash, previousCsrf)
+  const replayedCsrfMatches = bytesEqual(presentedCsrfHash, hashToken(replayedCsrf))
   if (
     bytesEqual(hashToken(input.refreshCookie), previousRefresh ?? Buffer.alloc(0)) &&
     withinGrace &&
-    previousCsrfMatches &&
+    (previousCsrfMatches || replayedCsrfMatches) &&
     session.last_rotation_id === input.rotationId
   ) {
     const refreshRaw = deriveRefreshToken(deps.refreshKey, session.id, Number(session.generation), input.rotationId)
-    const csrfRaw = deriveCsrfToken(deps.refreshKey, session.id, Number(session.generation), input.rotationId)
-    return issue(refreshRaw, csrfRaw)
+    return issue(refreshRaw, replayedCsrf)
   }
 
   await deps.authSessionRepository.revokeSessionFamily(tx, { sessionId: session.id, reason: "refresh_reuse", now })
   return { kind: "reuse_revoked" }
+}
+
+const currentSessionCsrf = async (
+  tx: Transaction,
+  deps: WebAuthDeps,
+  channel: CookieSessionChannel,
+  session: AuthSession,
+  now: Date,
+): Promise<string> => {
+  const csrfRaw = sessionCsrfToken(deps.refreshKey, session.id, Number(session.generation), session.last_rotation_id)
+  const csrfHash = hashToken(csrfRaw)
+  const storedCsrf = session.csrf_token_hash
+  if (storedCsrf !== null && bytesEqual(csrfHash, Buffer.from(storedCsrf as unknown as Uint8Array))) return csrfRaw
+  await deps.authSessionRepository.rotateWebCsrf(tx, {
+    sessionId: session.id,
+    channel,
+    csrfTokenHash: csrfHash,
+    csrfKeyVersion: deps.csrfKeyVersion,
+    csrfExpiresAt: new Date(now.getTime() + ACCESS_TOKEN_TTL_MS),
+    now,
+  })
+  return csrfRaw
 }
 
 export interface WebCsrfResult<TPrincipal> {
@@ -619,7 +654,7 @@ export interface WebCsrfResult<TPrincipal> {
  * Reload recovery for the synchronizer CSRF token (spec 04 §3.4). The SPA has
  * lost its in-memory CSRF token after a document load but still holds the
  * HttpOnly access/refresh cookies. Identify the session from the access cookie if
- * it still verifies, else from the refresh cookie, then re-issue a fresh CSRF
+ * it still verifies, else from the refresh cookie, then return the session's CSRF
  * token (no prior CSRF required). Safe without CSRF because the caller must pass
  * the Origin/Fetch-Metadata check (enforced in the route) and a cross-origin
  * caller cannot read the JSON response.
@@ -661,15 +696,7 @@ export const webRecoverCsrf = async <TPrincipal>(
     .executeTakeFirst()
   if (user === undefined || user.account_state !== "active") throw new AppError("ACCOUNT_NOT_ACTIVE")
 
-  const csrfRaw = generateInitialRefreshToken()
-  await deps.authSessionRepository.rotateWebCsrf(tx, {
-    sessionId: session.id,
-    channel: scope.channel,
-    csrfTokenHash: hashToken(csrfRaw),
-    csrfKeyVersion: deps.csrfKeyVersion,
-    csrfExpiresAt: new Date(now.getTime() + ACCESS_TOKEN_TTL_MS),
-    now,
-  })
+  const csrfRaw = await currentSessionCsrf(tx, deps, scope.channel, session, now)
   const principal = await scope.buildPrincipal(tx, deps, user)
   return {
     body: {

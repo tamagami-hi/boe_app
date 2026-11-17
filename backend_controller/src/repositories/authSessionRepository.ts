@@ -56,6 +56,7 @@ export interface RotateRefreshInput {
 }
 
 export interface CreateWebSessionInput {
+  readonly sessionId: string
   readonly userId: UserId
   /** `web` for the admin console, `client_web` for the investor app in a browser. */
   readonly channel: CookieSessionChannel
@@ -241,6 +242,7 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
     const session = await tx
       .insertInto("auth_sessions")
       .values({
+        id: input.sessionId,
         user_id: input.userId,
         channel: input.channel,
         refresh_key_version: input.refreshKeyVersion,
@@ -313,9 +315,9 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
 
   // CSRF-only re-issue for reload recovery (GET .../csrf): rotate the
   // synchronizer token without touching the refresh chain. The prior CSRF is
-  // overwritten (the client had lost it), so it is immediately invalidated. The
-  // channel is part of the predicate, so one audience's recovery can never
-  // rotate the other's token even if a session id were confused.
+  // overwritten, so it is immediately invalidated. The channel is part of the
+  // predicate, so one audience's recovery can never rotate the other's token
+  // even if a session id were confused.
   rotateWebCsrf: async (tx, input) => {
     await tx
       .updateTable("auth_sessions")

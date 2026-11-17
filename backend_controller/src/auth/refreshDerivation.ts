@@ -7,8 +7,8 @@
  *   rawRefresh = base64url(HMAC-SHA256(refreshKey, "boe-refresh-v1"|sid|gen|rotationId))
  *   rawCsrf    = base64url(HMAC-SHA256(refreshKey, "boe-csrf-v1"|sid|gen|rotationId))
  * Only SHA-256(raw) is persisted in the `*_token_hash` columns; the refresh-key
- * version and generation/rotationId are stored alongside. The generation-0 token
- * issued at login/activation is random (there is no client rotationId yet).
+ * version and generation/rotationId are stored alongside. The generation-0 refresh
+ * token issued at login/activation is random (there is no client rotationId yet).
  */
 import { createHash, createHmac, randomBytes } from "node:crypto"
 

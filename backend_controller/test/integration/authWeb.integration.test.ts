@@ -61,6 +61,34 @@ const login = async (): Promise<{ jar: Record<string, string>; csrf: string }> =
   return { jar: cookieJar(response.headers["set-cookie"]), csrf: dataOf<WebBody>(response).csrfToken }
 }
 
+const errorOf = (response: { json: () => unknown }): string =>
+  (response.json() as { error: { code: string } }).error.code
+
+const readCsrf = async (jar: Record<string, string>): Promise<string> => {
+  const response = await app.inject({
+    method: "GET",
+    url: "/v1/auth/web/csrf",
+    headers: { origin: ORIGIN, cookie: cookieHeader(jar) },
+  })
+  expect(response.statusCode).toBe(200)
+  return dataOf<WebBody>(response).csrfToken
+}
+
+const refresh = (jar: Record<string, string>, csrf: string, rotationId: string) =>
+  app.inject({
+    method: "POST",
+    url: "/v1/auth/web/refresh",
+    headers: { origin: ORIGIN, cookie: cookieHeader(jar), "x-csrf-token": csrf },
+    payload: { rotationId },
+  })
+
+const logout = (jar: Record<string, string>, csrf: string) =>
+  app.inject({
+    method: "POST",
+    url: "/v1/auth/web/logout",
+    headers: { origin: ORIGIN, cookie: cookieHeader(jar), "x-csrf-token": csrf },
+  })
+
 let webDeps: WebAuthRouteDeps
 
 /** Builds an app over the shared database under a chosen cookie policy. */
@@ -261,34 +289,79 @@ describe("web authentication (integration)", () => {
     expect(dataOf<{ loggedOut: boolean }>(ok).loggedOut).toBe(true)
   })
 
-  test("GET /v1/auth/web/csrf recovers a fresh CSRF token from the access cookie and invalidates the old one", async () => {
+  test("two CSRF reads return the sign-in token, and a write with it succeeds after the second read", async () => {
     const { jar, csrf } = await login()
 
-    const recovered = await app.inject({
+    const first = await readCsrf(jar)
+    const second = await readCsrf(jar)
+    expect(first).toBe(csrf)
+    expect(second).toBe(csrf)
+
+    expect((await logout(jar, second)).statusCode).toBe(200)
+  })
+
+  test("after a refresh rotation the old CSRF token is refused and the new one works", async () => {
+    const { jar, csrf } = await login()
+    const rotated = await refresh(jar, csrf, randomUUID())
+    expect(rotated.statusCode).toBe(200)
+    const rotatedJar = cookieJar(rotated.headers["set-cookie"])
+    const rotatedCsrf = dataOf<WebBody>(rotated).csrfToken
+    expect(rotatedCsrf).not.toBe(csrf)
+    expect(await readCsrf(rotatedJar)).toBe(rotatedCsrf)
+
+    const stale = await logout(rotatedJar, csrf)
+    expect(stale.statusCode).toBe(403)
+    expect(errorOf(stale)).toBe("CSRF_INVALID")
+    expect((await logout(rotatedJar, rotatedCsrf)).statusCode).toBe(200)
+  })
+
+  test("a refresh whose reply was lost, retried within the grace after a CSRF read, keeps the session", async () => {
+    const { jar, csrf: signInCsrf } = await login()
+    const first = await refresh(jar, signInCsrf, randomUUID())
+    expect(first.statusCode).toBe(200)
+    const tabJar = cookieJar(first.headers["set-cookie"])
+    const tabCsrf = dataOf<WebBody>(first).csrfToken
+
+    const rotationId = randomUUID()
+    const lost = await refresh(tabJar, tabCsrf, rotationId)
+    expect(lost.statusCode).toBe(200)
+    const lostJar = cookieJar(lost.headers["set-cookie"])
+    const lostCsrf = dataOf<WebBody>(lost).csrfToken
+
+    const refreshOnly = { boe_refresh: tabJar["boe_refresh"] ?? "" }
+    const recovered = await readCsrf(refreshOnly)
+    expect(recovered).toBe(lostCsrf)
+
+    const retried = await refresh(refreshOnly, recovered, rotationId)
+    expect(retried.statusCode).toBe(200)
+    expect(dataOf<WebBody>(retried).csrfToken).toBe(lostCsrf)
+    expect(cookieJar(retried.headers["set-cookie"])["boe_refresh"]).toBe(lostJar["boe_refresh"])
+
+    const retriedWithTabToken = await refresh(refreshOnly, tabCsrf, rotationId)
+    expect(retriedWithTabToken.statusCode).toBe(200)
+    expect(await readCsrf(lostJar)).toBe(lostCsrf)
+
+    const retriedWithOlderToken = await refresh(refreshOnly, signInCsrf, rotationId)
+    expect(retriedWithOlderToken.statusCode).toBe(401)
+    const revoked = await app.inject({
       method: "GET",
       url: "/v1/auth/web/csrf",
-      headers: { origin: ORIGIN, cookie: cookieHeader(jar) },
+      headers: { origin: ORIGIN, cookie: cookieHeader(lostJar) },
     })
-    expect(recovered.statusCode).toBe(200)
-    const body = dataOf<WebBody>(recovered)
-    expect(body.csrfToken).toMatch(/^[A-Za-z0-9_-]{43}$/u)
-    expect(body.csrfToken).not.toBe(csrf)
-    expect(body.user.roles).toContain("onboarding")
+    expect(revoked.statusCode).toBe(401)
+  })
 
-    // The recovered token authorizes a state-changing request; the stale one does not.
-    const staleLogout = await app.inject({
-      method: "POST",
-      url: "/v1/auth/web/logout",
-      headers: { origin: ORIGIN, cookie: cookieHeader(jar), "x-csrf-token": csrf },
-    })
-    expect(staleLogout.statusCode).toBe(403)
+  test("a CSRF token of another session is refused", async () => {
+    const own = await login()
+    const other = await login()
+    expect(other.csrf).not.toBe(own.csrf)
+    expect(await readCsrf(own.jar)).toBe(own.csrf)
+    expect(await readCsrf(other.jar)).toBe(other.csrf)
 
-    const freshLogout = await app.inject({
-      method: "POST",
-      url: "/v1/auth/web/logout",
-      headers: { origin: ORIGIN, cookie: cookieHeader(jar), "x-csrf-token": body.csrfToken },
-    })
-    expect(freshLogout.statusCode).toBe(200)
+    const crossed = await logout(own.jar, other.csrf)
+    expect(crossed.statusCode).toBe(403)
+    expect(errorOf(crossed)).toBe("CSRF_INVALID")
+    expect((await logout(own.jar, own.csrf)).statusCode).toBe(200)
   })
 
   test("GET /v1/auth/web/csrf recovers from the refresh cookie when the access cookie is absent", async () => {
