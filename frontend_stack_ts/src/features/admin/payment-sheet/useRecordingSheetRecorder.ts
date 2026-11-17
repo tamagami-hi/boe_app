@@ -4,9 +4,10 @@ import { isApiError, isSessionEnded, isUnknownRetryOutcome, isUnknownWriteOutcom
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { subscribeToSessionInvalidated } from "~/api/session/scope"
 import { useSession } from "~/app/providers/SessionProvider"
+import { isPastReceiptLifetime } from "~/features/admin/shared/heldWriteStore"
 
-import { keepHeldRecording, loadHeldRecordings, releaseHeldRecording } from "./heldRecordings"
-import type { HeldRecording } from "./heldRecordings"
+import { keepHeldRecording, readHeldRecordings, releaseHeldRecording } from "./heldRecordings"
+import type { HeldRecordingsRead, StoredRecording } from "./heldRecordings"
 import type { RecordingBody, RowEntry } from "./recordingSheet"
 import type { RefreshAfterRecording, SendRecording } from "./recordingSheetQueries"
 
@@ -18,16 +19,20 @@ export type RecordJob = Readonly<{ userId: string; body: RecordingBody }>
 
 export type SheetRecorder = Readonly<{
   entries: ReadonlyMap<string, RowEntry>
-  held: ReadonlyMap<string, HeldRecording>
+  held: ReadonlyMap<string, StoredRecording>
+  unsaved: ReadonlySet<string>
   busy: boolean
   record: (jobs: readonly RecordJob[]) => void
   checkAgain: (scheduleId: string) => void
   recordAnother: (scheduleId: string) => void
+  releaseStale: (scheduleId: string) => void
 }>
 
 const QUEUED: RowEntry = { kind: "queued" }
 const SENDING: RowEntry = { kind: "sending" }
 const UNKNOWN: RowEntry = { kind: "unknown" }
+const EXPIRED: RowEntry = { kind: "expired" }
+const UNREADABLE: RowEntry = { kind: "unreadable" }
 const REARMED: RowEntry = { kind: "rearmed" }
 
 const FIELD_LABELS: Readonly<Record<string, string>> = {
@@ -39,7 +44,16 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
   "sipScheduleLink.month": "Month",
 }
 
-const BLOCKING_KINDS: ReadonlySet<RowEntry["kind"]> = new Set(["queued", "sending", "unknown", "recorded"])
+const BLOCKING_KINDS: ReadonlySet<RowEntry["kind"]> = new Set([
+  "queued",
+  "sending",
+  "unknown",
+  "expired",
+  "unreadable",
+  "recorded",
+])
+
+const NO_HOLDS: HeldRecordingsRead = { held: new Map(), unreadable: [] }
 
 export const refusalMessage = (error: unknown): string => {
   if (!isApiError(error)) return UNSENT_MESSAGE
@@ -49,13 +63,22 @@ export const refusalMessage = (error: unknown): string => {
   return lines.length === 0 ? error.message : lines.join(" ")
 }
 
-const idOf = (job: HeldRecording): string => job.body.sipScheduleLink.scheduleId
+const idOf = (job: StoredRecording): string => job.body.sipScheduleLink.scheduleId
 
 const withEntry = (entries: ReadonlyMap<string, RowEntry>, scheduleId: string, entry: RowEntry) =>
   new Map(entries).set(scheduleId, entry)
 
-const withoutHeld = (held: ReadonlyMap<string, HeldRecording>, scheduleId: string) =>
+const withoutHeld = (held: ReadonlyMap<string, StoredRecording>, scheduleId: string) =>
   new Map([...held].filter(([id]) => id !== scheduleId))
+
+const without = (ids: ReadonlySet<string>, scheduleId: string): ReadonlySet<string> =>
+  new Set([...ids].filter((id) => id !== scheduleId))
+
+const restoredEntries = (restored: HeldRecordingsRead, now: number): ReadonlyMap<string, RowEntry> =>
+  new Map<string, RowEntry>([
+    ...[...restored.held].map(([scheduleId, job]) => [scheduleId, isPastReceiptLifetime(job.heldAt, now) ? EXPIRED : UNKNOWN] as const),
+    ...restored.unreadable.map((scheduleId) => [scheduleId, UNREADABLE] as const),
+  ])
 
 export const useRecordingSheetRecorder = (
   month: string,
@@ -64,13 +87,11 @@ export const useRecordingSheetRecorder = (
 ): SheetRecorder => {
   const { principal, scope } = useSession()
   const adminId = principal?.userId ?? null
-  const [held, setHeld] = useState<ReadonlyMap<string, HeldRecording>>(() =>
-    adminId === null ? new Map() : loadHeldRecordings(month, adminId),
-  )
-  const [entries, setEntries] = useState<ReadonlyMap<string, RowEntry>>(
-    () => new Map([...held.keys()].map((scheduleId) => [scheduleId, UNKNOWN])),
-  )
-  const queue = useRef<readonly HeldRecording[]>([])
+  const [restored] = useState(() => (adminId === null ? NO_HOLDS : readHeldRecordings(month, adminId)))
+  const [held, setHeld] = useState<ReadonlyMap<string, StoredRecording>>(restored.held)
+  const [entries, setEntries] = useState<ReadonlyMap<string, RowEntry>>(() => restoredEntries(restored, Date.now()))
+  const [unsaved, setUnsaved] = useState<ReadonlySet<string>>(new Set())
+  const queue = useRef<readonly StoredRecording[]>([])
   const active = useRef<ReadonlySet<string>>(new Set())
   const touchedUsers = useRef<ReadonlySet<string>>(new Set())
   const retried = useRef<ReadonlySet<string>>(new Set())
@@ -87,10 +108,11 @@ export const useRecordingSheetRecorder = (
   const confirm = (scheduleId: string, entry: RowEntry): void => {
     releaseHeldRecording(scheduleId, month)
     setHeld((current) => withoutHeld(current, scheduleId))
+    setUnsaved((current) => without(current, scheduleId))
     setEntries((current) => withEntry(current, scheduleId, entry))
   }
 
-  const settle = async (job: HeldRecording): Promise<void> => {
+  const settle = async (job: StoredRecording): Promise<void> => {
     const scheduleId = idOf(job)
     try {
       const result = await send(job)
@@ -106,7 +128,7 @@ export const useRecordingSheetRecorder = (
     }
   }
 
-  const finish = (job: HeldRecording): void => {
+  const finish = (job: StoredRecording): void => {
     active.current = new Set([...active.current].filter((id) => id !== idOf(job)))
     pump()
     if (active.current.size > 0) return
@@ -130,7 +152,7 @@ export const useRecordingSheetRecorder = (
     }
   }
 
-  const enqueue = (jobs: readonly HeldRecording[]): void => {
+  const enqueue = (jobs: readonly StoredRecording[]): void => {
     if (jobs.length === 0) return
     queue.current = [...queue.current, ...jobs]
     active.current = new Set([...active.current, ...jobs.map(idOf)])
@@ -146,24 +168,36 @@ export const useRecordingSheetRecorder = (
   return {
     entries,
     held,
+    unsaved,
     busy: [...entries.values()].some((entry) => entry.kind === "queued" || entry.kind === "sending"),
     record: (jobs) => {
+      const heldAt = Date.now()
       const minted = jobs
         .filter((job) => isFree(job.body.sipScheduleLink.scheduleId))
-        .map((job): HeldRecording => ({ idempotencyKey: mintIdempotencyKey(), userId: job.userId, body: job.body }))
-      if (adminId !== null) for (const job of minted) keepHeldRecording(adminId, job)
+        .map((job): StoredRecording => ({ idempotencyKey: mintIdempotencyKey(), userId: job.userId, body: job.body, heldAt }))
+      const notKept = minted.filter((job) => adminId === null || !keepHeldRecording(adminId, job, heldAt)).map(idOf)
       setHeld((current) => new Map([...current, ...minted.map((job) => [idOf(job), job] as const)]))
+      setUnsaved((current) => new Set([...current, ...notKept]))
       enqueue(minted)
     },
     checkAgain: (scheduleId) => {
       const job = held.get(scheduleId)
       if (job === undefined || active.current.has(scheduleId)) return
+      if (isPastReceiptLifetime(job.heldAt, Date.now())) {
+        setEntries((current) => withEntry(current, scheduleId, EXPIRED))
+        return
+      }
       retried.current = new Set([...retried.current, job.idempotencyKey])
       enqueue([job])
     },
     recordAnother: (scheduleId) => {
       if (held.has(scheduleId) || active.current.has(scheduleId)) return
       setEntries((current) => withEntry(current, scheduleId, REARMED))
+    },
+    releaseStale: (scheduleId) => {
+      const kind = entries.get(scheduleId)?.kind
+      if ((kind !== "expired" && kind !== "unreadable") || active.current.has(scheduleId)) return
+      confirm(scheduleId, REARMED)
     },
   }
 }

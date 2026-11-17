@@ -82,18 +82,22 @@ const RecordingSheetMonth = ({ month, fundId, onMonth, onFund }: SheetMonthProps
           check: checkDraft(draft, today),
           entry,
           held: recorder.held.get(schedule.scheduleId),
+          unsaved: recorder.unsaved.has(schedule.scheduleId),
           status: statusOf(entry, schedule.recorded !== null),
         }
       }),
-    [schedules, drafts, recorder.entries, recorder.held, today],
+    [schedules, drafts, recorder.entries, recorder.held, recorder.unsaved, today],
   )
   const ready = readyRowsOf(views)
-  const needsAttention = views.filter(
-    (view) => view.draft.selected && canFill(view.status) && view.check.kind === "invalid",
-  ).length
+  const leftOut = views.filter((view) => view.draft.selected && canFill(view.status) && view.check.kind === "invalid")
   const totalPaise = ready.reduce((sum, row) => sum + BigInt(row.amountPaise), 0n).toString()
   const visible = new Set(schedules.map((schedule) => schedule.scheduleId))
-  const hiddenHeld = [...recorder.held.keys()].filter((scheduleId) => !visible.has(scheduleId)).length
+  const waiting = new Set([
+    ...recorder.held.keys(),
+    ...[...recorder.entries].flatMap(([scheduleId, entry]) => (entry.kind === "unreadable" ? [scheduleId] : [])),
+  ])
+  const hiddenHeld = [...waiting].filter((scheduleId) => !visible.has(scheduleId)).length
+  const isLeaveBlocked = recorder.busy || recorder.unsaved.size > 0
 
   const setDraft = (scheduleId: string, draft: RowDraft): void => {
     setDrafts((current) => ({ ...current, [scheduleId]: draft }))
@@ -129,11 +133,17 @@ const RecordingSheetMonth = ({ month, fundId, onMonth, onFund }: SheetMonthProps
 
   return (
     <>
-      <RecordingSheetControls month={month} fundId={fundId} disabled={recorder.busy} onMonth={onMonth} onFund={onFund} />
+      <RecordingSheetControls month={month} fundId={fundId} disabled={isLeaveBlocked} onMonth={onMonth} onFund={onFund} />
 
       {hiddenHeld === 0 || completeData === undefined ? null : (
         <Alert tone="warning" title="Rows waiting for Check again are hidden">
           {`${String(hiddenHeld)} row(s) of this month were sent without a confirmed reply and are not on this sheet. Choose All funds to see them and check them again.`}
+        </Alert>
+      )}
+
+      {recorder.unsaved.size === 0 ? null : (
+        <Alert tone="warning" title="Kept on this page only">
+          {`This browser could not save ${String(recorder.unsaved.size)} held row(s), so they last only while this page stays open. The month stays fixed until they are confirmed.`}
         </Alert>
       )}
 
@@ -168,9 +178,10 @@ const RecordingSheetMonth = ({ month, fundId, onMonth, onFund }: SheetMonthProps
                   onDraft={setDraft}
                   onCheckAgain={recorder.checkAgain}
                   onRecordAnother={recordAnother}
+                  onReleaseStale={recorder.releaseStale}
                 />
                 <p className={PROSE_SM}>
-                  {`${String(ready.length)} row(s) ready to record. ${String(needsAttention)} ticked row(s) need attention.`}
+                  {`${String(ready.length)} row(s) ready to record. ${String(leftOut.length)} ticked row(s) need attention.`}
                 </p>
                 <Button
                   disabled={ready.length === 0 || recorder.busy}
@@ -205,7 +216,17 @@ const RecordingSheetMonth = ({ month, fundId, onMonth, onFund }: SheetMonthProps
           <DetailRow label="Total">
             <MoneyValue amount={toPaise(totalPaise)} size="sm" showDecimals />
           </DetailRow>
+          {leftOut.length === 0 ? null : (
+            <DetailRow label="Left out, need attention">{String(leftOut.length)}</DetailRow>
+          )}
         </DataList>
+        {leftOut.length === 0 ? null : (
+          <Alert tone="warning" title="Ticked rows left out">
+            {`These ticked rows are not recorded, because their amount or date needs fixing: ${leftOut
+              .map((view) => `${view.schedule.clientName}, ${view.schedule.fundName}`)
+              .join("; ")}.`}
+          </Alert>
+        )}
         <p className={PROSE_SM}>
           Each row is recorded as a monthly investment for its schedule month. Each client is notified that an
           investment was added and is emailed the amount.

@@ -1,29 +1,34 @@
 import { isIdempotencyKey } from "~/api/idempotency"
-import { clearHeldKeys, dropOtherAdminsKeys } from "~/features/admin/shared/heldWriteStore"
+import {
+  asRecord,
+  clearHeldKeys,
+  dropOtherAdminsKeys,
+  heldAtOf,
+  parseJson,
+  sessionStore,
+} from "~/features/admin/shared/heldWriteStore"
 
 import { MONTHLY_REASON } from "./recordingSheet"
 import type { RecordingBody } from "./recordingSheet"
 
 export type HeldRecording = Readonly<{ idempotencyKey: string; userId: string; body: RecordingBody }>
 
+export type StoredRecording = HeldRecording & Readonly<{ heldAt: number | null }>
+
+export type HeldRecordingsRead = Readonly<{
+  held: ReadonlyMap<string, StoredRecording>
+  unreadable: readonly string[]
+}>
+
 const PREFIX = "beo.admin.recording-sheet.v1"
+
+const NOTHING_HELD: HeldRecordingsRead = { held: new Map(), unreadable: [] }
 
 const storageKey = (scheduleId: string, month: string): string => `${PREFIX}:${month}:${scheduleId}`
 
 const isText = (value: unknown): value is string => typeof value === "string" && value !== ""
 
-const asRecord = (value: unknown): Readonly<Record<string, unknown>> | null =>
-  typeof value === "object" && value !== null ? (value as Readonly<Record<string, unknown>>) : null
-
-const parseJson = (raw: string): unknown => {
-  try {
-    return JSON.parse(raw) as unknown
-  } catch {
-    return null
-  }
-}
-
-const parseHeld = (raw: string, scheduleId: string, month: string): HeldRecording | null => {
+const parseHeld = (raw: string, scheduleId: string, month: string): StoredRecording | null => {
   const held = asRecord(parseJson(raw))
   const body = asRecord(held?.body)
   const link = asRecord(body?.sipScheduleLink)
@@ -37,44 +42,42 @@ const parseHeld = (raw: string, scheduleId: string, month: string): HeldRecordin
     idempotencyKey,
     userId,
     body: { fundId, amountPaise, effectiveDate, reasonCode, sipScheduleLink: { scheduleId, month } },
+    heldAt: heldAtOf(held),
   }
 }
 
-const sessionStore = (): Storage | null => {
-  try {
-    return window.sessionStorage
-  } catch {
-    return null
-  }
-}
-
-export const loadHeldRecordings = (month: string, adminId: string): ReadonlyMap<string, HeldRecording> => {
+export const readHeldRecordings = (month: string, adminId: string): HeldRecordingsRead => {
   const store = sessionStore()
   const prefix = `${PREFIX}:${month}:`
-  if (store === null || !dropOtherAdminsKeys(prefix, adminId)) return new Map()
+  if (store === null || !dropOtherAdminsKeys(prefix, adminId)) return NOTHING_HELD
   try {
     const keys = Array.from({ length: store.length }, (_, index) => store.key(index) ?? "")
-    return new Map(
-      keys
-        .filter((key) => key.startsWith(prefix))
-        .flatMap((key) => {
-          const scheduleId = key.slice(prefix.length)
-          const raw = store.getItem(key)
-          const held = raw === null ? null : parseHeld(raw, scheduleId, month)
-          return held === null ? [] : [[scheduleId, held] as const]
-        }),
-    )
+    const read = keys
+      .filter((key) => key.startsWith(prefix))
+      .map((key) => {
+        const scheduleId = key.slice(prefix.length)
+        const raw = store.getItem(key)
+        return { scheduleId, held: raw === null ? null : parseHeld(raw, scheduleId, month) }
+      })
+    return {
+      held: new Map(read.flatMap(({ scheduleId, held }) => (held === null ? [] : [[scheduleId, held] as const]))),
+      unreadable: read.flatMap(({ scheduleId, held }) => (held === null ? [scheduleId] : [])),
+    }
   } catch {
-    return new Map()
+    return NOTHING_HELD
   }
 }
 
-export const keepHeldRecording = (adminId: string, held: HeldRecording): boolean => {
+export const loadHeldRecordings = (month: string, adminId: string): ReadonlyMap<string, HeldRecording> =>
+  readHeldRecordings(month, adminId).held
+
+export const keepHeldRecording = (adminId: string, held: HeldRecording, heldAt: number = Date.now()): boolean => {
   const { scheduleId, month } = held.body.sipScheduleLink
   const store = sessionStore()
   if (store === null) return false
   try {
-    store.setItem(storageKey(scheduleId, month), JSON.stringify({ adminId, ...held }))
+    const { idempotencyKey, userId, body } = held
+    store.setItem(storageKey(scheduleId, month), JSON.stringify({ adminId, idempotencyKey, userId, body, heldAt }))
     return true
   } catch {
     return false

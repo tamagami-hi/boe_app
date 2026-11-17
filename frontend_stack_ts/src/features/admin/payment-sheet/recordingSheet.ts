@@ -36,7 +36,7 @@ export type RecordingBody = Readonly<{
   sipScheduleLink: Readonly<{ scheduleId: string; month: string }>
 }>
 
-export type RowStatus = "pending" | "queued" | "sending" | "recorded" | "refused" | "unknown"
+export type RowStatus = "pending" | "queued" | "sending" | "recorded" | "refused" | "unknown" | "expired" | "unreadable"
 
 export type RowEntry =
   | Readonly<{ kind: "queued" }>
@@ -44,6 +44,8 @@ export type RowEntry =
   | Readonly<{ kind: "recorded"; amountPaise: string; effectiveDate: string }>
   | Readonly<{ kind: "refused"; message: string }>
   | Readonly<{ kind: "unknown" }>
+  | Readonly<{ kind: "expired" }>
+  | Readonly<{ kind: "unreadable" }>
   | Readonly<{ kind: "rearmed" }>
 
 export const parseSheetAmount = (text: string): string | null => parsePositiveRupees(text.trim())

@@ -23,6 +23,7 @@ export type SheetRowView = Readonly<{
   check: DraftCheck
   entry: RowEntry | undefined
   held: HeldRecording | undefined
+  unsaved: boolean
 }>
 
 export type RecordingSheetTableProps = Readonly<{
@@ -32,6 +33,7 @@ export type RecordingSheetTableProps = Readonly<{
   onDraft: (scheduleId: string, draft: RowDraft) => void
   onCheckAgain: (scheduleId: string) => void
   onRecordAnother: (scheduleId: string) => void
+  onReleaseStale: (scheduleId: string) => void
 }>
 
 const STATUS_CHIPS: Readonly<Record<RowStatus, Readonly<{ label: string; tone: StatusTone }>>> = {
@@ -41,10 +43,22 @@ const STATUS_CHIPS: Readonly<Record<RowStatus, Readonly<{ label: string; tone: S
   recorded: { label: "Recorded", tone: "positive" },
   refused: { label: "Refused", tone: "negative" },
   unknown: { label: "Not confirmed", tone: "warning" },
+  expired: { label: "Check the record", tone: "warning" },
+  unreadable: { label: "Check the record", tone: "warning" },
 }
 
 const UNKNOWN_HINT =
   "The reply did not arrive, so it is not known whether this was recorded. Check again sends the same request, and it can only ever apply once."
+
+const STALE_HINTS: Readonly<Record<"expired" | "unreadable", string>> = {
+  expired:
+    "This row has been held for more than a day, and the server keeps its answer for a day only, so Check again can no longer tell whether it was recorded. Check the client's ledger before recording it again.",
+  unreadable:
+    "A recording held in this tab for this row could not be read back, so it is not known whether it was recorded. Check the client's ledger before recording it again.",
+}
+
+const UNSAVED_HINT =
+  "Not saved in this tab: this row's request is kept only while the page stays open. Stay on this month until it is confirmed."
 
 const rowLabel = (schedule: SheetSchedule): string => `${schedule.clientName}, ${schedule.fundName}`
 
@@ -62,9 +76,10 @@ type StatusCellProps = Readonly<{
   view: SheetRowView
   onCheckAgain: (scheduleId: string) => void
   onRecordAnother: (scheduleId: string) => void
+  onReleaseStale: (scheduleId: string) => void
 }>
 
-const StatusContent = ({ view, onCheckAgain, onRecordAnother }: StatusCellProps): React.ReactElement => {
+const StatusContent = ({ view, onCheckAgain, onRecordAnother, onReleaseStale }: StatusCellProps): React.ReactElement => {
   const { status, entry, schedule } = view
   const chip = STATUS_CHIPS[status]
   return (
@@ -90,6 +105,22 @@ const StatusContent = ({ view, onCheckAgain, onRecordAnother }: StatusCellProps)
           </Button>
         </>
       ) : null}
+      {status === "expired" || status === "unreadable" ? (
+        <>
+          <span className={FIELD_HINT}>{STALE_HINTS[status]}</span>
+          <Button
+            size="sm"
+            tone="ghost"
+            aria-label={`I have checked the record for ${rowLabel(schedule)}`}
+            onClick={() => {
+              onReleaseStale(schedule.scheduleId)
+            }}
+          >
+            I have checked the record
+          </Button>
+        </>
+      ) : null}
+      {view.unsaved && view.held !== undefined ? <span className={FIELD_ERROR}>{UNSAVED_HINT}</span> : null}
       {status === "recorded" ? (
         <Button
           size="sm"
@@ -106,11 +137,9 @@ const StatusContent = ({ view, onCheckAgain, onRecordAnother }: StatusCellProps)
   )
 }
 
-const StatusCell = ({ view, onCheckAgain, onRecordAnother }: StatusCellProps): React.ReactElement => (
+const StatusCell = (props: StatusCellProps): React.ReactElement => (
   <div className={STACK_SM} aria-live="polite">
-    {view.status === "pending" && !view.draft.selected ? null : (
-      <StatusContent view={view} onCheckAgain={onCheckAgain} onRecordAnother={onRecordAnother} />
-    )}
+    {props.view.status === "pending" && !props.view.draft.selected ? null : <StatusContent {...props} />}
   </div>
 )
 
@@ -126,6 +155,7 @@ export const RecordingSheetTable = ({
   onDraft,
   onCheckAgain,
   onRecordAnother,
+  onReleaseStale,
 }: RecordingSheetTableProps): React.ReactElement => (
   <AdminTable
     caption="SIP schedules due this month"
@@ -240,7 +270,14 @@ export const RecordingSheetTable = ({
       {
         key: "status",
         header: "Status",
-        render: (view) => <StatusCell view={view} onCheckAgain={onCheckAgain} onRecordAnother={onRecordAnother} />,
+        render: (view) => (
+          <StatusCell
+            view={view}
+            onCheckAgain={onCheckAgain}
+            onRecordAnother={onRecordAnother}
+            onReleaseStale={onReleaseStale}
+          />
+        ),
       },
     ]}
   />

@@ -2,14 +2,36 @@ import { isIdempotencyKey } from "~/api/idempotency"
 
 export type StoredHold<TBody> = Readonly<{ idempotencyKey: string; body: TBody }>
 
+export type HoldRead<TBody> =
+  | Readonly<{ kind: "none" }>
+  | Readonly<{ kind: "unreadable" }>
+  | Readonly<{ kind: "held"; hold: StoredHold<TBody>; heldAt: number | null }>
+
+export const BACKEND_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000
+
+export const isPastReceiptLifetime = (heldAt: number | null, now: number): boolean =>
+  heldAt === null || now - heldAt >= BACKEND_IDEMPOTENCY_TTL_MS
+
+type SafeParser<T> = Readonly<{ safeParse: (value: unknown) => { success: true; data: T } | { success: false } }>
+
+export const parseWith =
+  <T>(schema: SafeParser<T>) =>
+  (value: unknown): T | null => {
+    const result = schema.safeParse(value)
+    return result.success ? result.data : null
+  }
+
 const PREFIX = "beo.admin.held-write.v1"
+
+const NONE: HoldRead<never> = { kind: "none" }
+const UNREADABLE: HoldRead<never> = { kind: "unreadable" }
 
 const storageKey = (slot: string): string => `${PREFIX}:${slot}`
 
-const asRecord = (value: unknown): Readonly<Record<string, unknown>> | null =>
+export const asRecord = (value: unknown): Readonly<Record<string, unknown>> | null =>
   typeof value === "object" && value !== null ? (value as Readonly<Record<string, unknown>>) : null
 
-const parseJson = (raw: string): unknown => {
+export const parseJson = (raw: string): unknown => {
   try {
     return JSON.parse(raw) as unknown
   } catch {
@@ -17,7 +39,12 @@ const parseJson = (raw: string): unknown => {
   }
 }
 
-const sessionStore = (): Storage | null => {
+export const heldAtOf = (entry: Readonly<Record<string, unknown>> | null): number | null => {
+  const heldAt = entry?.heldAt
+  return typeof heldAt === "number" && Number.isFinite(heldAt) ? heldAt : null
+}
+
+export const sessionStore = (): Storage | null => {
   try {
     return window.sessionStorage
   } catch {
@@ -25,8 +52,10 @@ const sessionStore = (): Storage | null => {
   }
 }
 
-const parseHold = <TBody>(raw: string, parseBody: (value: unknown) => TBody | null): StoredHold<TBody> | null => {
-  const held = asRecord(parseJson(raw))
+const parseHold = <TBody>(
+  held: Readonly<Record<string, unknown>> | null,
+  parseBody: (value: unknown) => TBody | null,
+): StoredHold<TBody> | null => {
   if (held === null) return null
   const { idempotencyKey } = held
   if (typeof idempotencyKey !== "string" || !isIdempotencyKey(idempotencyKey)) return null
@@ -37,29 +66,42 @@ const parseHold = <TBody>(raw: string, parseBody: (value: unknown) => TBody | nu
 const isHeldBy = (raw: string | null, adminId: string): boolean =>
   raw !== null && asRecord(parseJson(raw))?.adminId === adminId
 
+export const readHold = <TBody>(
+  slot: string,
+  adminId: string,
+  parseBody: (value: unknown) => TBody | null,
+): HoldRead<TBody> => {
+  const store = sessionStore()
+  if (store === null) return NONE
+  try {
+    const raw = store.getItem(storageKey(slot))
+    if (raw === null) return NONE
+    if (!isHeldBy(raw, adminId)) {
+      store.removeItem(storageKey(slot))
+      return NONE
+    }
+    const entry = asRecord(parseJson(raw))
+    const hold = parseHold(entry, parseBody)
+    return hold === null ? UNREADABLE : { kind: "held", hold, heldAt: heldAtOf(entry) }
+  } catch {
+    return NONE
+  }
+}
+
 export const loadHold = <TBody>(
   slot: string,
   adminId: string,
   parseBody: (value: unknown) => TBody | null,
 ): StoredHold<TBody> | null => {
-  const store = sessionStore()
-  if (store === null) return null
-  try {
-    const raw = store.getItem(storageKey(slot))
-    if (raw === null) return null
-    if (isHeldBy(raw, adminId)) return parseHold(raw, parseBody)
-    store.removeItem(storageKey(slot))
-    return null
-  } catch {
-    return null
-  }
+  const read = readHold(slot, adminId, parseBody)
+  return read.kind === "held" ? read.hold : null
 }
 
-export const keepHold = (slot: string, adminId: string, hold: StoredHold<unknown>): boolean => {
+export const keepHold = (slot: string, adminId: string, hold: StoredHold<unknown>, heldAt: number = Date.now()): boolean => {
   const store = sessionStore()
   if (store === null) return false
   try {
-    store.setItem(storageKey(slot), JSON.stringify({ adminId, ...hold }))
+    store.setItem(storageKey(slot), JSON.stringify({ adminId, ...hold, heldAt }))
     return true
   } catch {
     return false

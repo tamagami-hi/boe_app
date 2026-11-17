@@ -7,6 +7,7 @@ import type { ErrorCode } from "@beonedge/contracts"
 
 import { ApiError, TransportError } from "~/api/errors"
 
+import { BACKEND_IDEMPOTENCY_TTL_MS } from "./heldWriteStore"
 import { useHeldWrite } from "./useHeldWrite"
 import type { HeldWritePersistence } from "./useHeldWrite"
 
@@ -31,6 +32,12 @@ const parseBody = (value: unknown): Body | null => {
 }
 
 const PERSIST: HeldWritePersistence<Body> = { slot: "record:asha:balanced", parseBody }
+
+const STORED_KEY = `beo.admin.held-write.v1:${PERSIST.slot}`
+
+const storeHold = (entry: Readonly<Record<string, unknown>>): void => {
+  window.sessionStorage.setItem(STORED_KEY, JSON.stringify({ adminId: ADMIN_ID, ...entry }))
+}
 
 const timedOut = (): Promise<string> => Promise.reject(new TransportError("timeout", "The request timed out."))
 const recorded = (): Promise<string> => Promise.resolve("recorded")
@@ -186,5 +193,61 @@ describe("a persisted held write", () => {
     })
     expect(sent).toHaveLength(3)
     expect(new Set(sent.map(({ idempotencyKey }) => idempotencyKey)).size).toBe(1)
+  })
+
+  it("surfaces a held entry of this admin that cannot be read, instead of opening idle", () => {
+    storeHold({ idempotencyKey: "0f2c3a9e-1111-4222-8333-444455556666", body: { fundId: "balanced" }, heldAt: Date.now() })
+
+    const form = openForm()
+
+    expect(form.result.current.unreadable).toBe(true)
+    expect(form.result.current.held).toBeNull()
+    expect(window.sessionStorage.getItem(STORED_KEY)).not.toBeNull()
+
+    act(() => {
+      form.result.current.reset()
+    })
+    expect(form.result.current.unreadable).toBe(false)
+    expect(window.sessionStorage.length).toBe(0)
+    expect(sent).toHaveLength(0)
+  })
+
+  it("stops offering Check again once a hold is older than the server keeps its answer", async () => {
+    const dayAndMore = BACKEND_IDEMPOTENCY_TTL_MS + 60_000
+    storeHold({
+      idempotencyKey: "0f2c3a9e-1111-4222-8333-444455556666",
+      body: { fundId: "balanced", amountPaise: "500000" },
+      heldAt: Date.now() - dayAndMore,
+    })
+    const restored = openForm()
+    expect(restored.result.current.outcome.kind).toBe("unknown")
+    expect(restored.result.current.expired).toBe(true)
+    act(() => {
+      restored.result.current.checkAgain()
+    })
+    expect(sent).toHaveLength(0)
+    act(() => {
+      restored.result.current.reset()
+    })
+    expect(window.sessionStorage.length).toBe(0)
+    restored.unmount()
+
+    replies = [timedOut]
+    const form = openForm()
+    act(() => {
+      form.result.current.submit({ fundId: "balanced", amountPaise: "500000" })
+    })
+    await waitFor(() => {
+      expect(form.result.current.outcome.kind).toBe("unknown")
+    })
+    const later = Date.now() + dayAndMore
+    vi.spyOn(Date, "now").mockReturnValue(later)
+    act(() => {
+      form.result.current.checkAgain()
+    })
+
+    expect(form.result.current.expired).toBe(true)
+    expect(form.result.current.outcome.kind).toBe("unknown")
+    expect(sent).toHaveLength(1)
   })
 })

@@ -6,6 +6,8 @@ import { mintIdempotencyKey } from "~/api/idempotency"
 import { emitSessionInvalidated } from "~/api/session/scope"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 
+import { BACKEND_IDEMPOTENCY_TTL_MS } from "~/features/admin/shared/heldWriteStore"
+
 import { keepHeldRecording } from "./heldRecordings"
 import type { HeldRecording } from "./heldRecordings"
 import PaymentSheetScreen from "./PaymentSheetScreen"
@@ -155,6 +157,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
 })
 
 describe("recording a month of payments row by row", () => {
@@ -393,5 +396,73 @@ describe("recording a month of payments row by row", () => {
     renderSheet()
     expect(screen.getByText("No SIP schedule is due this month")).toBeTruthy()
     expect(recordButton()).toBeNull()
+  })
+
+  it("marks a row whose held request could not be saved in the tab, and keeps the month fixed", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+    })
+    renderSheet()
+    reply = timeOut
+    tick("Asha Rao")
+    recordTicked()
+
+    expect(await screen.findByText("Not confirmed")).toBeTruthy()
+    expect(screen.getByText(/^Not saved in this tab/u)).toBeTruthy()
+    expect(screen.getByLabelText(/^Month/u).hasAttribute("disabled")).toBe(true)
+    expect(window.sessionStorage.length).toBe(0)
+  })
+})
+
+describe("restoring held rows that can no longer be checked", () => {
+  const asha = row(1, "Asha Rao")
+  const ashaJob = {
+    idempotencyKey: "0f2c3a9e-1111-4222-8333-444455556666",
+    userId: asha.userId,
+    body: recordingBodyOf(asha, "2026-11", { amountPaise: "500000", effectiveDate: "2026-11-02" }),
+  }
+  const ashaKey = `beo.admin.recording-sheet.v1:2026-11:${asha.scheduleId}`
+  const openRecorder = () =>
+    renderHook(() => useRecordingSheetRecorder("2026-11", sendRecording, () => Promise.resolve()))
+
+  it("shows a held row that cannot be read and records it again only after the admin has checked", async () => {
+    reply = succeed
+    window.sessionStorage.setItem(
+      ashaKey,
+      JSON.stringify({ adminId: ADMIN_ID, idempotencyKey: ashaJob.idempotencyKey, userId: asha.userId, body: {} }),
+    )
+    const { result } = openRecorder()
+
+    expect(result.current.entries.get(asha.scheduleId)?.kind).toBe("unreadable")
+    act(() => {
+      result.current.checkAgain(asha.scheduleId)
+      result.current.record([ashaJob])
+    })
+    expect(sent).toHaveLength(0)
+
+    act(() => {
+      result.current.releaseStale(asha.scheduleId)
+    })
+    expect(window.sessionStorage.getItem(ashaKey)).toBeNull()
+    act(() => {
+      result.current.record([ashaJob])
+    })
+    await waitFor(() => {
+      expect(result.current.entries.get(asha.scheduleId)?.kind).toBe("recorded")
+    })
+    expect(sent).toHaveLength(1)
+  })
+
+  it("does not check again a row held for longer than the server keeps its answer", () => {
+    reply = succeed
+    keepHeldRecording(ADMIN_ID, ashaJob, Date.now() - BACKEND_IDEMPOTENCY_TTL_MS - 60_000)
+    const { result } = openRecorder()
+
+    expect(result.current.entries.get(asha.scheduleId)?.kind).toBe("expired")
+    act(() => {
+      result.current.checkAgain(asha.scheduleId)
+    })
+    expect(sent).toHaveLength(0)
+    expect(result.current.held.has(asha.scheduleId)).toBe(true)
   })
 })

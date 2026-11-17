@@ -11,8 +11,11 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
   monthCount: "Months",
   state: "State",
   maturityDate: "Maturity date",
+  maturedOn: "Maturity date",
   effectiveDate: "Settlement date",
   amountPaise: "Amount",
+  transferReference: "Bank transfer reference",
+  failureCode: "Failure code",
   "sip.monthlyAmountPaise": "SIP monthly amount",
   "sip.startMonth": "First SIP month",
   "sip.monthCount": "SIP months",
@@ -28,12 +31,57 @@ const fieldLines = (fields: Readonly<Record<string, readonly string[]>>): string
 
 const DEFAULT_RELOAD_LABEL = "Reload the schedules"
 
+const CHECKED_LABEL = "I have checked the record"
+
 export type HeldWriteNoticeProps = Readonly<{
-  write: Pick<HeldWrite<never, unknown>, "outcome" | "pending" | "checkAgain">
+  write: Pick<HeldWrite<never, unknown>, "outcome" | "pending" | "checkAgain"> &
+    Partial<Pick<HeldWrite<never, unknown>, "unreadable" | "expired" | "reset">>
   subject: string
   onReload: () => void
   reloadLabel?: string
 }>
+
+type StaleProps = Readonly<{
+  title: string
+  reset: (() => void) | undefined
+  onReload: () => void
+  reloadLabel: string
+  children: string
+}>
+
+const StaleHoldNotice = ({ title, reset, onReload, reloadLabel, children }: StaleProps): React.ReactElement => (
+  <Alert
+    tone="warning"
+    title={title}
+    action={
+      <span className={ACTION_ROW}>
+        <Button size="sm" tone="secondary" onClick={onReload}>
+          {reloadLabel}
+        </Button>
+        {reset === undefined ? null : (
+          <Button size="sm" tone="ghost" onClick={reset}>
+            {CHECKED_LABEL}
+          </Button>
+        )}
+      </span>
+    }
+  >
+    {children}
+  </Alert>
+)
+
+export const isUnsavedHold = (write: Pick<HeldWrite<object, unknown>, "held" | "persisted">): boolean =>
+  write.held !== null && !write.persisted
+
+export const UnsavedHoldNotice = ({
+  write,
+}: Readonly<{ write: Pick<HeldWrite<object, unknown>, "held" | "persisted"> }>): React.ReactElement | null =>
+  isUnsavedHold(write) ? (
+    <Alert tone="warning" title="Kept on this page only">
+      This browser could not save the held request, so it lasts only while this page stays open. Stay here until it
+      is confirmed.
+    </Alert>
+  ) : null
 
 export const HeldWriteNotice = ({
   write,
@@ -42,6 +90,13 @@ export const HeldWriteNotice = ({
   reloadLabel = DEFAULT_RELOAD_LABEL,
 }: HeldWriteNoticeProps): React.ReactElement | null => {
   const { outcome } = write
+  if (write.unreadable === true && outcome.kind === "idle") {
+    return (
+      <StaleHoldNotice title="Held request not readable" reset={write.reset} onReload={onReload} reloadLabel={reloadLabel}>
+        {`A request held in this tab could not be read back, so it is not known whether ${subject}. Check the record before entering it again.`}
+      </StaleHoldNotice>
+    )
+  }
   if (outcome.kind === "rejected") {
     const lines = fieldLines(outcome.fields)
     return (
@@ -51,6 +106,13 @@ export const HeldWriteNotice = ({
     )
   }
   if (outcome.kind !== "unknown") return null
+  if (write.expired === true) {
+    return (
+      <StaleHoldNotice title="No longer checkable" reset={write.reset} onReload={onReload} reloadLabel={reloadLabel}>
+        {`This request has been held for more than a day, and the server keeps its answer for a day only, so Check again can no longer tell whether ${subject}. Check the record before entering it again.`}
+      </StaleHoldNotice>
+    )
+  }
   return (
     <Alert
       tone="warning"
