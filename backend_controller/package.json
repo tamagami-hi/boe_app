@@ -46,6 +46,8 @@
     "seed:auth:dev": "tsx src/scripts/seedAuth.ts",
     "keys:generate": "tsx scripts/generate-deploy-secrets.ts",
     "check:db": "node dist/scripts/check-db.js",
+    "erasure:rescrub-phones": "node dist/scripts/rescrubErasedPhones.js",
+    "erasure:rescrub-phones:dev": "tsx src/scripts/rescrubErasedPhones.ts",
     "test": "vitest run --config vitest.config.ts",
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
     "test:integration": "tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts",

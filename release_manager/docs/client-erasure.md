@@ -2,6 +2,7 @@
 
 Status: built on lane `g-erasure` (tally `M11-phase-g:G-L1-erasure`), reviewed three times and fixed, landed on local `main` at `e29ff37` (2026-11-14), not released. No client has been erased anywhere.
 Decision: DEC-29 (behaviour) and DEC-33 (go-ahead), group `admin-improvements`.
+DEC-66 (national-form phones and the re-scrub of erased clients): built on lane `p-erasure-phones` (tally `M19-patches-0-18:P-erasure-phones`), not released.
 This is a destructive change under `RULES.md` rule 11: it deletes and overwrites existing
 production rows for the one client an administrator erases. It touches no other client.
 
@@ -53,9 +54,9 @@ Placeholders: the live `users` columns are unique, so the email becomes `release
 The pass then works only on the client's own rows (listed in the table map) and:
 
 - replaces whole emails, case-insensitively and only where no further address characters touch them, and their masked `x***@domain` form;
-- replaces phones as `+E.164`, digits without `+`, and the ten-digit national number for `+91`, only between digit boundaries, so no longer number is cut;
+- replaces phones only between digit boundaries, so no longer number is cut. A `+91` phone is replaced in every national form (DEC-66): the ten digits, split 5 + 5 by one space or hyphen or not split, alone or after `+91`, `91` or `0` with or without one space or hyphen (`9876543210`, `98765 43210`, `+91 98765 43210`, `+91-9876543210`, `098765 43210`, `919876543210`). Any other phone is replaced as `+E.164` and as its digits without `+`;
 - in free text, also replaces the client's full name, case-insensitively and only as whole words;
-- in JSON, replaces emails as above but a phone only in its stored `+91…` form, so amounts and other numbers are never hit; sets string values equal to the client's name or nominee to `Tombstoned`; and sets the `name` and `relation` fields directly inside any object under a `nominee` key to `Tombstoned`. A name inside a longer JSON sentence, a national-format phone, and a name or relation nested one object deeper are not replaced.
+- in JSON, replaces emails as above in every string value, and a phone in its stored `+91…` form in every string value. In a string value that contains at least one letter or whitespace, such as a decline reason, it also replaces every national form above (DEC-66). A value made only of digits, such as an amount or an id, and a JSON number are never touched, and nor is a value with no letter or space such as `98765-43210` on its own. It sets string values equal to the client's name or nominee to `Tombstoned`, and sets the `name` and `relation` fields directly inside any object under a `nominee` key to `Tombstoned`. A name inside a longer JSON sentence and a name or relation nested one object deeper are not replaced.
 
 Phone endings (last four digits) in audit metadata are left: the code already treats them as redactions. Financial identifiers are never rewritten: `withdrawal_operations.transfer_reference` and `provider_payment_details.provider_reference` stay as they are.
 
@@ -114,7 +115,39 @@ The coverage test (`clientErasureCoverage.integration.test.ts`) holds this class
 
 Kept on purpose in G2 and worth the maintainer's review: IP addresses and user agents on sessions, consents and audit rows. DEC-29 names contact details; these are not contacts.
 
-Also kept in both paths: the admin's accept or decline receipt for a nominee request (072), which outlives the client. Its body holds only the request: the scrub sets the requested name and relation (`request.nominee`) to `Tombstoned` and replaces `clientName`, a whole-value name. The decline reason stays. Inside it, the scrub replaces an email and its masked form, but a phone only in its stored `+91…` form: a ten-digit national number, or a name, written in the reason stays readable. DEC-29 reads "emails and phones erased everywhere", so this one free-text field is worth the maintainer's review.
+Also kept in both paths: the admin's accept or decline receipt for a nominee request (072), which outlives the client. Its body holds only the request: the scrub sets the requested name and relation (`request.nominee`) to `Tombstoned` and replaces `clientName`, a whole-value name. The decline reason stays. Inside it, the scrub replaces an email and its masked form, and since DEC-66 every national form of the client's own known phones (Q-46). A name written in the reason, and a phone that is not one of the client's known phones, stay readable.
+
+## Re-scrub of already erased clients (DEC-66)
+
+Erasures made before DEC-66 replaced a phone in stored JSON only in its stored `+91…` form, and in text only as `+91…`, its digits and the unsplit ten digits, so a number written as `98765 43210`, `+91 98765 43210` or `098765 43210` can still be readable in such a client's rows. `rescrubErasedPhones` is a one-off command the maintainer runs for those clients: `npm run erasure:rescrub-phones` (`node dist/scripts/rescrubErasedPhones.js` in the backend image; `npm run erasure:rescrub-phones:dev` from source).
+
+**What it can find.** The original numbers are not recoverable. DEC-29 overwrote the live phone, both sides of every contact-history row and the applications' phones with placeholders, and no hash of a phone is kept anywhere. Only the last four digits of a changed phone survive, in contact-change audit metadata, which cannot rebuild a number. So the command cannot search for the client's own numbers. It replaces, with `tombstone` (the erasure's own replacement), every Indian mobile number in national form: ten digits starting 6 to 9, split 5 + 5 by one space or hyphen or not split, alone or after `+91`, `91` or `0` with or without one space or hyphen, with no letter, digit, underscore or hyphen right before it and no letter, digit or underscore right after it (so a number inside an id such as a UUID's last group is not cut). It does this only in free-text values: a text column value or a JSON string value that contains at least one letter or whitespace. A value made only of digits and a JSON number are never touched.
+
+**Which rows.** Only the erased clients' own rows, the set the erasure itself scrubs. The clients are the users with a `client.erased` audit row. Their applications are the one still linked to the kept user row and every application tombstoned with the client's erased placeholder email (`tombstone+<id>@invalid.example`), which covers matched applications in both paths. The rows are those of the erasure's scrub targets (audit rows about the client, notifications, support requests, those applications' reviews, outbox events, and the ledger, payout, maturity and receipt notes) and the receipts in the client's scope or naming the client's id. It also nulls a kept client's contact-history `reason_detail` that mentions such a number, as the erasure does for a reason naming a contact; the update goes through the 069 erase path, with the same `markErasing` setting the erasure uses. For a deleted (G3) client only the receipts naming the id and the matched applications' rows remain.
+
+**What it cannot tell or find.**
+
+- It cannot tell the client's own number from any other mobile number written in the same text, such as a relative's number or a BeOnEdge support number quoted in a receipt; it replaces them all, in those rows only. A receipt that names the erased client's id counts as theirs even when it also names someone else, as in the erasure.
+- It does not find a number with a letter right before or after it (`Mob9876543210`) or a hyphen right before it, landline or foreign numbers, other separators (dots, brackets, two spaces), a value with no letter or space (`98765-43210` on its own), names, emails, or anything outside those rows.
+
+**How it runs.**
+
+- Dry run by default: the whole pass runs in one transaction that is then rolled back, so it changes nothing, and prints what `--apply` would change: `mode`, `erasedClients`, the count per table, and each changed row's table and id (no values). `--apply` runs the same pass and commits it.
+- It refuses to run at all, dry run included, when `NODE_ENV` is `production`, unless `--allow-production` is given. Any other argument is refused. A refusal exits with code 2 and reads or changes nothing.
+- Idempotent: the replacement `tombstone` never matches the pattern, so a second `--apply` reports no rows and changes nothing.
+- It writes no audit row; the printed report is the record of the run.
+- Rows are locked `FOR UPDATE` until the transaction ends, in the dry run too, and each erased client costs one sequential scan of `idempotency_records` (the receipts naming the id). The runtime's 10 s statement timeout applies.
+
+**Pre-flight (read-only).** Nothing needs re-scrubbing unless this returns a count above zero:
+
+```sql
+SELECT count(DISTINCT entity_id) AS erased_clients FROM audit_events
+WHERE entity_type = 'user' AND command = 'client.erased';
+```
+
+**Production run (maintainer only).** Through the stack's compose project and environment (the `compose` wrapper in `release_manager/stacks/_shared/_boe_lib.sh`, the way it runs `migrate.js status`): `run --rm --no-deps migrate node dist/scripts/rescrubErasedPhones.js --allow-production` for the dry run; review the rows it names; then the same with `--apply --allow-production`. It was never run against a real database while it was built.
+
+**Rollback.** No schema change, so an images-only rollback is unaffected. The previous release's erase command does not replace national forms; an erasure made while rolled back can be covered by running the re-scrub after the roll-forward.
 
 ## Cost inside the locked transaction
 
@@ -304,7 +337,9 @@ Rollback after 072 (Phase I): an images-only rollback to v0.16.2 runs against 07
 - `clientErasureCoverage.integration.test.ts`: the reviewed foreign-key and column classification.
 - Every seeded client in `erasureSupport.ts` also holds a declined and a pending nominee request (Phase I, 072), an admin audit row about the pending one, and a notification naming the requested nominee: the G2 test asserts both requests read `Tombstoned` with no reason and the pending one is `withdrawn`, and that the requested name is readable nowhere; the G3 test that no row naming the client remains. `nomineeRequestsMigration.integration.test.ts` covers the trigger on a previous-release tombstone write.
 - Every seeded client in `erasureSupport.ts` holds a statement link (Phase H, 070): the G2 test asserts it is deleted, the G3 test that no row naming the client remains, and `clientStatementLinks.integration.test.ts` that an erased client's live link no longer opens.
-- `erasureContacts.test.ts`: the scrubber's boundaries, case handling, names and JSON rules.
+- `erasureContacts.test.ts`: the scrubber's boundaries, case handling, names and JSON rules, and the national forms in text and in free-text JSON values only.
+- `clientErasurePhones.integration.test.ts` (DEC-66): a decline reason in a receipt, an audit note and a support request holding the client's current and former phones in national forms read `tombstone` after a G2 erasure, while digit-only receipt values and a JSON number with the same digits are unchanged. The re-scrub, over a kept and a deleted erased client and a bystander: the dry run leaves the whole database byte-identical and names exactly the planted rows, `--apply` changes those rows (receipts, an audit note, a support request, a matched application's review, a contact-history reason, but not a reason without a number) and no bystander's, and a second `--apply` reports nothing and leaves the database byte-identical.
+- `rescrubErasedPhones.test.ts`: the re-scrub is a dry run without `--apply`, refuses `NODE_ENV=production` without `--allow-production` in either mode, and refuses unknown flags.
 - Frontend `ClientEraseScreen.test.tsx`: the typed `ERASE` gate, an unknown outcome replaying the held key and request, the typed word cleared after a refusal, and a failed check showing an error with retry and no erase action.
 - `releaseUpgrade` expects 068 and 069, and 072 and 073 since Phase I.
 - An early exit's payout (`withdrawal_operations` with no maturity, 073) is pending until the admin records the transfer, so the existing open-withdrawal blocker refuses erasure meanwhile.

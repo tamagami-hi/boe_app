@@ -35,6 +35,33 @@ describe("the erasure contact scrubber", () => {
     expect(scrubber.text("Ref 198765432101 and 98765432100")).toBe("Ref 198765432101 and 98765432100")
   })
 
+  test("replaces every national form of a +91 phone in text", () => {
+    expect(scrubber.text("Ring 98765 43210, +91 98765 43210, +91-9876543210, 098765 43210 or 0 9876543210.")).toBe(
+      "Ring tombstone, tombstone, tombstone, tombstone or tombstone.",
+    )
+    expect(scrubber.text("Ref 98765 432101 and 198765 43210")).toBe("Ref 98765 432101 and 198765 43210")
+  })
+
+  test("replaces national forms in JSON only inside values with a letter or a space", () => {
+    expect(
+      scrubber.json({
+        reason: "Called 98765 43210 twice",
+        spaced: "+91 98765 43210",
+        digits: "9876543210",
+        prefixed: "919876543210",
+        hyphenated: "98765-43210",
+        amount: 9876543210,
+      }),
+    ).toEqual({
+      reason: "Called tombstone twice",
+      spaced: "tombstone",
+      digits: "9876543210",
+      prefixed: "919876543210",
+      hyphenated: "98765-43210",
+      amount: 9876543210,
+    })
+  })
+
   test("replaces the name word by word only in the client's own text", () => {
     expect(scrubber.ownText("Dear asha verma, thanks.")).toBe("Dear Tombstoned, thanks.")
     expect(scrubber.ownText("Asha Vermaji called")).toBe("Asha Vermaji called")

@@ -127,7 +127,7 @@ export const scrubTarget = async (
   target: ScrubTarget,
   owner: ScrubOwner,
   scrubber: ContactScrubber,
-): Promise<number> => {
+): Promise<readonly string[]> => {
   const columns = [...target.textColumns, ...target.jsonColumns]
   const rows = (
     await sql<ScrubRow>`
@@ -138,7 +138,7 @@ export const scrubTarget = async (
       for update
     `.execute(tx)
   ).rows
-  let changed = 0
+  const changed: string[] = []
   for (const row of rows) {
     const updates = scrubbedColumns(target, row, scrubber)
     if (updates.length === 0) continue
@@ -147,7 +147,7 @@ export const scrubTarget = async (
       set ${sql.join(updates.map(([column, value]) => sql`${sql.ref(column)} = ${value}`))}
       where id = ${row.id}
     `.execute(tx)
-    changed += 1
+    changed.push(row.id)
   }
   return changed
 }

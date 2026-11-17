@@ -69,7 +69,11 @@ export interface ClientErasureInspectRepository {
   collectContactSources: (tx: Transaction, subject: ErasureSubject) => Promise<ContactSources>
   findHeldContacts: (tx: Transaction, userId: string, contacts: HeldContacts) => Promise<HeldContacts>
   findMatchedApplications: (tx: Transaction, subject: ErasureSubject, emails: readonly string[]) => Promise<readonly string[]>
-  listOwnedEntities: (tx: Transaction, subject: ErasureSubject, applicationIds: readonly string[]) => Promise<OwnedEntities>
+  listOwnedEntities: (
+    tx: Transaction,
+    subject: Pick<ErasureSubject, "id">,
+    applicationIds: readonly string[],
+  ) => Promise<OwnedEntities>
   countBlockers: (tx: Transaction, subject: ErasureSubject, reach: ErasureReach) => Promise<ErasureBlockerCounts>
   listActiveHoldEntityIds: (tx: Transaction, entityType: string) => Promise<readonly string[]>
   hasMoneyRecords: (tx: Transaction, userId: string) => Promise<boolean>
@@ -226,7 +230,7 @@ const sealedRecipientQuery = (subject: ErasureSubject) => sql<{
   where user_id = ${subject.id}
 `
 
-const ownedEntityQuery = (subject: ErasureSubject, applicationIds: readonly string[]) => sql<{
+const ownedEntityQuery = (subject: Pick<ErasureSubject, "id">, applicationIds: readonly string[]) => sql<{
   readonly entity_type: string
   readonly id: string
 }>`
