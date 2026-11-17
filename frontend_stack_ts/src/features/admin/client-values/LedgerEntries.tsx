@@ -108,7 +108,7 @@ export const LedgerEntries = ({
       <Button
         tone="danger"
         size="sm"
-        disabled={!canWrite || write.held !== null || write.pending}
+        disabled={!canWrite || write.held !== null || write.pending || write.unreadable}
         onClick={() => {
           setAsking(row)
         }}

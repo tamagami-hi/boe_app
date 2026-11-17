@@ -398,7 +398,7 @@ describe("recording a month of payments row by row", () => {
     expect(recordButton()).toBeNull()
   })
 
-  it("marks a row whose held request could not be saved in the tab, and keeps the month fixed", async () => {
+  it("marks a row whose held request could not be saved in the tab, keeps the month fixed and refuses to unload until it is confirmed", async () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
     })
@@ -411,6 +411,14 @@ describe("recording a month of payments row by row", () => {
     expect(screen.getByText(/^Not saved in this tab/u)).toBeTruthy()
     expect(screen.getByLabelText(/^Month/u).hasAttribute("disabled")).toBe(true)
     expect(window.sessionStorage.length).toBe(0)
+    expect(window.dispatchEvent(new Event("beforeunload", { cancelable: true }))).toBe(false)
+
+    vi.restoreAllMocks()
+    reply = succeed
+    checkAgain("Asha Rao")
+    expect(await screen.findByText("Recorded")).toBeTruthy()
+    expect(sent.map((held) => held.idempotencyKey)).toEqual([sent[0]?.idempotencyKey, sent[0]?.idempotencyKey])
+    expect(window.dispatchEvent(new Event("beforeunload", { cancelable: true }))).toBe(true)
   })
 })
 

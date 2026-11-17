@@ -14,7 +14,7 @@ import { BACKEND_IDEMPOTENCY_TTL_MS } from "~/features/admin/shared/heldWriteSto
 import CollectiveClientGrowthScreen from "./CollectiveClientGrowthScreen"
 import { EarlierInvestmentForm, recordingSlot } from "./EarlierInvestmentForm"
 import { IndividualGrowthForm } from "./IndividualGrowthForm"
-import { LedgerEntries } from "./LedgerEntries"
+import { LedgerEntries, ledgerReversalSlot } from "./LedgerEntries"
 import { MaturityPanel } from "./MaturityPanel"
 import { WithdrawalPayoutPanel } from "./WithdrawalPayoutPanel"
 
@@ -291,6 +291,57 @@ const CASES: readonly HeldWriteCase[] = [
   },
 ]
 
+const STORED_KEY = "0f2c3a9e-1111-4222-8333-444455556666"
+
+const caseNamed = (name: string): HeldWriteCase => {
+  const found = CASES.find((candidate) => candidate.name === name)
+  if (found === undefined) throw new Error(`expected a case named ${name}`)
+  return found
+}
+
+const fundsLoaded = (): Promise<HTMLElement> => screen.findByRole("option", { name: "Balanced Fund" })
+
+const maturityControls = (): readonly HTMLElement[] => [
+  screen.getByLabelText(/^Position/u),
+  screen.getByLabelText(/^Maturity date/u),
+  screen.getByLabelText(/^Note/u),
+  lastButton("Mark matured"),
+]
+
+type UnreadableCase = HeldWriteCase &
+  Readonly<{ slot: string; loaded: () => Promise<unknown>; controls: () => readonly HTMLElement[] }>
+
+const UNREADABLE_CASES: readonly UnreadableCase[] = [
+  {
+    ...caseNamed("reverse a ledger entry"),
+    slot: ledgerReversalSlot(USER_ID),
+    loaded: () => screen.findAllByRole("button", { name: "Reverse" }),
+    controls: () => screen.getAllByRole("button", { name: "Reverse" }),
+  },
+  {
+    ...caseNamed("mark a position matured"),
+    slot: `maturity-mark:${USER_ID}`,
+    loaded: fundsLoaded,
+    controls: maturityControls,
+  },
+  {
+    ...caseNamed("settle a matured position by a withdrawal"),
+    slot: `maturity-settle:${USER_ID}`,
+    loaded: fundsLoaded,
+    controls: maturityControls,
+  },
+  {
+    ...caseNamed("record a payout's transfer outcome"),
+    slot: `payout:${PAYOUT_ID}`,
+    loaded: () => Promise.resolve(),
+    controls: () => [
+      screen.getByLabelText(/^Transfer outcome/u),
+      screen.getByLabelText(/^Bank transfer reference/u),
+      screen.getByRole("button", { name: "Record transfer outcome" }),
+    ],
+  },
+]
+
 beforeEach(() => {
   sent.length = 0
   maturities = []
@@ -393,4 +444,32 @@ describe("a money or ledger write whose reply is lost", () => {
     expect(screen.getByLabelText(/^Fund/u).hasAttribute("disabled")).toBe(true)
     expect(window.dispatchEvent(new Event("beforeunload", { cancelable: true }))).toBe(false)
   })
+})
+
+describe("a money or ledger write whose stored hold cannot be read", () => {
+  it.each(UNREADABLE_CASES)(
+    "$name: every input and action stays disabled and nothing is sent until the record is checked",
+    async ({ operationId, form, fill, setUp, slot, loaded, controls }) => {
+      setUp?.()
+      const stored = `beo.admin.held-write.v1:${slot}`
+      window.sessionStorage.setItem(stored, JSON.stringify({ adminId: ADMIN_ID, idempotencyKey: STORED_KEY, body: {} }))
+      renderWith(form())
+
+      expect(await screen.findByText("Held request not readable")).toBeTruthy()
+      await loaded()
+      expect(controls().filter((control) => !control.hasAttribute("disabled"))).toEqual([])
+      expect(screen.queryByRole("button", { name: "Check again" })).toBeNull()
+      expect(sent).toHaveLength(0)
+
+      fireEvent.click(screen.getByRole("button", { name: "I have checked the record" }))
+      expect(window.sessionStorage.getItem(stored)).toBeNull()
+      await fill()
+      await waitFor(() => {
+        expect(sent).toHaveLength(1)
+      })
+
+      expect(sent[0]?.operationId).toBe(operationId)
+      expect(sent[0]?.idempotencyKey).not.toBe(STORED_KEY)
+    },
+  )
 })

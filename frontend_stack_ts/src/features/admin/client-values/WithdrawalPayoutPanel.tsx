@@ -43,7 +43,7 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
     held === null ? "" : held.state === "paid" ? held.transferReference : held.failureCode,
   )
   const [isConfirming, setIsConfirming] = useState(false)
-  const locked = write.held !== null || write.pending
+  const locked = write.held !== null || write.pending || write.unreadable
   useUnloadGuard(isUnsavedHold(write))
   const trimmed = reference.trim()
   const isValid = trimmed !== "" && (state === "paid" || FAILURE_CODE_PATTERN.test(trimmed))

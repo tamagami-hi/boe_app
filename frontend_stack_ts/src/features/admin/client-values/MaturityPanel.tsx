@@ -80,7 +80,14 @@ export const MaturityPanel = ({ userId, investorLabel, canWrite, positions, onUn
   const items = maturities.data?.items ?? []
   const pending = items.find((row) => row.fundId === fundId && row.state === "pending")
   const position = positions.find((row) => row.fundId === fundId)
-  const locked = !canWrite || mark.held !== null || settle.held !== null || mark.pending || settle.pending
+  const locked =
+    !canWrite ||
+    mark.held !== null ||
+    settle.held !== null ||
+    mark.pending ||
+    settle.pending ||
+    mark.unreadable ||
+    settle.unreadable
   const isReady = !locked && maturities.data !== undefined && funds.ready && fundId !== "" && date !== "" && date <= today
   const withdrawalPaise = parsePositiveRupees(withdrawalRupees)
   const isAmountValid =
