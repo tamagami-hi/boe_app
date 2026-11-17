@@ -5,6 +5,7 @@ import { useIdempotencyKey } from "~/api/idempotency"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
+import { tooManyRequestsMessage } from "~/domain/failure"
 import { emailDeliveryState } from "~/domain/status"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
@@ -77,7 +78,7 @@ const CONFIRM_COPY: Readonly<Record<SendKind, Readonly<{ title: string; descript
 
 const rejectionMessage = (error: unknown): string => {
   if (!isApiError(error)) return "The request could not be sent. Reload the page and try again."
-  if (error.code === "RATE_LIMITED") return "Too many requests right now. Try again in a few minutes."
+  if (error.code === "RATE_LIMITED") return tooManyRequestsMessage(error.retryAfterSeconds)
   return error.message
 }
 
@@ -230,7 +231,7 @@ export const PasswordLinkPanel = ({ userId, email, canReceive }: PasswordLinkPan
         <p className={PROSE_SM}>
           {canSend
             ? "Password links are only sent to active client accounts."
-            : "Sending a password link needs the clients.password_links.send permission."}
+            : "Your role cannot send password links."}
         </p>
       )}
 

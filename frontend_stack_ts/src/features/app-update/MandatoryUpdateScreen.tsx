@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom"
+
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { ACTION_ROW } from "~/ui/recipes/layout"
@@ -29,7 +31,7 @@ export const MandatoryUpdateScreen = ({
   installer,
   onRecheck,
   rechecking,
-}: MandatoryUpdateScreenProps): React.ReactElement => (
+}: MandatoryUpdateScreenProps): React.ReactElement => createPortal(
   <div
     className={BLOCK_LAYER}
     role="dialog"
@@ -60,5 +62,6 @@ export const MandatoryUpdateScreen = ({
         )}
       </Card>
     </div>
-  </div>
+  </div>,
+  document.body,
 )

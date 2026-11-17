@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react"
+import { useEffect, useRef, useSyncExternalStore } from "react"
 import type { ReactNode } from "react"
 import { createPortal } from "react-dom"
 
@@ -39,10 +39,25 @@ const evaluate = (trigger: LockTrigger): void => {
   }
 }
 
+const APP_ROOT_SELECTOR = "#root"
+
 export type DeviceLockGateProps = Readonly<{ children: ReactNode }>
 
 export const DeviceLockGate = ({ children }: DeviceLockGateProps): React.ReactElement => {
   const locked = useDeviceLocked()
+  const lockPanel = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!locked) return undefined
+    const root = document.querySelector(APP_ROOT_SELECTOR)
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    root?.setAttribute("inert", "")
+    lockPanel.current?.focus()
+    return () => {
+      root?.removeAttribute("inert")
+      if (previous?.isConnected === true) previous.focus()
+    }
+  }, [locked])
 
   useEffect(() => {
     evaluate("cold-start")
@@ -64,7 +79,7 @@ export const DeviceLockGate = ({ children }: DeviceLockGateProps): React.ReactEl
   return (
     <>
       {children}
-      {locked ? createPortal(<LockScreen onUnlocked={unlockDevice} />, document.body) : null}
+      {locked ? createPortal(<LockScreen ref={lockPanel} onUnlocked={unlockDevice} />, document.body) : null}
     </>
   )
 }

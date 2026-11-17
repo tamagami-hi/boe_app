@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 
+import { isDeviceLocked } from "~/app/native/deviceLock"
+
 export type OverlayEntry = Readonly<{
   id: string
   dismiss: () => void
@@ -65,7 +67,7 @@ export const OverlayStackProvider = ({
   useEffect(() => {
     if (typeof window === "undefined") return
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== "Escape" || order.current.length === 0) return
+      if (event.key !== "Escape" || order.current.length === 0 || isDeviceLocked()) return
       event.preventDefault()
       dismissTop()
     }

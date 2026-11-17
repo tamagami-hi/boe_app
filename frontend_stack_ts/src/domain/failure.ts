@@ -42,6 +42,17 @@ type ContextRules = Readonly<{
   fallback: Copy
 }>
 
+const waitFor = (seconds: number): string => {
+  if (seconds < 60) return seconds === 1 ? "1 second" : `${String(seconds)} seconds`
+  const minutes = Math.ceil(seconds / 60)
+  return minutes === 1 ? "1 minute" : `${String(minutes)} minutes`
+}
+
+export const tooManyRequestsMessage = (retryAfterSeconds: number | null): string =>
+  retryAfterSeconds === null
+    ? "Too many requests right now. Try again in a few minutes."
+    : `Too many requests right now. Try again in ${waitFor(Math.max(1, retryAfterSeconds))}.`
+
 const GENERIC_TITLE = "That did not work"
 
 const GENERIC_MESSAGE = "We couldn't complete this action right now. Please try again."
@@ -78,12 +89,9 @@ const CODE_BASE: Readonly<Partial<Record<ErrorCode, Copy>>> = {
   IDEMPOTENCY_KEY_REUSED: { message: "This has already been submitted. Give it a moment." },
   IDEMPOTENCY_IN_PROGRESS: { message: "This is already being processed. Give it a moment." },
   PAYLOAD_TOO_LARGE: { message: "That is too long to send. Shorten it and try again." },
-  RATE_LIMITED: { message: "Too many attempts just now. Wait a moment and try again." },
   INTERNAL_ERROR: { message: "Something went wrong on our side. Please try again in a moment." },
   DEPENDENCY_UNAVAILABLE: { message: "This is temporarily unavailable. Please try again shortly." },
 }
-
-const TOO_MANY_REQUESTS: Copy = { message: "Too many requests right now. Try again in a few minutes." }
 
 const UNCONFIRMED_MONEY_SAFE =
   "We couldn't confirm this. No payment has been taken — check Activity before trying again."
@@ -126,7 +134,6 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
   sendVerificationCode: {
     title: "We couldn't send the code",
     codes: {
-      RATE_LIMITED: TOO_MANY_REQUESTS,
       DEPENDENCY_UNAVAILABLE: { message: "We couldn't send the email just now. Try again shortly." },
       STATE_CONFLICT: { message: "This email address is already verified." },
     },
@@ -137,7 +144,6 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     title: "That code didn't work",
     codes: {
       STATE_CONFLICT: { message: "That code is no longer valid. Ask for a new one." },
-      RATE_LIMITED: TOO_MANY_REQUESTS,
     },
     fallback: { message: "We couldn't check that code. Please try again." },
   },
@@ -236,7 +242,6 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     title: "We couldn't send that",
     codes: {
       VALIDATION_FAILED: { message: "Enter the email address on your account." },
-      RATE_LIMITED: TOO_MANY_REQUESTS,
       DEPENDENCY_UNAVAILABLE: { message: "We couldn't send the email just now. Try again shortly." },
     },
     transport: {
@@ -253,7 +258,6 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
         message: "This link is no longer valid. Ask for a new one and use the newest email.",
       },
       VALIDATION_FAILED: { message: "Use at least 12 characters." },
-      RATE_LIMITED: TOO_MANY_REQUESTS,
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
@@ -267,7 +271,6 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     codes: {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
       VALIDATION_FAILED: { message: "Use at least 12 characters for the new password." },
-      RATE_LIMITED: TOO_MANY_REQUESTS,
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
@@ -282,7 +285,6 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
       VALIDATION_FAILED: { message: "Enter the number with its country code, for example +919876543210." },
       STATE_CONFLICT: { message: "That number is already used by another account or a pending application." },
-      RATE_LIMITED: TOO_MANY_REQUESTS,
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
@@ -298,7 +300,6 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     title: "Request not sent",
     codes: {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
-      RATE_LIMITED: TOO_MANY_REQUESTS,
       VALIDATION_FAILED: { message: "Check the nominee's name and their relation to you, then try again." },
       ACCOUNT_NOT_ACTIVE: { message: "This account is not active, so it cannot send a nominee request. Contact support." },
       STATE_CONFLICT: { message: "A nominee request is already waiting for the BeOnEdge team. Reload to see it." },
@@ -321,7 +322,6 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
       VALIDATION_FAILED: { message: "Enter a full email address, like name@example.com." },
       STATE_CONFLICT: { message: "That email address is already used by another account or a pending application." },
-      RATE_LIMITED: TOO_MANY_REQUESTS,
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
@@ -355,7 +355,6 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     title: "Not sent",
     codes: {
       VALIDATION_FAILED: { message: "Check the subject and description, then try again." },
-      RATE_LIMITED: { message: "You've sent several requests just now. Wait a moment and try again." },
     },
     fallback: { message: "We couldn't send your request. Nothing was sent — please try again." },
   },
@@ -407,6 +406,9 @@ export const describeClientFailure = (error: unknown, context: FailureContext): 
   }
 
   if (isApiError(error)) {
+    if (error.code === "RATE_LIMITED") {
+      return { title: rules.title, message: tooManyRequestsMessage(error.retryAfterSeconds), retryable }
+    }
     const copy = rules.codes?.[error.code] ?? CODE_BASE[error.code] ?? rules.fallback
     return { title: copy.title ?? rules.title, message: copy.message, retryable }
   }

@@ -16,6 +16,10 @@ import { ReturnValue } from "./ReturnValue"
 
 type Row = Readonly<{ id: string }>
 
+type RecordedSummary = ClientValueSummary & Readonly<{ lastUpdatedAt: string }>
+
+const hasEntries = (summary: ClientValueSummary): summary is RecordedSummary => summary.lastUpdatedAt !== null
+
 export type DirectoryReturns = Readonly<{
   columns: readonly AdminColumn<Row>[]
   notice: React.ReactElement | null
@@ -28,9 +32,9 @@ export const useDirectoryReturns = (userIds: readonly string[]): DirectoryReturn
   if (!canRead) return { columns: [], notice: null }
 
   const hasFailed = summaries.error !== null && !isSessionEnded(summaries.error)
-  const cell = (row: Row, render: (summary: ClientValueSummary) => ReactNode): ReactNode => {
+  const cell = (row: Row, render: (summary: RecordedSummary) => ReactNode): ReactNode => {
     const summary = summaries.byUserId.get(row.id)
-    if (summary !== undefined && summary.lastUpdatedAt !== null) return render(summary)
+    if (summary !== undefined && hasEntries(summary)) return render(summary)
     if (summary !== undefined) return <span className={META_MUTED}>No recorded investment</span>
     if (hasFailed) return <span className={META_MUTED}>Not loaded</span>
     if (summaries.isPending) return <Skeleton height="1rem" width="4rem" />
@@ -76,7 +80,7 @@ export const useDirectoryReturns = (userIds: readonly string[]): DirectoryReturn
         render: (row) =>
           cell(row, (summary) => (
             <span className={META_TEXT}>
-              {summary.lastUpdatedAt === null ? "No entry" : formatDateTime(summary.lastUpdatedAt)}
+              {formatDateTime(summary.lastUpdatedAt)}
             </span>
           )),
       },

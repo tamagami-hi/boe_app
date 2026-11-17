@@ -223,6 +223,8 @@ export const UserLifecyclePanel = ({
           <p className={PROSE_SM}>Your role cannot suspend, reinstate or close accounts.</p>
         ) : accountState === "closed" ? (
           <p className={PROSE_SM}>This account is closed and cannot be reopened from here.</p>
+        ) : !hasAction && accountState === "invited" ? (
+          <p className={PROSE_SM}>This account has not been activated yet. It can only be closed, and your role cannot close accounts.</p>
         ) : null}
       </Card>
 

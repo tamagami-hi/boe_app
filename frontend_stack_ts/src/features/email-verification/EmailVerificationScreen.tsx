@@ -6,6 +6,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatCountdown } from "~/domain/dates"
+import { tooManyRequestsMessage } from "~/domain/failure"
 import { useEligibility, useVerifyEmail } from "~/features/shared/queries"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
@@ -20,7 +21,7 @@ const CODE_LENGTH = 6
 const issueMessage = (error: unknown): string => {
   if (isTransportError(error)) return "We could not reach BeOnEdge. Try again."
   if (!isApiError(error)) return "We could not send the code. Try again."
-  if (error.code === "RATE_LIMITED") return "Too many requests right now. Try again in a few minutes."
+  if (error.code === "RATE_LIMITED") return tooManyRequestsMessage(error.retryAfterSeconds)
   if (error.code === "DEPENDENCY_UNAVAILABLE") {
     return "We could not send the email just now. Try again shortly."
   }

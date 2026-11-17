@@ -41,6 +41,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
                 setUserId(choice.userId)
                 setPickedLabel(choice.label)
                 if (choice.userId !== "") setFormKey(choice.userId)
+                else if (investor.missing) setFormKey("")
                 relink({ userId: choice.userId, fundId: "" })
               }}
             />

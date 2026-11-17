@@ -7,6 +7,7 @@ import { findRoute, navBarEntries, navGroups, navRoutes } from "~/app/routing/ro
 import { Modal } from "~/app/overlays/Modal"
 import { useSession } from "~/app/providers/SessionProvider"
 import { MaturityDuePrompt } from "~/features/admin/maturities/MaturityDuePrompt"
+import { useHasUnsettledHeldWrite } from "~/features/admin/shared/unsettledHeldWrites"
 import { useAuthPort } from "~/features/auth/authPort"
 import { ADMIN_NOTES } from "~/features/whats-new/adminNotes"
 import { WhatsNewPrompt } from "~/features/whats-new/WhatsNewPrompt"
@@ -45,6 +46,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
   const location = useLocation()
   const navigate = useNavigate()
   const session = useSession()
+  const isHoldingWrite = useHasUnsettledHeldWrite()
   const port = useAuthPort()
   const [moreOpen, setMoreOpen] = useState(false)
   const [maturityPromptDismissedFor, setMaturityPromptDismissedFor] = useState<string | null>(null)
@@ -175,7 +177,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
         }}
       />
 
-      <WhatsNewPrompt notes={ADMIN_NOTES} />
+      <WhatsNewPrompt notes={ADMIN_NOTES} isHeldBack={isHoldingWrite} />
 
       <Modal
         open={moreOpen}

@@ -26,6 +26,17 @@ const SplashScreen = ({ logoSrc }: SplashScreenProps): React.ReactElement => {
   const needsRetry = reachability === "unreachable" || (session.status === "restoring" && session.error !== null)
 
   useEffect(() => {
+    if (reachability !== "unreachable") return undefined
+    const reprobe = (): void => {
+      setAttempt((current) => current + 1)
+    }
+    window.addEventListener("online", reprobe)
+    return () => {
+      window.removeEventListener("online", reprobe)
+    }
+  }, [reachability])
+
+  useEffect(() => {
     if (!canCheckForUpdates()) return
     let cancelled = false
     void readInstalledApp()

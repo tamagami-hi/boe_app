@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { ApiError } from "~/api/errors"
 import { createAdminFund } from "~/api/generated/operations"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
@@ -8,6 +9,7 @@ import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useToast } from "~/app/providers/ToastProvider"
 import { formatDate, indiaToday } from "~/domain/dates"
+import { tooManyRequestsMessage } from "~/domain/failure"
 import { toPaise } from "~/domain/money"
 import { paiseToRupeeText, parseRupees } from "~/features/admin/client-values/rupeeAmount"
 import { useHeldDone } from "~/features/admin/shared/useHeldDone"
@@ -37,17 +39,18 @@ const parseCreateBody = (value: unknown): CreateFundInput | null => {
 
 const PERSIST = { slot: "fund-create", parseBody: parseCreateBody, retention: "ordinary" } as const
 
-const rejectionText = (code: string | null, message: string): string => {
+const rejectionText = (code: string | null, message: string, error: unknown): string => {
   if (code === "STATE_CONFLICT") return "That slug is already in use. Nothing was created."
-  if (code === "AUTHORIZATION_DENIED") return "Creating a fund needs both funds.write and aum.write."
-  if (code === "RATE_LIMITED") return "Too many AUM writes just now. Wait, then create the fund again."
+  if (code === "AUTHORIZATION_DENIED") return "Your role cannot create funds."
+  if (code === "RATE_LIMITED") return tooManyRequestsMessage(error instanceof ApiError ? error.retryAfterSeconds : null)
   return message
 }
 
 const FundCreateScreen = (): React.ReactElement => {
   const navigate = useNavigate()
   const { show } = useToast()
-  const create = useHeldWrite(useCreateAdminFund(), UNSENT, PERSIST)
+  const createFund = useCreateAdminFund()
+  const create = useHeldWrite(createFund, UNSENT, PERSIST)
   const restored = create.held
   const [terms, setTerms] = useState<FundTerms>(() => (restored === null ? EMPTY_TERMS : termsOfBody(restored.terms)))
   const [slug, setSlug] = useState(() => restored?.slug ?? "")
@@ -107,7 +110,7 @@ const FundCreateScreen = (): React.ReactElement => {
       />
       {outcome.kind === "rejected" ? (
         <Alert tone="error" title="Not created">
-          {rejectionText(outcome.code, outcome.message)}
+          {rejectionText(outcome.code, outcome.message, createFund.error)}
         </Alert>
       ) : null}
 

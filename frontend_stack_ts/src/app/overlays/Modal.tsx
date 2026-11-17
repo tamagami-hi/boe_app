@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useRef } from "react"
 import type { ReactNode } from "react"
 
+import { useDeviceLocked } from "~/app/native/DeviceLockGate"
 import { useOverlayStack } from "~/app/providers/OverlayStackProvider"
 import { Sheet } from "~/ui/primitives/Sheet"
 
@@ -22,6 +23,7 @@ export const Modal = ({
   children,
 }: ModalProps): React.ReactElement | null => {
   const { register } = useOverlayStack()
+  const locked = useDeviceLocked()
   const id = useId()
   const dismiss = useRef(onDismiss)
   dismiss.current = onDismiss
@@ -39,6 +41,7 @@ export const Modal = ({
   return (
     <Sheet
       open={open}
+      inert={locked}
       title={title}
       {...(description === undefined ? {} : { description })}
       {...(actions === undefined ? {} : { actions })}

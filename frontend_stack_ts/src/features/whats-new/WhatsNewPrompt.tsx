@@ -13,11 +13,13 @@ import { browserWhatsNewSeen, type WhatsNewSeen } from "./whatsNewSeen"
 export type WhatsNewPromptProps = Readonly<{
   notes: Notes
   seen?: WhatsNewSeen
+  isHeldBack?: boolean
 }>
 
 export const WhatsNewPrompt = ({
   notes,
   seen = browserWhatsNewSeen,
+  isHeldBack = false,
 }: WhatsNewPromptProps): React.ReactElement | null => {
   const { status, principal, scope } = useSession()
   const { depth } = useOverlayStack()
@@ -29,7 +31,12 @@ export const WhatsNewPrompt = ({
   const userId = status === "authenticated" && principal?.accountState === "active" ? principal.userId : null
   const openFor = userId !== null && shownTo === userId ? userId : null
   const isDue =
-    openFor === null && userId !== null && depth === 0 && !locked && seen.lastSeen(scope, userId) !== latest.id
+    openFor === null &&
+    userId !== null &&
+    depth === 0 &&
+    !locked &&
+    !isHeldBack &&
+    seen.lastSeen(scope, userId) !== latest.id
 
   useEffect(() => {
     if (!isDue) return

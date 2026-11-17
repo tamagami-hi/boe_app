@@ -17,6 +17,7 @@ import {
 
 export type SheetProps = Readonly<{
   open: boolean
+  inert?: boolean
   title: string
   description?: string
   actions?: ReactNode
@@ -40,6 +41,7 @@ const focusableWithin = (root: HTMLElement): readonly HTMLElement[] =>
 
 export const Sheet = ({
   open,
+  inert = false,
   title,
   description,
   actions,
@@ -49,6 +51,8 @@ export const Sheet = ({
   const id = useId()
   const panel = useRef<HTMLDivElement | null>(null)
   const restoreTo = useRef<HTMLElement | null>(null)
+  const isInert = useRef(inert)
+  isInert.current = inert
 
   useEffect(() => {
     if (!open) return
@@ -56,7 +60,7 @@ export const Sheet = ({
     restoreTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
 
     const node = panel.current
-    if (node !== null) {
+    if (node !== null && !isInert.current) {
       const first = focusableWithin(node)[0]
       if (first === undefined) node.focus()
       else first.focus()
@@ -102,6 +106,7 @@ export const Sheet = ({
   return createPortal(
     <div
       className={SCRIM}
+      inert={inert}
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onDismiss()
       }}

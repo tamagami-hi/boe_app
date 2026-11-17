@@ -60,7 +60,7 @@ describe("who can send a client a password link", () => {
     granted = false
     panel(true)
     expect(screen.queryByRole("button", { name: "Send a new invite link" })).toBeNull()
-    expect(screen.getByText(/needs the clients.password_links.send permission/u)).toBeTruthy()
+    expect(screen.getByText("Your role cannot send password links.")).toBeTruthy()
   })
 
   it("never offers it for an account that cannot receive one", () => {

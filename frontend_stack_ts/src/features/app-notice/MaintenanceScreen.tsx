@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom"
+
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { ACTION_ROW, GATE_TITLE } from "~/ui/recipes/layout"
@@ -9,7 +11,7 @@ export type MaintenanceScreenProps = Readonly<{
   onCheck: () => void
 }>
 
-export const MaintenanceScreen = ({ checking, onCheck }: MaintenanceScreenProps): React.ReactElement => (
+export const MaintenanceScreen = ({ checking, onCheck }: MaintenanceScreenProps): React.ReactElement => createPortal(
   <div className={BLOCK_LAYER} role="dialog" aria-modal="true" aria-label="BeOnEdge is being updated">
     <div className={BLOCK_PANEL}>
       <div className={BLOCK_HEAD}>
@@ -31,5 +33,6 @@ export const MaintenanceScreen = ({ checking, onCheck }: MaintenanceScreenProps)
         </div>
       </Card>
     </div>
-  </div>
+  </div>,
+  document.body,
 )

@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 
 import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { useIdempotencyKey } from "~/api/idempotency"
+import { tooManyRequestsMessage } from "~/domain/failure"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { Button } from "~/ui/primitives/Button"
 import type { ButtonTone } from "~/ui/primitives/Button"
@@ -22,7 +23,7 @@ const IDLE: Outcome = { kind: "idle" }
 
 const describeRejection = (error: unknown): string => {
   if (!isApiError(error)) return "This email could not be sent. Reload the page and try again."
-  if (error.code === "RATE_LIMITED") return "Too many requests right now. Try again in a few minutes."
+  if (error.code === "RATE_LIMITED") return tooManyRequestsMessage(error.retryAfterSeconds)
   if (error.code === "RESOURCE_NOT_FOUND") return "That template or client could not be found. Reload the page and choose again."
   return error.message
 }

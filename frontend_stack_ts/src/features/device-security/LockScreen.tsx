@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { Ref } from "react"
 
 import { useSession } from "~/app/providers/SessionProvider"
 import { beginNativePrompt, endNativePrompt } from "~/app/native/deviceLock"
@@ -31,9 +32,9 @@ const BIOMETRIC_MESSAGES: Readonly<Record<"cancelled" | "unavailable" | "failed"
 export const FORGOTTEN_PIN_CONSEQUENCE =
   "We will remove the PIN and sign you out on this device. Your account itself is unchanged \u2014 sign in again with your email and password."
 
-export type LockScreenProps = Readonly<{ onUnlocked: () => void }>
+export type LockScreenProps = Readonly<{ onUnlocked: () => void; ref?: Ref<HTMLDivElement> }>
 
-export const LockScreen = ({ onUnlocked }: LockScreenProps): React.ReactElement => {
+export const LockScreen = ({ onUnlocked, ref }: LockScreenProps): React.ReactElement => {
   const store = useMemo(browserDeviceSecurityStore, [])
   const session = useSession()
   const [entry, setEntry] = useState("")
@@ -107,7 +108,7 @@ export const LockScreen = ({ onUnlocked }: LockScreenProps): React.ReactElement 
   const biometricOffered = biometricWanted && capability.enrolled
 
   return (
-    <div className={BLOCK_LAYER} role="dialog" aria-modal="true" aria-label="BeOnEdge is locked">
+    <div ref={ref} className={BLOCK_LAYER} role="dialog" aria-modal="true" aria-label="BeOnEdge is locked" tabIndex={-1}>
       <div className={BLOCK_PANEL}>
         <div className={BLOCK_HEAD}>
           <span className={BLOCK_MARK}>BeOnEdge</span>

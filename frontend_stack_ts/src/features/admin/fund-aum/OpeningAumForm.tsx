@@ -6,6 +6,7 @@ import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useToast } from "~/app/providers/ToastProvider"
 import { formatDate, indiaToday } from "~/domain/dates"
+import { tooManyRequestsMessage } from "~/domain/failure"
 import { toPaise } from "~/domain/money"
 import { paiseToRupeeText, parseRupees } from "~/features/admin/client-values/rupeeAmount"
 import { useHeldDone } from "~/features/admin/shared/useHeldDone"
@@ -34,19 +35,15 @@ const parseOpeningBody = (value: unknown): AumInitializeInput | null => {
 
 export const openingAumSlot = (fundId: string): string => `fund-aum-opening:${fundId}`
 
-const rateLimitText = (error: unknown): string => {
-  const seconds = error instanceof ApiError ? error.retryAfterSeconds : null
-  return seconds === null
-    ? "Too many AUM writes just now. Wait, then record it again."
-    : `Too many AUM writes just now. Record it again in ${String(seconds)}s.`
-}
+const rateLimitText = (error: unknown): string =>
+  tooManyRequestsMessage(error instanceof ApiError ? error.retryAfterSeconds : null)
 
 const rejectionText = (code: string | null, message: string, error: unknown): string => {
   if (code === "STATE_CONFLICT") {
     return "This fund already has an AUM, or it changed after the page loaded, so nothing was recorded. Reload the fund."
   }
   if (code === "RATE_LIMITED") return rateLimitText(error)
-  if (code === "AUTHORIZATION_DENIED") return "Recording AUM needs the aum.write permission."
+  if (code === "AUTHORIZATION_DENIED") return "Your role cannot record AUM."
   return message
 }
 
