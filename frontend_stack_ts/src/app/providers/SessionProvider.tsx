@@ -66,6 +66,18 @@ export const SessionProvider = ({
   const [restoreNonce, setRestoreNonce] = useState(0)
   const lastUserId = useRef<string | null>(null)
   const signedInUserId = state.principal?.userId ?? null
+  const isRestoreHeldByOutage = state.status === "restoring" && state.error !== null
+
+  useEffect(() => {
+    if (!isRestoreHeldByOutage || typeof window === "undefined") return undefined
+    const retryOnline = (): void => {
+      setRestoreNonce((current) => current + 1)
+    }
+    window.addEventListener("online", retryOnline)
+    return () => {
+      window.removeEventListener("online", retryOnline)
+    }
+  }, [isRestoreHeldByOutage])
 
   useEffect(
     () => (signedInUserId === null ? undefined : endSessionOnOtherTabSignIn(scope, tokenStore)),

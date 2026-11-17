@@ -3,6 +3,7 @@ import type { ComponentType, ReactNode } from "react"
 
 import { useSession } from "~/app/providers/SessionProvider"
 import type { PermissionCode, RoleCode } from "~/domain/permissions"
+import { errorVariantOf } from "~/ui/patterns/AsyncBoundary"
 import { ErrorState } from "~/ui/patterns/ErrorState"
 import { Page } from "~/app/layouts/Page"
 import { Spinner } from "~/ui/primitives/Feedback"
@@ -25,6 +26,12 @@ const RestoringScreen = (): React.ReactElement => (
   </Page>
 )
 
+const RestoreFailedScreen = ({ error, onRetry }: Readonly<{ error: unknown; onRetry: () => void }>): React.ReactElement => (
+  <Page width="form">
+    <ErrorState variant={errorVariantOf(error, false)} onRetry={onRetry} />
+  </Page>
+)
+
 const ForbiddenScreen = (): React.ReactElement => (
   <Page width="default">
     <ErrorState variant="forbidden" />
@@ -42,10 +49,12 @@ export const RequireSession = ({
   allowTerminalAccount = false,
   children,
 }: RequireSessionProps): React.ReactElement => {
-  const { status, principal } = useSession()
+  const { status, principal, error, retryRestore } = useSession()
   const location = useLocation()
 
-  if (status === "restoring") return <RestoringScreen />
+  if (status === "restoring") {
+    return error === null ? <RestoringScreen /> : <RestoreFailedScreen error={error} onRetry={retryRestore} />
+  }
 
   if (status === "anonymous" || principal === null) {
     const from = `${location.pathname}${location.search}`
