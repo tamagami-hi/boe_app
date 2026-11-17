@@ -16,6 +16,7 @@ const META = {
 
 const FIRST_CSRF = "csrf-of-generation-0"
 const OTHER_SESSION_CSRF = "csrf-of-another-users-session"
+const REPLACED_ELSEWHERE_CSRF = "csrf-replaced-by-a-read-in-another-tab"
 
 type Tab = Readonly<{ tokenStore: TokenStore; http: HttpClient }>
 
@@ -37,7 +38,7 @@ interface Server {
 type ServerOptions = Readonly<{
   user: User
   csrfRead: CsrfRead
-  beforeCsrfRead?: (read: number, server: Server) => void
+  before?: (route: string, server: Server) => void
 }>
 
 const envelope = (data: unknown): unknown => ({ ok: true, data, error: null, meta: META })
@@ -81,7 +82,9 @@ const SURFACES = [
     csrfRoute: "GET /v1/auth/web/csrf",
     refreshRoute: "POST /v1/auth/web/refresh",
     readRoute: "GET /v1/admin/session",
-    read: envelope(ADMIN),
+    probeRoute: "GET /v1/admin/session",
+    read: (user: User): unknown => envelope({ ...ADMIN, ...user }),
+    probe: (user: User): unknown => envelope({ ...ADMIN, ...user }),
     readNow: (tab: Tab): Promise<unknown> => tab.http.request(getAdminSession, {}),
   },
   {
@@ -93,7 +96,19 @@ const SURFACES = [
     csrfRoute: "GET /v1/auth/client/web/csrf",
     refreshRoute: "POST /v1/auth/client/web/refresh",
     readRoute: "GET /v1/client/nominee-requests/latest",
-    read: envelope({ request: null }),
+    probeRoute: "GET /v1/client/profile",
+    read: (): unknown => envelope({ request: null }),
+    probe: (user: User): unknown =>
+      envelope({
+        userId: user.userId,
+        fullName: INVESTOR.fullName,
+        email: INVESTOR.email,
+        emailVerification: "verified",
+        phone: "+919800000000",
+        phoneVerified: false,
+        version: 1,
+        pendingEmailChange: null,
+      }),
     readNow: (tab: Tab): Promise<unknown> => tab.http.request(getLatestClientNomineeRequest, {}),
   },
 ] as const
@@ -107,11 +122,12 @@ const serveSession = (surface: Surface, options: ServerOptions): Readonly<{ serv
   const server: Server = { user: options.user, csrf: FIRST_CSRF, accessFresh: false, revoked: false, generation: 0, csrfReads: 0 }
   const sent: string[] = []
   const answer = (route: string, headers: Headers): Reply => {
+    if (route === surface.csrfRoute) server.csrfReads += 1
+    options.before?.(route, server)
     if (server.revoked) return refusal("SESSION_INVALID", 401)
-    if (route === surface.readRoute) return server.accessFresh ? [200, surface.read] : refusal("AUTHENTICATION_REQUIRED", 401)
+    if (route === surface.readRoute) return server.accessFresh ? [200, surface.read(server.user)] : refusal("AUTHENTICATION_REQUIRED", 401)
+    if (route === surface.probeRoute) return server.accessFresh ? [200, surface.probe(server.user)] : refusal("AUTHENTICATION_REQUIRED", 401)
     if (route === surface.csrfRoute) {
-      server.csrfReads += 1
-      options.beforeCsrfRead?.(server.csrfReads, server)
       if (options.csrfRead === "replacing") server.csrf = `csrf-replaced-by-read-${String(server.csrfReads)}`
       return [200, envelope({ user: server.user, csrfToken: server.csrf, csrfTokenExpiresAt: "2026-01-01T00:00:00.000Z" })]
     }
@@ -202,7 +218,7 @@ describe("two tabs of one web session whose access cookie expired", () => {
     expect(tabs.map((tab) => tab.tokenStore.read(surface.scope, "csrfToken"))).toEqual([server.csrf, server.csrf])
   })
 
-  it.each(SURFACES)("$surface: refreshes one tab after the other without a revoke against a backend whose CSRF read replaces the token", async (surface) => {
+  it.each(SURFACES)("$surface: sends one refresh and no revoke against a backend whose CSRF read replaces the token", async (surface) => {
     shareLocks()
     const { server, sent } = serveSession(surface, { user: surface.user, csrfRead: "replacing" })
     const ended = listenForSessionEnd()
@@ -210,23 +226,25 @@ describe("two tabs of one web session whose access cookie expired", () => {
 
     await Promise.all(tabs.map((tab) => surface.readNow(tab)))
 
-    expect(countOf(sent, surface.refreshRoute)).toBe(2)
+    expect(countOf(sent, surface.refreshRoute)).toBe(1)
     expect(server.revoked).toBe(false)
     expect(ended()).toEqual([])
     expect(tabs.map((tab) => heldUserId(tab.tokenStore, surface.scope))).toEqual([surface.user.userId, surface.user.userId])
+    expect(tabs[1]?.tokenStore.read(surface.scope, "csrfToken")).toBe(server.csrf)
   })
 
-  it.each(SURFACES)("$surface: ends the waiting tab without a resend when another user's session took the cookies meanwhile", async (surface) => {
+  it.each(SURFACES)("$surface: ends the waiting tab without a resend when its session read names another user", async (surface) => {
     shareLocks()
-    const csrfKey = `boe.${surface.scope}.csrfToken`
-    const { server, sent } = serveSession(surface, {
+    const switched = { done: false }
+    const { server } = serveSession(surface, {
       user: surface.user,
       csrfRead: "stable",
-      beforeCsrfRead: (read, state) => {
-        if (read !== 2) return
+      before: (route, state) => {
+        if (switched.done || route !== surface.probeRoute || state.csrfReads < 2) return
+        switched.done = true
         state.user = surface.otherUser
         state.csrf = OTHER_SESSION_CSRF
-        localStorage.setItem(csrfKey, OTHER_SESSION_CSRF)
+        localStorage.setItem(`boe.${surface.scope}.csrfToken`, OTHER_SESSION_CSRF)
         localStorage.setItem(`boe.${surface.scope}.principal`, JSON.stringify(surface.otherUser))
       },
     })
@@ -235,13 +253,35 @@ describe("two tabs of one web session whose access cookie expired", () => {
 
     const outcomes = await Promise.allSettled([surface.readNow(first), surface.readNow(second)])
 
+    expect(switched.done).toBe(true)
     expect(outcomes.map(({ status }) => status)).toEqual(["fulfilled", "rejected"])
     expect(outcomes[1]).toMatchObject({ reason: { code: "AUTHENTICATION_REQUIRED" } })
-    expect(countOf(sent, surface.refreshRoute)).toBe(1)
-    expect(countOf(sent, surface.readRoute)).toBe(3)
+    expect(server.generation).toBe(1)
     expect(server.revoked).toBe(false)
     expect(ended()).toEqual([{ scope: surface.scope, reason: "revoked" }])
     expect(heldUserId(second.tokenStore, surface.scope)).toBeNull()
+  })
+
+  it.each(SURFACES)("$surface: still refreshes when the stored token changed but the access cookie has not been renewed", async (surface) => {
+    shareLocks()
+    const { server, sent } = serveSession(surface, {
+      user: surface.user,
+      csrfRead: "stable",
+      before: (route, state) => {
+        if (route !== surface.csrfRoute || state.csrfReads !== 1) return
+        state.csrf = REPLACED_ELSEWHERE_CSRF
+        localStorage.setItem(`boe.${surface.scope}.csrfToken`, REPLACED_ELSEWHERE_CSRF)
+      },
+    })
+    const ended = listenForSessionEnd()
+    const tab = surface.start()
+
+    await surface.readNow(tab)
+
+    expect(sent).toEqual([surface.readRoute, surface.csrfRoute, surface.probeRoute, surface.refreshRoute, surface.readRoute])
+    expect(server.revoked).toBe(false)
+    expect(ended()).toEqual([])
+    expect(tab.tokenStore.read(surface.scope, "csrfToken")).toBe(server.csrf)
   })
 
   it.each(SURFACES)("$surface: refreshes a single tab as before where Web Locks is missing", async (surface) => {

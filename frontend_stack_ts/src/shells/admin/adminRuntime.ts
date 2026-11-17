@@ -14,8 +14,8 @@ import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
-import { createRecoveryQueue } from "~/api/session/recoveryQueue"
-import type { RefreshedElsewhere } from "~/api/session/recoveryQueue"
+import { adoptAnotherTabsRotation, createRecoveryQueue } from "~/api/session/recoveryQueue"
+import type { StoredTokenChanged } from "~/api/session/recoveryQueue"
 import { endSession, watchStoredPrincipal } from "~/api/session/sessionEnd"
 import {
   createTokenStore,
@@ -154,6 +154,9 @@ export const createAdminRuntime = (): AdminRuntime => {
     }
   }
 
+  const readSessionUser = async (): Promise<string> =>
+    (await bareClient.request(getAdminSession, { unauthenticated: true })).data.userId
+
   /**
    * Recover the synchronizer token before rotating.
    *
@@ -171,15 +174,15 @@ export const createAdminRuntime = (): AdminRuntime => {
    * refresh was answered CSRF_INVALID and the console signed the operator out
    * rather than rotating.
    */
-  const executeCookieRefresh = async (refreshedElsewhere: RefreshedElsewhere): Promise<RefreshOutcome> => {
+  const executeCookieRefresh = async (storedTokenChanged: StoredTokenChanged): Promise<RefreshOutcome> => {
     if (heldUserId(tokenStore, "admin") === null) return "replaced"
     try {
       const recovered = await bareClient.request(getWebCsrf, { unauthenticated: true })
       if (!holdsUser(tokenStore, "admin", recovered.data.user.userId)) return "replaced"
-      if (refreshedElsewhere(recovered.data.csrfToken)) {
-        tokenStore.set("admin", "csrfToken", recovered.data.csrfToken)
-        return "rotated"
-      }
+      const adopted = storedTokenChanged()
+        ? await adoptAnotherTabsRotation({ tokenStore, scope: "admin", csrfToken: recovered.data.csrfToken, readSessionUser })
+        : null
+      if (adopted !== null) return adopted
       const { data } = await bareClient.request(webRefresh, {
         body: { rotationId: rotationId.value },
         headers: { "x-csrf-token": recovered.data.csrfToken },
