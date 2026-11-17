@@ -8,6 +8,7 @@ import {
   nativeLogout,
   nativeRefresh,
 } from "~/api/generated/operations"
+import { isOutage } from "~/api/errors"
 import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator, heldUserId, holdsUser } from "~/api/session/refresh"
@@ -244,8 +245,8 @@ export const createClientRuntime = (): ClientRuntime => {
         principal: JSON.stringify(principal),
       })
       return principal
-    } catch {
-      tokenStore.clear("client")
+    } catch (error) {
+      if (!isOutage(error)) tokenStore.clear("client")
       return null
     }
   }

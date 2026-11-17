@@ -296,12 +296,16 @@ export const createAdminRuntime = (): AdminRuntime => {
     }
   }
 
+  const clearUnlessOutage = (error: unknown): void => {
+    if (!isOutage(error)) tokenStore.clear("admin")
+  }
+
   const readCookieSession = async (): Promise<Principal> => {
     try {
       const { data } = await http.request(getAdminSession, {})
       return principalFrom(data)
     } catch (error) {
-      if (!isOutage(error)) tokenStore.clear("admin")
+      clearUnlessOutage(error)
       throw error
     }
   }
@@ -313,8 +317,8 @@ export const createAdminRuntime = (): AdminRuntime => {
         csrfToken: data.csrfToken,
         principal: JSON.stringify(principalFrom(data.user)),
       })
-    } catch {
-      tokenStore.clear("admin")
+    } catch (error) {
+      clearUnlessOutage(error)
       return null
     }
 

@@ -500,9 +500,14 @@ const ADMIN_SESSION = "GET /v1/admin/session"
 describe("admin browser restore", () => {
   const originalFetch = globalThis.fetch
 
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
   afterEach(() => {
     globalThis.fetch = originalFetch
     delete window.__BOE_API_BASE__
+    sessionStorage.clear()
   })
 
   it("holds the admin its cookies name before the first read, so an expired access cookie still refreshes", async () => {
@@ -539,10 +544,12 @@ describe("admin browser restore", () => {
   })
 
   it.each([
-    { way: "finds no cookie session", routes: { [CSRF]: [[401, failure("AUTHENTICATION_REQUIRED")]] }, settles: "resolves", holds: null, expectation: "holds no user" },
-    { way: "is refused the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[403, failure("AUTHORIZATION_DENIED")]] }, settles: "rejects", holds: null, expectation: "holds no user" },
-    { way: "meets an outage on the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[500, failure("INTERNAL_ERROR")]] }, settles: "rejects", holds: OPERATOR.userId, expectation: "keeps the admin to restore again" },
-  ] as const)("$expectation when a restore over a stored principal $way", async ({ routes, settles, holds }) => {
+    { way: "finds no cookie session", routes: { [CSRF]: [[401, failure("AUTHENTICATION_REQUIRED")]] }, settles: "resolves", holds: null, heldWrites: 0, expectation: "holds no user and no held write" },
+    { way: "meets an outage on the CSRF recovery", routes: { [CSRF]: [[500, failure("INTERNAL_ERROR")]] }, settles: "resolves", holds: OTHER_ADMIN_ID, heldWrites: 2, expectation: "keeps the held writes" },
+    { way: "is refused the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[403, failure("AUTHORIZATION_DENIED")]] }, settles: "rejects", holds: null, heldWrites: 0, expectation: "holds no user and no held write" },
+    { way: "meets an outage on the session read", routes: { [CSRF]: [[200, csrfFor(OPERATOR)]], [ADMIN_SESSION]: [[500, failure("INTERNAL_ERROR")]] }, settles: "rejects", holds: OPERATOR.userId, heldWrites: 2, expectation: "keeps the admin and the held writes to restore again" },
+  ] as const)("$expectation when a restore over a stored principal $way", async ({ routes, settles, holds, heldWrites }) => {
+    holdClientWrites()
     routeFetch(routes)
     localStorage.setItem(PRINCIPAL_KEY, JSON.stringify(OTHER_OPERATOR))
     const runtime = createAdminRuntime()
@@ -555,5 +562,6 @@ describe("admin browser restore", () => {
 
     expect(outcome).toBe(settles)
     expect(heldUserId(runtime.tokenStore, "admin")).toBe(holds)
+    expect(heldWritesInTab()).toBe(heldWrites)
   })
 })
