@@ -22,22 +22,29 @@ export const OverlayStackProvider = ({
 }: Readonly<{ children: ReactNode }>): React.ReactElement => {
   const [ids, setIds] = useState<readonly string[]>([])
   const entries = useRef(new Map<string, OverlayEntry>())
+  const order = useRef<readonly string[]>([])
+
+  const reorder = useCallback((next: readonly string[]): void => {
+    order.current = next
+    setIds(next)
+  }, [])
 
   const register = useCallback((entry: OverlayEntry): (() => void) => {
     entries.current.set(entry.id, entry)
-    setIds((current) => (current.at(-1) === entry.id ? current : [...current.filter((id) => id !== entry.id), entry.id]))
+    const current = order.current
+    if (current.at(-1) !== entry.id) reorder([...current.filter((id) => id !== entry.id), entry.id])
     return () => {
       entries.current.delete(entry.id)
-      setIds((current) => (current.includes(entry.id) ? current.filter((id) => id !== entry.id) : current))
+      if (order.current.includes(entry.id)) reorder(order.current.filter((id) => id !== entry.id))
     }
-  }, [])
+  }, [reorder])
 
   const dismissTop = useCallback((): boolean => {
-    const topId = ids.at(-1)
+    const topId = order.current.at(-1)
     if (topId === undefined) return false
     entries.current.get(topId)?.dismiss()
     return true
-  }, [ids])
+  }, [])
 
   useEffect(() => {
     if (typeof document === "undefined") return
@@ -58,17 +65,15 @@ export const OverlayStackProvider = ({
   useEffect(() => {
     if (typeof window === "undefined") return
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== "Escape") return
-      const topId = ids.at(-1)
-      if (topId === undefined) return
+      if (event.key !== "Escape" || order.current.length === 0) return
       event.preventDefault()
-      entries.current.get(topId)?.dismiss()
+      dismissTop()
     }
     window.addEventListener("keydown", onKeyDown)
     return () => {
       window.removeEventListener("keydown", onKeyDown)
     }
-  }, [ids])
+  }, [dismissTop])
 
   const value = useMemo<OverlayStack>(
     () => ({ register, dismissTop, depth: ids.length, topId: ids.at(-1) ?? null }),

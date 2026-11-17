@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react"
 import type { ReactNode } from "react"
+import { createPortal } from "react-dom"
 
 import {
   isDeviceLocked,
@@ -63,7 +64,7 @@ export const DeviceLockGate = ({ children }: DeviceLockGateProps): React.ReactEl
   return (
     <>
       {children}
-      {locked ? <LockScreen onUnlocked={unlockDevice} /> : null}
+      {locked ? createPortal(<LockScreen onUnlocked={unlockDevice} />, document.body) : null}
     </>
   )
 }

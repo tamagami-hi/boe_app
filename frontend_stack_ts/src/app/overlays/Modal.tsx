@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react"
+import { useId, useLayoutEffect, useRef } from "react"
 import type { ReactNode } from "react"
 
 import { useOverlayStack } from "~/app/providers/OverlayStackProvider"
@@ -26,7 +26,7 @@ export const Modal = ({
   const dismiss = useRef(onDismiss)
   dismiss.current = onDismiss
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return
     return register({
       id,
