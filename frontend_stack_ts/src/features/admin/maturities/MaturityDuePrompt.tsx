@@ -52,8 +52,12 @@ export const MaturityDuePrompt = ({ dismissed, onDismiss }: MaturityDuePromptPro
   return (
     <Modal
       open
-      title="Maturities need your decision"
-      description="Nothing is paid out or reinvested until you resolve each one or confirm the client's choice. This reminder returns the next time the console opens."
+      title={hasDue ? "Maturities need your decision" : "Maturities not checked"}
+      description={
+        hasDue
+          ? "Nothing is paid out or reinvested until you resolve each one or confirm the client's choice. This reminder returns the next time the console opens."
+          : "The console could not read which holdings mature soon. Try again, or open the maturities page. Nothing is paid out or reinvested by itself."
+      }
       onDismiss={onDismiss}
       actions={
         <>

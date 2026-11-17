@@ -130,14 +130,14 @@ export const MaturityConfirmDialog = ({
         choice === null ? "nothing yet" : (OPTION_LABELS[choice] ?? choice)
       }. Confirming carries it out now.`}
       onDismiss={() => {
-        if (!write.pending) onClose()
+        if (write.held === null && !write.pending) onClose()
       }}
       actions={
         write.outcome.kind === "done" ? (
           <Button onClick={onClose}>Done</Button>
         ) : (
           <>
-            <Button tone="secondary" disabled={write.pending} onClick={onClose}>
+            <Button tone="secondary" disabled={write.held !== null || write.pending} onClick={onClose}>
               Go back
             </Button>
             <Button

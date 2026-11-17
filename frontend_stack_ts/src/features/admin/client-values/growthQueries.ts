@@ -14,7 +14,9 @@ import { useApi } from "~/app/providers/ApiProvider"
 
 export type IndividualGrowthBody = z.input<typeof appendAdminIndividualClientGrowth.request.body>
 
-export type IndividualGrowthInput = Readonly<{ idempotencyKey: string; body: IndividualGrowthBody }>
+export type IndividualGrowthHold = Readonly<{ body: IndividualGrowthBody }>
+
+export type IndividualGrowthInput = IndividualGrowthHold & Readonly<{ idempotencyKey: string }>
 
 export type CollectiveGrowthPreviewInput = z.input<
   typeof previewAdminCollectiveClientGrowth.request.body

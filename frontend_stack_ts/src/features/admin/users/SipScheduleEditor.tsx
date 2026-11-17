@@ -149,7 +149,7 @@ export const SipScheduleEditor = ({
               Reopen the schedule
             </Button>
           )}
-          <Button tone="ghost" disabled={pending} onClick={onClose}>
+          <Button tone="ghost" disabled={locked} onClick={onClose}>
             Done
           </Button>
         </span>

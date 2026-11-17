@@ -9,7 +9,6 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { z } from "zod"
 
-import { mintIdempotencyKey } from "~/api/idempotency"
 import { STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 
@@ -33,19 +32,23 @@ export const useWithdrawalPayouts = (userId: string) => {
   })
 }
 
+type Keyed<T> = T & Readonly<{ idempotencyKey: string }>
+
+export type MarkMaturityBody = z.input<typeof markAdminClientMatured.request.body>
+
 export const useMarkMaturity = (userId: string) => {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (body: z.input<typeof markAdminClientMatured.request.body>) =>
-      (await api.request(markAdminClientMatured, { params: { userId }, body, idempotencyKey: mintIdempotencyKey() })).data,
+    mutationFn: async ({ idempotencyKey, ...body }: Keyed<MarkMaturityBody>) =>
+      (await api.request(markAdminClientMatured, { params: { userId }, body, idempotencyKey })).data,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "investor", userId] })
     },
   })
 }
 
-type SettlementInput = Readonly<{ maturityId: string }> & (
+export type SettlementInput = Readonly<{ maturityId: string }> & (
   | Readonly<{ kind: "withdrawal"; body: z.input<typeof withdrawAdminClientMaturity.request.body> }>
   | Readonly<{ kind: "reinvestment"; body: z.input<typeof reinvestAdminClientMaturity.request.body> }>
 )
@@ -54,8 +57,8 @@ export const useSettleMaturity = (userId: string) => {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: SettlementInput) => {
-      const options = { params: { userId, maturityId: input.maturityId }, idempotencyKey: mintIdempotencyKey() }
+    mutationFn: async (input: Keyed<SettlementInput>) => {
+      const options = { params: { userId, maturityId: input.maturityId }, idempotencyKey: input.idempotencyKey }
       return input.kind === "withdrawal"
         ? (await api.request(withdrawAdminClientMaturity, { ...options, body: input.body })).data
         : (await api.request(reinvestAdminClientMaturity, { ...options, body: input.body })).data
@@ -67,14 +70,14 @@ export const useSettleMaturity = (userId: string) => {
   })
 }
 
+export type PayoutUpdateInput = Readonly<{ payoutId: string; body: z.input<typeof updateAdminWithdrawalPayout.request.body> }>
+
 export const useUpdatePayout = (userId: string) => {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: Readonly<{ payoutId: string; body: z.input<typeof updateAdminWithdrawalPayout.request.body> }>) =>
-      (await api.request(updateAdminWithdrawalPayout, {
-        params: { userId, payoutId: input.payoutId }, body: input.body, idempotencyKey: mintIdempotencyKey(),
-      })).data,
+    mutationFn: async ({ payoutId, body, idempotencyKey }: Keyed<PayoutUpdateInput>) =>
+      (await api.request(updateAdminWithdrawalPayout, { params: { userId, payoutId }, body, idempotencyKey })).data,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "investor", userId] })
     },

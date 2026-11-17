@@ -5,7 +5,7 @@ import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { useAdminInvestorPositions } from "~/features/admin/shared/adminQueries"
-import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
+import { useFundNames } from "~/features/admin/shared/fundNames"
 import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -32,7 +32,7 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
   const canWrite = hasAnyPermission(["client_position.write"])
   const schedules = useClientMaturitySchedules(canRead ? userId : "")
   const positions = useAdminInvestorPositions(canRead ? userId : "")
-  const catalogue = useAdminFundCatalogue()
+  const fundNames = useFundNames()
   const cancel = useHeldWrite(useCancelMaturity(userId), "The cancellation could not be sent. Reload the page and try again.")
   const [editing, setEditing] = useState<Editing | null>(null)
   const [acting, setActing] = useState<MaturityAction | null>(null)
@@ -44,15 +44,13 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
     void positions.refetch()
   }
   const items = schedules.data?.items ?? []
-  const fundName = (fundId: string): string => {
-    const fund = (catalogue.data?.items ?? []).find((entry) => entry.id === fundId)
-    return fund?.name ?? fund?.slug ?? items.find((item) => item.fundId === fundId)?.fundName ?? fundId
-  }
+  const fundName = (fundId: string): string =>
+    fundNames.nameOf(fundId, items.find((item) => item.fundId === fundId)?.fundName ?? null)
   const openFunds = new Set(items.filter((item) => item.state === "scheduled").map((item) => item.fundId))
   const funds: readonly FundChoice[] = (positions.data?.items ?? [])
     .filter((row) => !openFunds.has(row.fundId))
     .map((row) => ({ fundId: row.fundId, label: fundName(row.fundId) }))
-  const canStart = canWrite && canSet && positions.data !== undefined && schedules.data !== undefined
+  const canStart = canWrite && canSet && positions.data !== undefined && schedules.data !== undefined && fundNames.ready
   const isPositionsFailed = canWrite && canSet && positions.data === undefined && positions.error != null
 
   return (
@@ -85,6 +83,8 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
           }}
         />
       )}
+
+      {canWrite && canSet ? fundNames.notice : null}
 
       {isPositionsFailed ? (
         <Alert
@@ -165,6 +165,7 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
                       <Button
                         size="sm"
                         tone="ghost"
+                        disabled={editing !== null}
                         onClick={() => {
                           setEditing({ schedule: row })
                         }}

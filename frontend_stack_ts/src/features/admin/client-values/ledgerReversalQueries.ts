@@ -2,17 +2,17 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult } from "@tanstack/react-query"
 
 import { reverseAdminClientLedgerEntry } from "~/api/generated/operations"
-import { mintIdempotencyKey } from "~/api/idempotency"
 import type { DataOf } from "~/api/http"
 import { qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 
-export type LedgerReversalInput = Readonly<{
+export type LedgerReversalBody = Readonly<{
   userId: string
   entryId: string
   reasonCode: string
-  note?: string
 }>
+
+export type LedgerReversalInput = LedgerReversalBody & Readonly<{ idempotencyKey: string }>
 
 export const useReverseClientLedgerEntry = (): UseMutationResult<
   DataOf<typeof reverseAdminClientLedgerEntry>,
@@ -22,12 +22,12 @@ export const useReverseClientLedgerEntry = (): UseMutationResult<
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ userId, entryId, ...body }: LedgerReversalInput) =>
+    mutationFn: async ({ userId, entryId, idempotencyKey, ...body }: LedgerReversalInput) =>
       (
         await api.request(reverseAdminClientLedgerEntry, {
           params: { userId, entryId },
           body,
-          idempotencyKey: mintIdempotencyKey(),
+          idempotencyKey,
         })
       ).data,
     onSuccess: async (_data, variables) => {

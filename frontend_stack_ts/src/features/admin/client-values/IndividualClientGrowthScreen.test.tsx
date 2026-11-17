@@ -116,7 +116,7 @@ vi.mock("~/features/admin/shared/queries", () => ({
   }),
 }))
 
-const appendButton = (): HTMLElement | null => screen.queryByRole("button", { name: /Append the adjustment/u })
+const appendButton = (): HTMLElement | null => screen.queryByRole("button", { name: /Review the adjustment/u })
 
 const enterRate = (basisPoints: string): void => {
   fireEvent.change(screen.getByLabelText(/Rate in basis points/u), { target: { value: basisPoints } })
@@ -131,8 +131,9 @@ const fillForm = (): void => {
 
 const submit = (): void => {
   const button = appendButton()
-  if (button === null) throw new Error("expected the append button")
+  if (button === null) throw new Error("expected the review button")
   fireEvent.click(button)
+  fireEvent.click(screen.getByRole("button", { name: "Append the adjustment" }))
 }
 
 afterEach(() => {

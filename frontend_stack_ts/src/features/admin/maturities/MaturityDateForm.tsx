@@ -117,7 +117,7 @@ export const MaturityDateForm = ({ userId, funds, editing, onReload, onClose }: 
           <Button disabled={locked || !ready} loading={write.pending} onClick={submit}>
             {editing === null ? "Set the date" : "Change the date"}
           </Button>
-          <Button tone="ghost" disabled={write.pending} onClick={onClose}>
+          <Button tone="ghost" disabled={write.held !== null || write.pending} onClick={onClose}>
             Cancel
           </Button>
         </span>

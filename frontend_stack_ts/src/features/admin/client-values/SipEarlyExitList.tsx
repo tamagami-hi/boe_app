@@ -15,7 +15,9 @@ import { WithdrawalPayoutPanel } from "./WithdrawalPayoutPanel"
 
 const dateOf = (isoDate: string): string => formatDate(`${isoDate}T00:00:00Z`)
 
-const EarlyExitCard = ({ item, canWrite }: Readonly<{ item: AdminSipEarlyExitItem; canWrite: boolean }>): React.ReactElement => (
+type EarlyExitCardProps = Readonly<{ item: AdminSipEarlyExitItem; canWrite: boolean; onReload: () => void }>
+
+const EarlyExitCard = ({ item, canWrite, onReload }: EarlyExitCardProps): React.ReactElement => (
   <div className={STACK_LG}>
     <Card>
       <div className={STACK_LG}>
@@ -37,7 +39,12 @@ const EarlyExitCard = ({ item, canWrite }: Readonly<{ item: AdminSipEarlyExitIte
         </DataList>
       </div>
     </Card>
-    <WithdrawalPayoutPanel payout={item.payout} fundName={`${item.fundName}, early exit`} canWrite={canWrite} />
+    <WithdrawalPayoutPanel
+      payout={item.payout}
+      fundName={`${item.fundName}, early exit`}
+      canWrite={canWrite}
+      onReload={onReload}
+    />
   </div>
 )
 
@@ -64,7 +71,14 @@ export const SipEarlyExitList = ({ userId, canWrite }: SipEarlyExitListProps): R
         {(data) => (
           <div className={STACK_LG}>
             {data.items.map((item) => (
-              <EarlyExitCard key={item.earlyExitId} item={item} canWrite={canWrite} />
+              <EarlyExitCard
+                key={item.earlyExitId}
+                item={item}
+                canWrite={canWrite}
+                onReload={() => {
+                  void exits.refetch()
+                }}
+              />
             ))}
           </div>
         )}

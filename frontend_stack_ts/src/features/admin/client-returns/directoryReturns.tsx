@@ -31,8 +31,9 @@ export const useDirectoryReturns = (userIds: readonly string[]): DirectoryReturn
   const cell = (row: Row, render: (summary: ClientValueSummary) => ReactNode): ReactNode => {
     const summary = summaries.byUserId.get(row.id)
     if (summary !== undefined) return render(summary)
-    if (summaries.isPending && !hasFailed) return <Skeleton height="1rem" width="4rem" />
-    return <span className={META_MUTED}>Unavailable</span>
+    if (hasFailed) return <span className={META_MUTED}>Not loaded</span>
+    if (summaries.isPending) return <Skeleton height="1rem" width="4rem" />
+    return <span className={META_MUTED}>No recorded investment</span>
   }
 
   return {

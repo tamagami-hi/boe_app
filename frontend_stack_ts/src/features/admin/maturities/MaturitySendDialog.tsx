@@ -64,14 +64,14 @@ export const MaturitySendDialog = ({
       title={`Send options for the ${formatMaturityDate(schedule.maturityDate)} maturity`}
       description={`${schedule.fundName}. The client gets an email and a notification and chooses in the app. Nothing changes until you confirm their choice.`}
       onDismiss={() => {
-        if (!write.pending) onClose()
+        if (write.held === null && !write.pending) onClose()
       }}
       actions={
         write.outcome.kind === "done" ? (
           <Button onClick={onClose}>Done</Button>
         ) : (
           <>
-            <Button tone="secondary" disabled={write.pending} onClick={onClose}>
+            <Button tone="secondary" disabled={write.held !== null || write.pending} onClick={onClose}>
               Go back
             </Button>
             <Button

@@ -1,23 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult } from "@tanstack/react-query"
 
-import type { AdminRecordingReasonCode } from "@beonedge/contracts"
+import type { AdminRecordedContributionBody } from "@beonedge/contracts"
 
 import { recordAdminClientContribution } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
 import { qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 
-export type RecordedContributionInput = Readonly<{
-  userId: string
-  idempotencyKey: string
-  fundId: string
-  amountPaise: string
-  effectiveDate: string
-  reasonCode: AdminRecordingReasonCode
-  note?: string
-  sipScheduleLink?: Readonly<{ scheduleId: string; month: string }>
-}>
+export type RecordedContributionBody = Readonly<{ userId: string }> & AdminRecordedContributionBody
+
+export type RecordedContributionInput = RecordedContributionBody & Readonly<{ idempotencyKey: string }>
+
 
 export const useRecordClientContribution = (): UseMutationResult<
   DataOf<typeof recordAdminClientContribution>,

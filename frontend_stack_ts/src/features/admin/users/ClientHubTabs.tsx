@@ -26,6 +26,7 @@ export const ClientHubTabs = ({ userId, isClient }: Props): React.ReactElement |
   const [searchParams] = useSearchParams()
   const requested = searchParams.get("tab")
   const [choice, setChoice] = useState<TabChoice>({ requested, value: requested })
+  const [isTabHolding, setTabHolding] = useState(false)
   if (choice.requested !== requested) setChoice({ requested, value: requested })
   const selected = choice.requested === requested ? choice.value : requested
   const canReadValues = isClient && hasAnyPermission(["client_position.write", "client_values.read"])
@@ -55,12 +56,12 @@ export const ClientHubTabs = ({ userId, isClient }: Props): React.ReactElement |
         value={active}
         items={items}
         onChange={(value) => {
-          setChoice({ requested, value })
+          if (!isTabHolding) setChoice({ requested, value })
         }}
       />
       <TabPanel id={TABS_ID} value={active}>
-        {active === "ledger" ? <ClientLedgerTab userId={userId} /> : null}
-        {active === "maturity" ? <ClientMaturityTab userId={userId} /> : null}
+        {active === "ledger" ? <ClientLedgerTab userId={userId} onUnsavedHold={setTabHolding} /> : null}
+        {active === "maturity" ? <ClientMaturityTab userId={userId} onUnsavedHold={setTabHolding} /> : null}
         {active === "emails" ? <ClientEmailsTab userId={userId} /> : null}
         {active === "support" ? <ClientSupportTab userId={userId} /> : null}
         {active === "reviews" ? <ClientReviewsTab userId={userId} /> : null}

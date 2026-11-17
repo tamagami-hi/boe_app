@@ -1,4 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
+
+import { qk } from "~/api/queryKeys"
 
 import { Modal } from "~/app/overlays/Modal"
 import { useClientSipSchedules } from "~/features/admin/client-values/sipScheduleQueries"
@@ -59,10 +62,11 @@ type WithdrawProps = Readonly<{
   userId: string
   schedule: MaturityScheduleItem
   offer: MaturityOfferSummary
+  onReload: () => void
   onClose: () => void
 }>
 
-const MaturityWithdrawDialog = ({ userId, schedule, offer, onClose }: WithdrawProps): React.ReactElement => {
+const MaturityWithdrawDialog = ({ userId, schedule, offer, onReload, onClose }: WithdrawProps): React.ReactElement => {
   const write = useHeldWrite(useWithdrawMaturityOffer(userId), "The withdrawal could not be sent. Reload the page and try again.")
   const locked = write.pending || write.outcome.kind === "unknown" || write.outcome.kind === "done"
   return (
@@ -71,14 +75,14 @@ const MaturityWithdrawDialog = ({ userId, schedule, offer, onClose }: WithdrawPr
       title="Withdraw the options?"
       description={`${schedule.fundName}, maturing ${formatMaturityDate(schedule.maturityDate)}. The client stops seeing these options. No money moves, and you can send new options afterwards.`}
       onDismiss={() => {
-        if (!write.pending) onClose()
+        if (write.held === null && !write.pending) onClose()
       }}
       actions={
         write.outcome.kind === "done" ? (
           <Button onClick={onClose}>Done</Button>
         ) : (
           <>
-            <Button tone="secondary" disabled={write.pending} onClick={onClose}>
+            <Button tone="secondary" disabled={write.held !== null || write.pending} onClick={onClose}>
               Keep the options
             </Button>
             <Button
@@ -105,7 +109,7 @@ const MaturityWithdrawDialog = ({ userId, schedule, offer, onClose }: WithdrawPr
           The client no longer sees them. The maturity is still open.
         </Alert>
       ) : (
-        <HeldWriteNotice write={write} subject="the options were withdrawn" onReload={onClose} />
+        <HeldWriteNotice write={write} subject="the options were withdrawn" reloadLabel="Reload the maturity" onReload={onReload} />
       )}
     </Modal>
   )
@@ -139,6 +143,7 @@ const holdingOf = (positions: PositionsRead, fundId: string): HoldingRead => {
 }
 
 export const MaturityActionDialog = ({ userId, action, onClose }: MaturityActionDialogProps): React.ReactElement => {
+  const queryClient = useQueryClient()
   const positions = useAdminInvestorPositions(userId)
   const sips = useClientSipSchedules(userId)
   const [hasOpened, setOpened] = useState(false)
@@ -149,7 +154,13 @@ export const MaturityActionDialog = ({ userId, action, onClose }: MaturityAction
 
   if ((kind === "confirm" || kind === "withdraw") && offer === null) return <ClosedOfferModal onClose={onClose} />
   if (kind === "withdraw" && offer !== null) {
-    return <MaturityWithdrawDialog userId={userId} schedule={schedule} offer={offer} onClose={onClose} />
+    const reloadSchedules = (): void => {
+      void queryClient.invalidateQueries({ queryKey: qk.admin.clientMaturitySchedules(userId) })
+      void queryClient.invalidateQueries({ queryKey: qk.admin.maturitiesRoot() })
+    }
+    return (
+      <MaturityWithdrawDialog userId={userId} schedule={schedule} offer={offer} onReload={reloadSchedules} onClose={onClose} />
+    )
   }
   if (!hasOpened && isFirstReadPending) return <ReadingModal onClose={onClose} />
 

@@ -9,7 +9,7 @@ import { formatDate, formatDateTime, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { emailVerificationState, orderState, userAccountState } from "~/domain/status"
 import { PortfolioSummarySection } from "~/features/admin/client-returns/PortfolioSummarySection"
-import { EarlierInvestmentForm } from "~/features/admin/client-values/EarlierInvestmentForm"
+import { EarlierInvestmentForm, type RecordingHold } from "~/features/admin/client-values/EarlierInvestmentForm"
 import { monthlyPrefillOf, type RecordingPrefill } from "~/features/admin/client-values/recordingPrefill"
 import type { AdminSipScheduleItem } from "~/features/admin/client-values/sipScheduleQueries"
 import { ClientMaturitySection } from "~/features/admin/maturities/ClientMaturitySection"
@@ -21,7 +21,7 @@ import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
-import { Skeleton } from "~/ui/primitives/Feedback"
+import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
 import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
@@ -50,7 +50,7 @@ const UserDetailScreen = (): React.ReactElement => {
   const canRecordInvestment = hasAnyPermission(["client_position.write"])
   const [isRecording, setRecording] = useState(false)
   const [prefill, setPrefill] = useState<Readonly<{ id: number; values: RecordingPrefill }> | null>(null)
-  const [isFormHolding, setFormHolding] = useState(false)
+  const [recordHold, setRecordHold] = useState<RecordingHold>("none")
   const recordingForm = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -81,6 +81,19 @@ const UserDetailScreen = (): React.ReactElement => {
             <Skeleton height="1.2rem" width="45%" />
             <Skeleton height="3rem" />
           </Card>
+        }
+        fallback={
+          <Alert
+            tone="info"
+            title="No account matches this link"
+            action={
+              <ButtonLink to="/users" tone="secondary" size="sm">
+                Open users
+              </ButtonLink>
+            }
+          >
+            The link names an account that does not exist. Find the client in the users list.
+          </Alert>
         }
       >
         {(data) => (
@@ -149,6 +162,7 @@ const UserDetailScreen = (): React.ReactElement => {
                 userId={userId}
                 canRecord={canRecordFor(data.user.accountState)}
                 isRecording={isRecording}
+                canClose={recordHold !== "unsaved"}
                 onToggleRecord={() => {
                   setRecording((open) => !open)
                   setPrefill(null)
@@ -163,11 +177,11 @@ const UserDetailScreen = (): React.ReactElement => {
               >
                 <div ref={recordingForm}>
                   <EarlierInvestmentForm
-                    key={prefill === null ? "blank" : `prefill-${String(prefill.id)}`}
+                    key={`${userId}:${prefill === null ? "blank" : `prefill-${String(prefill.id)}`}`}
                     userId={userId}
                     investorLabel={data.user.fullName === "" ? data.user.email : data.user.fullName}
                     {...(prefill === null ? {} : { prefill: prefill.values })}
-                    onHoldChange={setFormHolding}
+                    onHoldChange={setRecordHold}
                   />
                 </div>
               </Section>
@@ -178,7 +192,7 @@ const UserDetailScreen = (): React.ReactElement => {
                 userId={userId}
                 canStart={canRecordFor(data.user.accountState)}
                 onRecordMonth={recordMonth}
-                isRecordBlocked={isFormHolding}
+                isRecordBlocked={recordHold !== "none"}
               />
             ) : null}
 

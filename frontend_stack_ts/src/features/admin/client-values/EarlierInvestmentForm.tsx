@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react"
 
-import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
-import { useIdempotencyKey } from "~/api/idempotency"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
+import { useFundNames } from "~/features/admin/shared/fundNames"
+import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { AmountInput } from "~/ui/primitives/AmountInput"
@@ -26,8 +26,9 @@ import {
   recordingCategoryCopy,
 } from "./recordingCategories"
 import { MONTHLY_RECORDING_REASON, type RecordingPrefill } from "./recordingPrefill"
+import { parseRecordedContribution } from "./heldBodies"
 import { useRecordClientContribution } from "./recordingQueries"
-import { parsePositiveRupees } from "./rupeeAmount"
+import { paiseToRupeeText, parsePositiveRupees } from "./rupeeAmount"
 import { SipMonthLinkField } from "./SipMonthLinkField"
 import { sipMonthLabel, useSipMonthLink } from "./sipMonthLink"
 
@@ -38,30 +39,26 @@ const CATEGORY_OPTIONS = RECORDING_CATEGORIES.map((category) => ({
 
 const NOTE_MAX_LENGTH = 2_000
 
-type Outcome =
-  | Readonly<{ kind: "idle" }>
-  | Readonly<{ kind: "rejected"; message: string }>
-  | Readonly<{ kind: "unknown" }>
+const UNSENT = "This investment could not be sent. Reload the page and try again."
 
-const IDLE: Outcome = { kind: "idle" }
+export type RecordingHold = "none" | "held" | "unsaved"
 
-const describeRejection = (error: unknown): string => {
-  if (!isApiError(error)) return "This investment could not be sent. Reload the page and try again."
-  const linkRefusals = Object.entries(error.fields ?? {}).filter(([field]) => field.startsWith("sipScheduleLink"))
+export const recordingSlot = (userId: string): string => `record:${userId}`
+
+const describeRejection = (code: string | null, message: string, fields: Readonly<Record<string, readonly string[]>>): string => {
+  const linkRefusals = Object.entries(fields).filter(([field]) => field.startsWith("sipScheduleLink"))
   if (linkRefusals.length > 0) {
     return `SIP schedule month: ${linkRefusals.flatMap(([, messages]) => messages).join(" ")}`
   }
-  if (error.code === "RESOURCE_NOT_FOUND") {
-    return "That investor or fund could not be found. Check the selection and try again."
-  }
-  return error.message
+  if (code === "RESOURCE_NOT_FOUND") return "That investor or fund could not be found. Check the selection and try again."
+  return message
 }
 
 export type EarlierInvestmentFormProps = Readonly<{
   userId: string
   investorLabel: string
   prefill?: RecordingPrefill
-  onHoldChange?: (holding: boolean) => void
+  onHoldChange?: (hold: RecordingHold) => void
 }>
 
 export const EarlierInvestmentForm = ({
@@ -72,82 +69,67 @@ export const EarlierInvestmentForm = ({
 }: EarlierInvestmentFormProps): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canWrite = hasAnyPermission(["client_position.write"])
-  const funds = useAdminFundCatalogue()
-  const record = useRecordClientContribution()
+  const funds = useFundNames()
+  const mutation = useRecordClientContribution()
+  const record = useHeldWrite(mutation, UNSENT, {
+    slot: recordingSlot(userId),
+    parseBody: parseRecordedContribution,
+  })
+  const held = record.held
 
-  const [fundId, setFundId] = useState(prefill?.fundId ?? "")
-  const [rupees, setRupees] = useState(prefill?.rupees ?? "")
-  const [effectiveDate, setEffectiveDate] = useState(prefill?.effectiveDate ?? "")
-  const [reasonCode, setReasonCode] = useState(prefill?.reasonCode ?? DEFAULT_RECORDING_REASON)
-  const [note, setNote] = useState("")
-  const [attempt, setAttempt] = useState(0)
-  const [outcome, setOutcome] = useState<Outcome>(IDLE)
+  const [fundId, setFundId] = useState(() => held?.fundId ?? prefill?.fundId ?? "")
+  const [rupees, setRupees] = useState(() => (held === null ? (prefill?.rupees ?? "") : paiseToRupeeText(held.amountPaise)))
+  const [effectiveDate, setEffectiveDate] = useState(() => held?.effectiveDate ?? prefill?.effectiveDate ?? "")
+  const [reasonCode, setReasonCode] = useState(() => held?.reasonCode ?? prefill?.reasonCode ?? DEFAULT_RECORDING_REASON)
+  const [note, setNote] = useState(() => held?.note ?? "")
   const [confirmingRecord, setConfirmingRecord] = useState(false)
   const [confirmingRestart, setConfirmingRestart] = useState(false)
 
   const category = recordingCategoryCopy(reasonCode)
-  const sipLink = useSipMonthLink(userId, fundId, reasonCode === MONTHLY_RECORDING_REASON, prefill?.sipMonth ?? null)
-  const amountPaise = parsePositiveRupees(rupees)
-  const trimmedNote = note.trim()
-  const request = {
+  const sipLink = useSipMonthLink(
     userId,
     fundId,
-    amountPaise: amountPaise ?? "",
-    effectiveDate,
-    reasonCode,
-    ...(trimmedNote === "" ? {} : { note: trimmedNote }),
-    ...(sipLink.link === null ? {} : { sipScheduleLink: sipLink.link }),
-  }
-  const idempotencyKey = useIdempotencyKey({ ...request, attempt })
+    reasonCode === MONTHLY_RECORDING_REASON,
+    held === null ? (prefill?.sipMonth ?? null) : (held.sipScheduleLink ?? null),
+  )
+  const amountPaise = parsePositiveRupees(rupees)
+  const trimmedNote = note.trim()
 
-  const fundLabel = (id: string): string => {
-    const fund = (funds.data?.items ?? []).find((entry) => entry.id === id)
-    return fund?.name ?? fund?.slug ?? id
-  }
-
-  const recorded = record.data
-  const holding = record.isPending || outcome.kind === "unknown"
+  const recorded = mutation.data
+  const holding = held !== null || record.pending
+  const unknown = record.outcome.kind === "unknown"
   const locked = !canWrite || holding || recorded !== undefined
+  const hold: RecordingHold = held === null ? "none" : isUnsavedHold(record) ? "unsaved" : "held"
 
   useEffect(() => {
-    onHoldChange?.(holding)
+    onHoldChange?.(hold)
     return () => {
-      onHoldChange?.(false)
+      onHoldChange?.("none")
     }
-  }, [holding, onHoldChange])
+  }, [hold, onHoldChange])
 
   const today = indiaToday()
   const futureDated = effectiveDate !== "" && effectiveDate > today
   const amountInvalid = rupees !== "" && amountPaise === null
-  const incomplete =
-    fundId === "" || effectiveDate === "" || futureDated || amountPaise === null || sipLink.blocking
+  const incomplete = fundId === "" || effectiveDate === "" || futureDated || amountPaise === null || sipLink.blocking
 
   const send = (): void => {
     setConfirmingRecord(false)
     if (amountPaise === null) return
-    if (outcome.kind === "rejected") setOutcome(IDLE)
     sipLink.choose(sipLink.selected)
-    record.mutate(
-      { ...request, amountPaise, idempotencyKey },
-      {
-        onSuccess: () => {
-          setOutcome(IDLE)
-        },
-        onError: (error) => {
-          setOutcome(
-            isUnknownWriteOutcome(error)
-              ? { kind: "unknown" }
-              : { kind: "rejected", message: describeRejection(error) },
-          )
-        },
-      },
-    )
+    record.submit({
+      userId,
+      fundId,
+      amountPaise,
+      effectiveDate,
+      reasonCode,
+      ...(trimmedNote === "" ? {} : { note: trimmedNote }),
+      ...(sipLink.link === null ? {} : { sipScheduleLink: sipLink.link }),
+    })
   }
 
   const startNewAttempt = (): void => {
     setConfirmingRestart(false)
-    setAttempt((current) => current + 1)
-    setOutcome(IDLE)
     record.reset()
   }
 
@@ -158,7 +140,7 @@ export const EarlierInvestmentForm = ({
     setReasonCode(DEFAULT_RECORDING_REASON)
     setNote("")
     sipLink.reset()
-    startNewAttempt()
+    record.reset()
   }
 
   return (
@@ -170,25 +152,25 @@ export const EarlierInvestmentForm = ({
           </Alert>
         )}
 
-        {outcome.kind === "rejected" ? (
+        {record.outcome.kind === "rejected" ? (
           <Alert tone="error" title="Not recorded">
-            {outcome.message}
+            {describeRejection(record.outcome.code, record.outcome.message, record.outcome.fields)}
           </Alert>
         ) : null}
 
-        {outcome.kind === "unknown" ? (
+        {unknown && !record.expired ? (
           <Alert
             tone="warning"
             title="Not confirmed"
             action={
               <span className={ACTION_ROW}>
-                <Button size="sm" loading={record.isPending} onClick={send}>
+                <Button size="sm" loading={record.pending} onClick={record.checkAgain}>
                   Check again
                 </Button>
                 <Button
                   size="sm"
                   tone="secondary"
-                  disabled={record.isPending}
+                  disabled={record.pending}
                   onClick={() => {
                     setConfirmingRestart(true)
                   }}
@@ -198,12 +180,27 @@ export const EarlierInvestmentForm = ({
               </span>
             }
           >
-            The reply did not arrive, so it is not known whether this investment was recorded. The
-            form is held on this exact request. Check again sends it once more, and the same request
-            can only ever be recorded once. It may also already appear in this investor&apos;s ledger
-            entries.
+            The reply did not arrive, so it is not known whether this investment was recorded. The form is held on this
+            exact request. Check again sends it once more, and the same request can only ever be recorded once. It may
+            also already appear in this investor&apos;s ledger entries.
           </Alert>
-        ) : null}
+        ) : record.outcome.kind === "rejected" ? null : (
+          <HeldWriteNotice
+            write={{
+              outcome: record.outcome,
+              pending: record.pending,
+              checkAgain: record.checkAgain,
+              unreadable: record.unreadable,
+              expired: record.expired,
+            }}
+            subject="this investment was recorded"
+            reloadLabel="Start a new attempt"
+            onReload={() => {
+              setConfirmingRestart(true)
+            }}
+          />
+        )}
+        <UnsavedHoldNotice write={record} />
 
         {recorded === undefined ? null : (
           <Alert
@@ -216,8 +213,8 @@ export const EarlierInvestmentForm = ({
             }
           >
             The investor has been notified. In this fund they have now invested{" "}
-            <MoneyValue amount={toPaise(recorded.principalPaise)} size="sm" showDecimals />, with a
-            current value of <MoneyValue amount={toPaise(recorded.currentValuePaise)} size="sm" showDecimals />.
+            <MoneyValue amount={toPaise(recorded.principalPaise)} size="sm" showDecimals />, with a current value of{" "}
+            <MoneyValue amount={toPaise(recorded.currentValuePaise)} size="sm" showDecimals />.
             {recorded.fundVersionEffectiveOnDate
               ? ""
               : " No fund version existed on that date, so the current published version was recorded instead."}
@@ -299,10 +296,10 @@ export const EarlierInvestmentForm = ({
           )}
         </FormField>
 
-        {recorded === undefined && outcome.kind !== "unknown" ? (
+        {recorded === undefined && !unknown ? (
           <Button
             disabled={locked || incomplete}
-            loading={record.isPending}
+            loading={record.pending}
             onClick={() => {
               setConfirmingRecord(true)
             }}
@@ -324,7 +321,7 @@ export const EarlierInvestmentForm = ({
       >
         <DataList>
           <DetailRow label="Investor">{investorLabel}</DetailRow>
-          <DetailRow label="Fund">{fundLabel(fundId)}</DetailRow>
+          <DetailRow label="Fund">{funds.nameOf(fundId)}</DetailRow>
           <DetailRow label="Amount" emphasis="lead">
             {amountPaise === null ? null : <MoneyValue amount={amountPaise} size="sm" showDecimals />}
           </DetailRow>

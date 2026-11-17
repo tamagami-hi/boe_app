@@ -120,7 +120,7 @@ export const SipScheduleCreateForm = ({ userId, onReload, onClose }: SipSchedule
           >
             Start the schedule
           </Button>
-          <Button tone="ghost" disabled={write.pending} onClick={onClose}>
+          <Button tone="ghost" disabled={write.held !== null || write.pending} onClick={onClose}>
             Cancel
           </Button>
         </span>

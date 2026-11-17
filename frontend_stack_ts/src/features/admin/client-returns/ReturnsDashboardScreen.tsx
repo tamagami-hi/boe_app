@@ -40,9 +40,11 @@ const useClientNames = (enabled: boolean) => {
     [directory.data],
   )
   const error = enabled ? directory.error : null
+  const hasNamesFailed = error !== null && error !== undefined && !isSessionEnded(error)
   return {
     names,
-    hasNamesFailed: error !== null && error !== undefined && !isSessionEnded(error),
+    hasNamesFailed,
+    isNamesPending: enabled && directory.data === undefined && !hasNamesFailed,
     retryNames: directory.refetch,
   }
 }
@@ -53,16 +55,17 @@ const ReturnsDashboardScreen = (): React.ReactElement => {
   const canOpenClient = useCanOpenClientPage()
   const [sort, setSort] = useState<ReturnSort>("return_desc")
   const summaries = useClientValueSummaries(sort)
-  const { names, hasNamesFailed, retryNames } = useClientNames(canReadUsers)
+  const { names, hasNamesFailed, isNamesPending, retryNames } = useClientNames(canReadUsers)
+  const missingName = isNamesPending ? "Loading the name" : hasNamesFailed ? "Name not loaded" : "Name not available"
 
   const clientCell = (row: ClientValueSummary): React.ReactElement => {
     const name = names.get(row.userId)
     if (!canOpenClient) {
-      return name === undefined ? <span className={META_TEXT}>Name not available</span> : <span>{name}</span>
+      return name === undefined ? <span className={META_TEXT}>{missingName}</span> : <span>{name}</span>
     }
     return (
       <span className={ENTRY_TEXT}>
-        <ClientPageLink userId={row.userId}>{name ?? "Open client"}</ClientPageLink>
+        <ClientPageLink userId={row.userId}>{name ?? (isNamesPending ? "Loading the name" : "Open client")}</ClientPageLink>
         <span className={ADMIN_CODE}>{row.userId}</span>
       </span>
     )

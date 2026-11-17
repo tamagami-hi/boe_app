@@ -28,10 +28,11 @@ type Props = Readonly<{
   userId: string
   canRecord: boolean
   isRecording: boolean
+  canClose: boolean
   onToggleRecord: () => void
 }>
 
-export const ClientHubActions = ({ userId, canRecord, isRecording, onToggleRecord }: Props): React.ReactElement => {
+export const ClientHubActions = ({ userId, canRecord, isRecording, canClose, onToggleRecord }: Props): React.ReactElement => {
   const { hasAnyPermission, hasAllPermissions } = useSession()
   const isOpen = (routeId: string): boolean => {
     const route = ADMIN_ROUTES.find((entry) => entry.id === routeId)
@@ -44,7 +45,13 @@ export const ClientHubActions = ({ userId, canRecord, isRecording, onToggleRecor
       <Card>
         <div className={ACTION_ROW}>
           {canRecord ? (
-            <Button tone={isRecording ? "secondary" : "primary"} size="sm" aria-expanded={isRecording} onClick={onToggleRecord}>
+            <Button
+              tone={isRecording ? "secondary" : "primary"}
+              size="sm"
+              aria-expanded={isRecording}
+              disabled={isRecording && !canClose}
+              onClick={onToggleRecord}
+            >
               {isRecording ? "Close the recording form" : "Record an investment"}
             </Button>
           ) : null}

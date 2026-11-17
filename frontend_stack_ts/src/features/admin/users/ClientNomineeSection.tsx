@@ -3,6 +3,7 @@ import { useState } from "react"
 import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { Section } from "~/app/layouts/Section"
+import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import {
   NOMINEE_MAX_LENGTH,
@@ -72,6 +73,7 @@ const AdminNomineeForm = ({ userId, current, reloading, onReload, onSaved }: For
   })
   const [held, setHeld] = useState<Held | null>(null)
   const [outcome, setOutcome] = useState<Outcome>(IDLE)
+  const [confirmingRemoval, setConfirmingRemoval] = useState(false)
 
   const input = nomineeInput(draft)
   const problems = nomineeProblems(draft)
@@ -124,6 +126,12 @@ const AdminNomineeForm = ({ userId, current, reloading, onReload, onSaved }: For
       Reload the nominee
     </Button>
   )
+
+  const isRemoval = input?.name === null
+
+  const sendNew = (): void => {
+    if (input !== null) send({ input, expectedVersion: current.version, idempotencyKey: mintIdempotencyKey() })
+  }
 
   const edit = (field: NomineeField, value: string): void => {
     setDraft((previous) => ({ ...previous, [field]: value }))
@@ -192,18 +200,47 @@ const AdminNomineeForm = ({ userId, current, reloading, onReload, onSaved }: For
 
       {unknown ? null : (
         <div className={ACTION_ROW}>
-          <Button
-            disabled={locked || !ready}
-            loading={change.isPending}
-            onClick={() => {
-              if (input !== null) send({ input, expectedVersion: current.version, idempotencyKey: mintIdempotencyKey() })
-            }}
-            trailing
-          >
-            {input?.name === null ? "Remove the nominee" : "Save the nominee"}
-          </Button>
+          {isRemoval ? (
+            <Button
+              tone="danger"
+              disabled={locked || !ready}
+              loading={change.isPending}
+              onClick={() => {
+                setConfirmingRemoval(true)
+              }}
+            >
+              Remove the nominee
+            </Button>
+          ) : (
+            <Button disabled={locked || !ready} loading={change.isPending} onClick={sendNew} trailing>
+              Save the nominee
+            </Button>
+          )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmingRemoval && current.nominee !== null}
+        title="Remove the nominee?"
+        description="This account will have no nominee. The change is audited, and the client can ask for a new nominee from their profile."
+        confirmLabel="Remove the nominee"
+        confirmTone="danger"
+        cancelLabel="Keep the nominee"
+        onConfirm={() => {
+          setConfirmingRemoval(false)
+          sendNew()
+        }}
+        onCancel={() => {
+          setConfirmingRemoval(false)
+        }}
+      >
+        {current.nominee === null ? null : (
+          <DataList>
+            <DetailRow label="Nominee">{current.nominee.name}</DetailRow>
+            <DetailRow label="Relation">{current.nominee.relation}</DetailRow>
+          </DataList>
+        )}
+      </ConfirmDialog>
     </div>
   )
 }

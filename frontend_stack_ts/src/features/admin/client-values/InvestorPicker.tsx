@@ -1,9 +1,13 @@
 import { useMemo, useState } from "react"
 
-import { useAdminUsers } from "~/features/admin/users/userDirectoryQueries"
+import { hasCode } from "~/api/errors"
+import { useSession } from "~/app/providers/SessionProvider"
+import { DIRECTORY_PAGE_LIMIT, useAdminUsers } from "~/features/admin/users/userDirectoryQueries"
 import { Button } from "~/ui/primitives/Button"
 import { Combobox } from "~/ui/primitives/Combobox"
+import { Alert } from "~/ui/primitives/Feedback"
 import { FormField } from "~/ui/primitives/FormField"
+import { PROSE_SM } from "~/ui/recipes/datalist"
 import { STACK_SM } from "~/ui/recipes/layout"
 
 import { investorLabel, isSelectableInvestor } from "./investorQueries"
@@ -17,16 +21,22 @@ export type InvestorPickerProps = Readonly<{
   onChange: (choice: InvestorChoice) => void
 }>
 
+const LIST_PERMISSIONS = ["users.read", "users.read_limited"] as const
+
 export const InvestorPicker = ({
   userId,
   hint,
   disabled = false,
   onChange,
 }: InvestorPickerProps): React.ReactElement => {
+  const { hasAnyPermission } = useSession()
+  const canList = hasAnyPermission(LIST_PERMISSIONS)
   const [query, setQuery] = useState("")
   const search = query.trim()
-  const investors = useAdminUsers(search === "" ? { segment: "clients" } : { segment: "clients", q: search })
-  const failed = investors.data === undefined && investors.error != null
+  const investors = useAdminUsers(search === "" ? { segment: "clients" } : { segment: "clients", q: search }, canList)
+  const denied = !canList || hasCode(investors.error, "AUTHORIZATION_DENIED")
+  const failed = !denied && investors.data === undefined && investors.error != null
+  const capped = investors.data !== undefined && investors.hasMore
 
   const options = useMemo(
     () =>
@@ -37,6 +47,15 @@ export const InvestorPicker = ({
       })),
     [investors.data],
   )
+
+  if (denied) {
+    return (
+      <Alert tone="info" title="Investors cannot be listed">
+        This role cannot list investors, so one cannot be chosen here. A link from a client&apos;s page opens this with
+        the investor already chosen.
+      </Alert>
+    )
+  }
 
   return (
     <div className={STACK_SM}>
@@ -67,6 +86,11 @@ export const InvestorPicker = ({
           />
         )}
       </FormField>
+      {capped ? (
+        <p className={PROSE_SM} role="status">
+          {`Only the first ${String(DIRECTORY_PAGE_LIMIT)} matches are listed. Type more of the name, email or phone to find someone not shown.`}
+        </p>
+      ) : null}
       {failed ? (
         <Button size="sm" tone="secondary" onClick={investors.refetch}>
           Load investors again

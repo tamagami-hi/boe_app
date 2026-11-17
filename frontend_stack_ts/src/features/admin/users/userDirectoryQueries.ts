@@ -7,7 +7,7 @@ import type { PagedQuery } from "~/api/paged"
 import { STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 
-const DIRECTORY_PAGE_LIMIT = 25
+export const DIRECTORY_PAGE_LIMIT = 25
 
 export type AdminUserFilter = Readonly<{
   status?: AdminUserAccountState
@@ -15,11 +15,12 @@ export type AdminUserFilter = Readonly<{
   segment?: AdminUserDirectorySegment
 }>
 
-export const useAdminUsers = (filter: AdminUserFilter): PagedQuery<DataOf<typeof listAdminUsers>> => {
+export const useAdminUsers = (filter: AdminUserFilter, enabled = true): PagedQuery<DataOf<typeof listAdminUsers>> => {
   const api = useApi()
   const key = `${filter.status ?? "any"}:${filter.q ?? ""}:${filter.segment ?? "everyone"}`
   return usePagedQuery({
     queryKey: qk.admin.users(key),
+    enabled,
     staleTime: STALE.MONEY,
     fetchPage: async (after) =>
       api.request(listAdminUsers, {

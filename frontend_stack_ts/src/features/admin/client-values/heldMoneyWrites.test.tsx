@@ -1,0 +1,283 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import type { ReactNode } from "react"
+import { MemoryRouter } from "react-router-dom"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { TransportError } from "~/api/errors"
+import type { HttpClient } from "~/api/http"
+import { ApiProvider } from "~/app/providers/ApiProvider"
+import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
+import { indiaToday } from "~/domain/dates"
+
+import { EarlierInvestmentForm } from "./EarlierInvestmentForm"
+import { IndividualGrowthForm } from "./IndividualGrowthForm"
+import { LedgerEntries } from "./LedgerEntries"
+import { MaturityPanel } from "./MaturityPanel"
+import { WithdrawalPayoutPanel } from "./WithdrawalPayoutPanel"
+
+const ADMIN_ID = "a1a1a1a1-0000-4000-8000-000000000001"
+const USER_ID = "11111111-1111-4111-8111-111111111111"
+const FUND_ID = "22222222-2222-4222-8222-222222222222"
+const MATURITY_ID = "33333333-3333-4333-8333-333333333333"
+const PAYOUT_ID = "44444444-4444-4444-8444-444444444444"
+const TODAY = indiaToday()
+
+vi.mock("~/app/providers/SessionProvider", () => ({
+  useSession: () => ({ principal: { userId: ADMIN_ID }, scope: "admin", hasAnyPermission: () => true }),
+}))
+
+type Sent = Readonly<{ operationId: string; idempotencyKey: string | undefined; body: unknown; params: unknown }>
+
+type Operation = Readonly<{ operationId: string; method: string }>
+
+type Options = Readonly<{ idempotencyKey?: string; body?: unknown; params?: unknown }>
+
+const POSITION = {
+  fundId: FUND_ID,
+  principalPaise: "1000000",
+  currentValuePaise: "1100000",
+  totalGrowthPaise: "100000",
+  latestEntryId: null,
+}
+
+const ledgerRow = (entryId: string) => ({
+  entryId,
+  fundId: FUND_ID,
+  effectiveDate: "2026-10-01",
+  createdAt: "2026-10-01T05:00:00.000Z",
+  entryType: "contribution",
+  orderType: "recorded_offline",
+  principalDeltaPaise: "500000",
+  valueDeltaPaise: "500000",
+  reasonCode: "recorded_offline_earlier_investment",
+  reversedByEntryId: null,
+  reversible: true,
+})
+
+const PENDING_MATURITY = {
+  id: MATURITY_ID,
+  fundId: FUND_ID,
+  state: "pending",
+  maturedOn: "2026-10-01",
+  valueAtMaturityPaise: "1100000",
+  settlement: null,
+}
+
+const PAYOUT = {
+  id: PAYOUT_ID,
+  userId: USER_ID,
+  fundId: FUND_ID,
+  ledgerEntryId: "55555555-5555-4555-8555-555555555555",
+  state: "pending" as const,
+  amountPaise: "200000",
+  growthPortionPaise: "100000",
+  principalPortionPaise: "100000",
+  effectiveDate: "2026-10-02",
+  transferReference: null,
+  failureCode: null,
+  version: "1",
+  createdAt: "2026-10-02T05:00:00.000Z",
+}
+
+let maturities: readonly unknown[] = []
+
+const READS: Readonly<Record<string, () => unknown>> = {
+  listAdminFunds: () => ({ items: [{ id: FUND_ID, name: "Balanced Fund", slug: "balanced" }] }),
+  listAdminInvestorPositions: () => ({ userId: USER_ID, items: [POSITION] }),
+  listAdminClientLedgerPage: () => ({ items: [ledgerRow("66666666-6666-4666-8666-666666666661"), ledgerRow("66666666-6666-4666-8666-666666666662")] }),
+  listAdminClientSipEarlyExits: () => ({ items: [] }),
+  listAdminClientMaturities: () => ({ userId: USER_ID, items: maturities }),
+  listAdminWithdrawalPayouts: () => ({ userId: USER_ID, items: [] }),
+}
+
+const sent: Sent[] = []
+
+const request = (operation: Operation, options?: Options): Promise<unknown> => {
+  const read = READS[operation.operationId]
+  if (operation.method === "GET") {
+    return read === undefined
+      ? Promise.reject(new Error(`no read for ${operation.operationId}`))
+      : Promise.resolve({ data: read(), meta: { requestId: "req", page: null } })
+  }
+  sent.push({ operationId: operation.operationId, idempotencyKey: options?.idempotencyKey, body: options?.body, params: options?.params })
+  return Promise.reject(new TransportError("timeout", "The request timed out."))
+}
+
+const api = { request: request as unknown as HttpClient["request"] } satisfies HttpClient
+
+const renderWith = (node: ReactNode): (() => void) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const view = render(
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={api}>
+          <OverlayStackProvider>{node}</OverlayStackProvider>
+        </ApiProvider>
+      </QueryClientProvider>
+    </MemoryRouter>,
+  )
+  return view.unmount
+}
+
+const lastButton = (name: string | RegExp): HTMLElement => {
+  const button = screen.getAllByRole("button", { name }).at(-1)
+  if (button === undefined) throw new Error(`expected a ${String(name)} button`)
+  return button
+}
+
+const choose = async (label: RegExp, value: string): Promise<void> => {
+  await waitFor(() => {
+    expect(screen.getByLabelText<HTMLSelectElement>(label).disabled).toBe(false)
+  })
+  fireEvent.change(screen.getByLabelText(label), { target: { value } })
+}
+
+const type = (label: RegExp, value: string): void => {
+  fireEvent.change(screen.getByLabelText(label), { target: { value } })
+}
+
+const isLocked = async (control: () => HTMLElement): Promise<void> => {
+  await waitFor(() => {
+    expect(control().hasAttribute("disabled")).toBe(true)
+  })
+}
+
+type HeldWriteCase = Readonly<{
+  name: string
+  operationId: string
+  form: () => ReactNode
+  fill: () => Promise<void>
+  locked: () => HTMLElement
+  setUp?: () => void
+}>
+
+const CASES: readonly HeldWriteCase[] = [
+  {
+    name: "record an investment",
+    operationId: "recordAdminClientContribution",
+    form: () => <EarlierInvestmentForm userId={USER_ID} investorLabel="Asha Verma" />,
+    fill: async () => {
+      await choose(/^Fund/u, FUND_ID)
+      type(/^Amount in rupees/u, "5000")
+      type(/^Date of the investment/u, TODAY)
+      fireEvent.click(screen.getByRole("button", { name: /Review and record/u }))
+      fireEvent.click(lastButton("Record the investment"))
+    },
+    locked: () => screen.getByLabelText(/^Amount in rupees/u),
+  },
+  {
+    name: "append a growth adjustment",
+    operationId: "appendAdminIndividualClientGrowth",
+    form: () => (
+      <IndividualGrowthForm
+        userId={USER_ID}
+        investorLabel="Asha Verma"
+        initialFundId={FUND_ID}
+        renderPicker={() => null}
+        onFundChange={() => undefined}
+      />
+    ),
+    fill: async () => {
+      await waitFor(() => {
+        expect(screen.getByText("Current value")).toBeTruthy()
+      })
+      type(/Rate in basis points/u, "250")
+      fireEvent.click(screen.getByRole("button", { name: /Review the adjustment/u }))
+      fireEvent.click(lastButton("Append the adjustment"))
+    },
+    locked: () => screen.getByLabelText(/Rate in basis points/u),
+  },
+  {
+    name: "reverse a ledger entry",
+    operationId: "reverseAdminClientLedgerEntry",
+    form: () => <LedgerEntries userId={USER_ID} canWrite />,
+    fill: async () => {
+      fireEvent.click((await screen.findAllByRole("button", { name: "Reverse" }))[0]!)
+      fireEvent.click(lastButton("Append the reversal"))
+    },
+    locked: () => lastButton("Reverse"),
+  },
+  {
+    name: "mark a position matured",
+    operationId: "markAdminClientMatured",
+    form: () => <MaturityPanel userId={USER_ID} canWrite positions={[POSITION]} />,
+    fill: async () => {
+      await choose(/^Position/u, FUND_ID)
+      await waitFor(() => {
+        expect(lastButton("Mark matured").hasAttribute("disabled")).toBe(false)
+      })
+      fireEvent.click(lastButton("Mark matured"))
+      fireEvent.click(lastButton("Mark matured"))
+    },
+    locked: () => screen.getByLabelText(/^Position/u),
+  },
+  {
+    name: "settle a matured position by a withdrawal",
+    operationId: "withdrawAdminClientMaturity",
+    setUp: () => {
+      maturities = [PENDING_MATURITY]
+    },
+    form: () => <MaturityPanel userId={USER_ID} canWrite positions={[POSITION]} />,
+    fill: async () => {
+      await choose(/^Position/u, FUND_ID)
+      type(/^Withdrawal amount in rupees/u, "2000")
+      fireEvent.click(screen.getByRole("button", { name: "Record withdrawal" }))
+      fireEvent.click(lastButton("Record the withdrawal"))
+    },
+    locked: () => screen.getByLabelText(/^Withdrawal amount in rupees/u),
+  },
+  {
+    name: "record a payout's transfer outcome",
+    operationId: "updateAdminWithdrawalPayout",
+    form: () => <WithdrawalPayoutPanel payout={PAYOUT} fundName="Balanced Fund" canWrite onReload={() => undefined} />,
+    fill: () => {
+      type(/^Bank transfer reference/u, "TRANSFER-1")
+      fireEvent.click(screen.getByRole("button", { name: "Record transfer outcome" }))
+      fireEvent.click(lastButton("Mark paid"))
+      return Promise.resolve()
+    },
+    locked: () => screen.getByLabelText(/^Bank transfer reference/u),
+  },
+]
+
+beforeEach(() => {
+  sent.length = 0
+  maturities = []
+  window.sessionStorage.clear()
+})
+
+afterEach(() => {
+  cleanup()
+})
+
+describe("a money or ledger write whose reply is lost", () => {
+  it.each(CASES)(
+    "$name: shows Not confirmed, stays locked across closing and reopening, and Check again resends the same key",
+    async ({ operationId, form, fill, locked, setUp }) => {
+      setUp?.()
+      const close = renderWith(form())
+      await fill()
+
+      expect(await screen.findAllByText("Not confirmed")).not.toHaveLength(0)
+      await isLocked(locked)
+      close()
+
+      renderWith(form())
+      expect(await screen.findAllByText("Not confirmed")).not.toHaveLength(0)
+      await isLocked(locked)
+      fireEvent.click(lastButton("Check again"))
+      await waitFor(() => {
+        expect(sent).toHaveLength(2)
+      })
+
+      expect(sent.map((write) => write.operationId)).toEqual([operationId, operationId])
+      expect(sent[0]?.idempotencyKey).toMatch(/^[A-Za-z0-9._:-]{8,128}$/u)
+      expect(sent[1]?.idempotencyKey).toBe(sent[0]?.idempotencyKey)
+      expect(sent[1]?.body).toEqual(sent[0]?.body)
+      expect(sent[1]?.params).toEqual(sent[0]?.params)
+      expect(await screen.findAllByText("Not confirmed")).not.toHaveLength(0)
+      await isLocked(locked)
+    },
+  )
+})

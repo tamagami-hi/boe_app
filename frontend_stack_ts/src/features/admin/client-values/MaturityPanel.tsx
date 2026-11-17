@@ -1,12 +1,13 @@
 import type { AdminInvestorPositionsData } from "@beonedge/contracts"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
-import { isApiError } from "~/api/errors"
 import { Section } from "~/app/layouts/Section"
-import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { formatDate, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
+import { useFundNames } from "~/features/admin/shared/fundNames"
+import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/admin/shared/HeldWriteNotice"
+import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -17,104 +18,293 @@ import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { Select } from "~/ui/primitives/Select"
 import { ADMIN_FORM_GRID } from "~/ui/recipes/admin"
+import { PROSE_SM } from "~/ui/recipes/datalist"
 import { STACK_LG } from "~/ui/recipes/layout"
 
 import { ListSkeleton } from "./ListSkeleton"
+import { MaturityPanelConfirm, type MaturityAsk } from "./MaturityPanelConfirm"
+import { parseMarkMaturity, parseSettlement } from "./heldBodies"
 import { useMarkMaturity, useMaturityRecords, useSettleMaturity, useWithdrawalPayouts } from "./maturityQueries"
-import { parsePositiveRupees } from "./rupeeAmount"
+import { paiseToRupeeText, parsePositiveRupees } from "./rupeeAmount"
 import { WithdrawalPayoutPanel } from "./WithdrawalPayoutPanel"
+
+type Position = AdminInvestorPositionsData["items"][number]
 
 type Props = Readonly<{
   userId: string
   canWrite: boolean
-  positions: AdminInvestorPositionsData["items"]
-  fundName: (id: string) => string
+  positions: readonly Position[]
+  onUnsavedHold?: (unsaved: boolean) => void
 }>
 
-export const MaturityPanel = ({ userId, canWrite, positions, fundName }: Props): React.ReactElement => {
+const SETTLED_TEXT = {
+  withdrawal: "Withdrawal recorded. Confirm the bank transfer outcome below when available.",
+  reinvestment: "Reinvestment recorded. The current value is now the new invested amount.",
+} as const
+
+const noteOf = (text: string): Readonly<{ note?: string }> => (text.trim() === "" ? {} : { note: text.trim() })
+
+export const MaturityPanel = ({ userId, canWrite, positions, onUnsavedHold }: Props): React.ReactElement => {
+  const funds = useFundNames()
   const maturities = useMaturityRecords(userId)
   const payouts = useWithdrawalPayouts(userId)
-  const mark = useMarkMaturity(userId)
-  const settle = useSettleMaturity(userId)
-  const [fundId, setFundId] = useState("")
-  const [date, setDate] = useState(indiaToday)
-  const [withdrawalRupees, setWithdrawalRupees] = useState("")
-  const [note, setNote] = useState("")
-  const [action, setAction] = useState<"withdrawal" | "reinvestment" | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const mark = useHeldWrite(useMarkMaturity(userId), "The maturity could not be sent. Reload the page and try again.", {
+    slot: `maturity-mark:${userId}`,
+    parseBody: parseMarkMaturity,
+  })
+  const settle = useHeldWrite(useSettleMaturity(userId), "The settlement could not be sent. Reload the page and try again.", {
+    slot: `maturity-settle:${userId}`,
+    parseBody: parseSettlement,
+  })
+  const today = indiaToday()
+  const [fundId, setFundId] = useState(() => mark.held?.fundId ?? settle.held?.body.fundId ?? "")
+  const [date, setDate] = useState(() => mark.held?.maturedOn ?? settle.held?.body.effectiveDate ?? today)
+  const [withdrawalRupees, setWithdrawalRupees] = useState(() =>
+    settle.held?.kind === "withdrawal" ? paiseToRupeeText(settle.held.body.amountPaise) : "",
+  )
+  const [note, setNote] = useState(() => mark.held?.note ?? settle.held?.body.note ?? "")
+  const [asking, setAsking] = useState<MaturityAsk | null>(null)
+  const [settledKind, setSettledKind] = useState(() => settle.held?.kind ?? null)
+
+  const unsaved = isUnsavedHold(mark) || isUnsavedHold(settle)
+  useEffect(() => {
+    onUnsavedHold?.(unsaved)
+    return () => {
+      onUnsavedHold?.(false)
+    }
+  }, [unsaved, onUnsavedHold])
+
   const items = maturities.data?.items ?? []
   const pending = items.find((row) => row.fundId === fundId && row.state === "pending")
   const position = positions.find((row) => row.fundId === fundId)
-  const isBusy = mark.isPending || settle.isPending
-  const isReady = canWrite && !isBusy && !maturities.isPending && !maturities.isError && fundId !== "" && date !== "" && date <= indiaToday()
+  const locked = !canWrite || mark.held !== null || settle.held !== null || mark.pending || settle.pending
+  const isReady = !locked && maturities.data !== undefined && funds.ready && fundId !== "" && date !== "" && date <= today
   const withdrawalPaise = parsePositiveRupees(withdrawalRupees)
-  const isAmountValid = withdrawalPaise !== null && position !== undefined && BigInt(withdrawalPaise) <= BigInt(position.currentValuePaise)
-  const error = mark.error ?? settle.error
+  const isAmountValid =
+    withdrawalPaise !== null && position !== undefined && BigInt(withdrawalPaise) <= BigInt(position.currentValuePaise)
+  const isEmptyPosition =
+    position === undefined || (BigInt(position.currentValuePaise) <= 0n && BigInt(position.principalPaise) <= 0n)
+
+  const reload = (): void => {
+    void maturities.refetch()
+    void payouts.refetch()
+  }
+
   const changeFund = (next: string): void => {
     setFundId(next)
     setWithdrawalRupees("")
-    setSuccess(null)
     mark.reset()
     settle.reset()
   }
-  const markMatured = (): void => {
-    setSuccess(null)
-    mark.mutate({ fundId, maturedOn: date, reasonCode: "position_matured", ...(note.trim() === "" ? {} : { note: note.trim() }) }, {
-      onSuccess: () => { setSuccess("Position marked as matured. Choose withdrawal or reinvestment to settle it.") },
-    })
+
+  const confirm = (): void => {
+    const kind = asking
+    setAsking(null)
+    if (kind === "mark") {
+      mark.submit({ fundId, maturedOn: date, reasonCode: "position_matured", ...noteOf(note) })
+      return
+    }
+    if (kind === null || pending === undefined) return
+    const body = {
+      fundId,
+      effectiveDate: date,
+      reasonCode: kind === "withdrawal" ? "maturity_withdrawal" : "maturity_reinvestment",
+      ...noteOf(note),
+    }
+    setSettledKind(kind)
+    if (kind === "reinvestment") {
+      settle.submit({ kind, maturityId: pending.id, body })
+      return
+    }
+    if (withdrawalPaise !== null) settle.submit({ kind, maturityId: pending.id, body: { ...body, amountPaise: withdrawalPaise } })
   }
-  const confirmSettlement = (): void => {
-    const kind = action
-    setAction(null)
-    if (pending === undefined || kind === null || (kind === "withdrawal" && withdrawalPaise === null)) return
-    setSuccess(null)
-    const body = { fundId, effectiveDate: date, reasonCode: kind === "withdrawal" ? "maturity_withdrawal" : "maturity_reinvestment", ...(note.trim() === "" ? {} : { note: note.trim() }) }
-    settle.mutate(kind === "withdrawal"
-      ? { kind, maturityId: pending.id, body: { ...body, amountPaise: withdrawalPaise ?? "" } }
-      : { kind, maturityId: pending.id, body }, {
-      onSuccess: () => { setSuccess(kind === "withdrawal" ? "Withdrawal recorded. Confirm the bank transfer outcome below when available." : "Reinvestment recorded. The current value is now the new invested amount."); setWithdrawalRupees("") },
-    })
-  }
+
   return (
-    <Section title="Maturity and settlement" description="Mark a position as matured, then withdraw an amount or reinvest its full current value. Withdrawals use positive growth first.">
+    <Section
+      title="Maturity and settlement"
+      description="Mark a position as matured, then withdraw an amount or reinvest its full current value. Withdrawals use positive growth first."
+    >
       <div className={STACK_LG}>
-        {maturities.isError ? <Alert tone="error" title="Maturity records unavailable">Maturity actions stay disabled until the maturity history below loads.</Alert> : null}
-        {error === null ? null : <Alert tone="error" title="Action not completed">{isApiError(error) ? error.message : "Could not save this action. Refresh and try again."}</Alert>}
-        {success === null ? null : <Alert tone="success" title="Saved">{success}</Alert>}
+        <HeldWriteNotice write={mark} subject="the position was marked matured" reloadLabel="Reload the maturity history" onReload={reload} />
+        <HeldWriteNotice write={settle} subject="the settlement was recorded" reloadLabel="Reload the maturity history" onReload={reload} />
+        <UnsavedHoldNotice write={mark} />
+        <UnsavedHoldNotice write={settle} />
+        {mark.outcome.kind === "done" ? (
+          <Alert tone="success" title="Saved">
+            Position marked as matured. Choose withdrawal or reinvestment to settle it.
+          </Alert>
+        ) : null}
+        {settle.outcome.kind === "done" && settledKind !== null ? (
+          <Alert tone="success" title="Saved">
+            {SETTLED_TEXT[settledKind]}
+          </Alert>
+        ) : null}
         <Card elevated>
           <div className={STACK_LG}>
             <div className={ADMIN_FORM_GRID}>
-              <FormField label="Position" required>{({ id }) => <Select id={id} value={fundId} options={[{ value: "", label: "Choose a fund position" }, ...positions.map((row) => ({ value: row.fundId, label: fundName(row.fundId) }))]} onChange={(event) => { changeFund(event.target.value) }} />}</FormField>
-              <FormField label={pending === undefined ? "Maturity date" : "Settlement date"} required>{({ id }) => <Input id={id} type="date" value={date} max={indiaToday()} min={pending?.maturedOn} onChange={(event) => { setDate(event.target.value) }} />}</FormField>
+              <FormField label="Position" required>
+                {({ id }) => (
+                  <Select
+                    id={id}
+                    value={fundId}
+                    disabled={locked || !funds.ready}
+                    options={[
+                      { value: "", label: "Choose a fund position" },
+                      ...positions.map((row) => ({ value: row.fundId, label: funds.nameOf(row.fundId) })),
+                    ]}
+                    onChange={(event) => {
+                      changeFund(event.target.value)
+                    }}
+                  />
+                )}
+              </FormField>
+              <FormField label={pending === undefined ? "Maturity date" : "Settlement date"} required>
+                {({ id }) => (
+                  <Input
+                    id={id}
+                    type="date"
+                    value={date}
+                    max={today}
+                    min={pending?.maturedOn}
+                    disabled={locked}
+                    onChange={(event) => {
+                      setDate(event.target.value)
+                    }}
+                  />
+                )}
+              </FormField>
             </div>
-            {position === undefined ? null : <p>Current value: <MoneyValue amount={toPaise(position.currentValuePaise)} size="sm" showDecimals /></p>}
-            <FormField label="Note" hint="Optional context for the record.">{({ id }) => <Input id={id} value={note} maxLength={2000} onChange={(event) => { setNote(event.target.value) }} />}</FormField>
-            {pending === undefined ? <Button disabled={!isReady || position === undefined || (BigInt(position.currentValuePaise) <= 0n && BigInt(position.principalPaise) <= 0n)} onClick={markMatured}>Mark matured</Button> : (
+            {position === undefined ? null : (
+              <p>
+                Current value: <MoneyValue amount={toPaise(position.currentValuePaise)} size="sm" showDecimals />
+              </p>
+            )}
+            <FormField label="Note" hint="Optional context for the record.">
+              {({ id }) => (
+                <Input
+                  id={id}
+                  value={note}
+                  maxLength={2000}
+                  disabled={locked}
+                  onChange={(event) => {
+                    setNote(event.target.value)
+                  }}
+                />
+              )}
+            </FormField>
+            {maturities.data === undefined ? (
+              <p className={PROSE_SM}>Maturity actions open once the maturity history below has loaded.</p>
+            ) : null}
+            {pending === undefined ? (
+              <Button
+                disabled={!isReady || isEmptyPosition}
+                onClick={() => {
+                  setAsking("mark")
+                }}
+              >
+                Mark matured
+              </Button>
+            ) : (
               <>
                 <p>Matured on {formatDate(pending.maturedOn)}. A settlement uses the position&apos;s current value.</p>
-                <FormField label="Withdrawal amount in rupees" hint="A positive amount up to the current value, with at most two decimal places.">{({ id, describedBy }) => <AmountInput id={id} value={withdrawalRupees} decimals describedBy={describedBy} onChange={setWithdrawalRupees} />}</FormField>
-                <Button disabled={!isReady || !isAmountValid || date < pending.maturedOn} onClick={() => { setAction("withdrawal") }}>Record withdrawal</Button>
-                <Button disabled={!isReady || position === undefined || position.currentValuePaise === position.principalPaise || date < pending.maturedOn} onClick={() => { setAction("reinvestment") }}>Reinvest full position</Button>
+                <FormField
+                  label="Withdrawal amount in rupees"
+                  hint="A positive amount up to the current value, with at most two decimal places."
+                >
+                  {({ id, describedBy }) => (
+                    <AmountInput
+                      id={id}
+                      value={withdrawalRupees}
+                      decimals
+                      disabled={locked}
+                      describedBy={describedBy}
+                      onChange={setWithdrawalRupees}
+                    />
+                  )}
+                </FormField>
+                <Button
+                  disabled={!isReady || !isAmountValid || date < pending.maturedOn}
+                  onClick={() => {
+                    setAsking("withdrawal")
+                  }}
+                >
+                  Record withdrawal
+                </Button>
+                <Button
+                  disabled={
+                    !isReady ||
+                    position === undefined ||
+                    position.currentValuePaise === position.principalPaise ||
+                    date < pending.maturedOn
+                  }
+                  onClick={() => {
+                    setAsking("reinvestment")
+                  }}
+                >
+                  Reinvest full position
+                </Button>
               </>
             )}
           </div>
         </Card>
-        <AsyncBoundary query={maturities} skeleton={<ListSkeleton />} isEmpty={(data) => data.items.length === 0} empty={<EmptyState title="No maturity recorded" description="No position of this investor has been marked as matured." />}>
+        <AsyncBoundary
+          query={maturities}
+          skeleton={<ListSkeleton />}
+          isEmpty={(data) => data.items.length === 0}
+          empty={<EmptyState title="No maturity recorded" description="No position of this investor has been marked as matured." />}
+        >
           {(data) => (
-            <AdminTable caption="Maturity history (latest 100)" rows={data.items} rowKey={(row) => row.id} columns={[
-              { key: "fund", header: "Fund", render: (row) => fundName(row.fundId) },
-              { key: "date", header: "Matured", render: (row) => formatDate(row.maturedOn) },
-              { key: "value", header: "Value at maturity", render: (row) => <MoneyValue amount={toPaise(row.valueAtMaturityPaise)} size="sm" showDecimals /> },
-              { key: "state", header: "Status", render: (row) => row.settlement ?? row.state },
-            ]} />
+            <AdminTable
+              caption="Maturity history (latest 100)"
+              rows={data.items}
+              rowKey={(row) => row.id}
+              columns={[
+                { key: "fund", header: "Fund", render: (row) => funds.nameOf(row.fundId) },
+                { key: "date", header: "Matured", render: (row) => formatDate(row.maturedOn) },
+                {
+                  key: "value",
+                  header: "Value at maturity",
+                  render: (row) => <MoneyValue amount={toPaise(row.valueAtMaturityPaise)} size="sm" showDecimals />,
+                },
+                { key: "state", header: "Status", render: (row) => row.settlement ?? row.state },
+              ]}
+            />
           )}
         </AsyncBoundary>
-        <p>Withdrawal payouts (latest 100). Recording a withdrawal does not execute a bank transfer. Reversing a ledger entry does not mean transferred money has returned.</p>
-        <AsyncBoundary query={payouts} skeleton={<ListSkeleton />} isEmpty={(data) => data.items.length === 0} empty={<EmptyState title="No withdrawal payout" description="No withdrawal has been recorded for this investor." />}>
-          {(data) => data.items.map((payout) => <WithdrawalPayoutPanel key={payout.id} payout={payout} fundName={fundName(payout.fundId)} canWrite={canWrite} />)}
+        <p>
+          Withdrawal payouts (latest 100). Recording a withdrawal does not execute a bank transfer. Reversing a ledger
+          entry does not mean transferred money has returned.
+        </p>
+        <AsyncBoundary
+          query={payouts}
+          skeleton={<ListSkeleton />}
+          isEmpty={(data) => data.items.length === 0}
+          empty={<EmptyState title="No withdrawal payout" description="No withdrawal has been recorded for this investor." />}
+        >
+          {(data) =>
+            data.items.map((payout) => (
+              <WithdrawalPayoutPanel
+                key={payout.id}
+                payout={payout}
+                fundName={funds.nameOf(payout.fundId)}
+                canWrite={canWrite}
+                onReload={reload}
+              />
+            ))
+          }
         </AsyncBoundary>
       </div>
-      <ConfirmDialog open={action !== null} title={action === "withdrawal" ? "Record this withdrawal?" : "Reinvest this position?"} description={action === "withdrawal" ? "This reduces the investor's current value and creates a pending payout. The maturity will be settled, including for a partial withdrawal." : "The entire current value becomes the new invested amount. Any accumulated profit or loss is included, and the maturity will be settled."} confirmLabel="Confirm settlement" cancelLabel="Cancel" onConfirm={confirmSettlement} onCancel={() => { setAction(null) }} />
+      <MaturityPanelConfirm
+        asking={asking}
+        fundName={funds.nameOf(fundId)}
+        date={date}
+        position={position}
+        withdrawalPaise={withdrawalPaise}
+        onConfirm={confirm}
+        onCancel={() => {
+          setAsking(null)
+        }}
+      />
     </Section>
   )
 }
