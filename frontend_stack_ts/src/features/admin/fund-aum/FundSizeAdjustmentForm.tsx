@@ -83,7 +83,7 @@ const rejectionText = (code: string | null, message: string, fields: Readonly<Re
   const details = Object.values(fields).flat().join(" ")
   if (details !== "") return details
   if (code === "STATE_CONFLICT") return "Check the current fund size and date, then try again. The fund size cannot become negative."
-  if (code === "AUTHORIZATION_DENIED") return "Recording AUM needs the aum.write permission."
+  if (code === "AUTHORIZATION_DENIED") return "Your role cannot record AUM."
   return message
 }
 

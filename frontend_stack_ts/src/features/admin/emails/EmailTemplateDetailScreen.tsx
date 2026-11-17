@@ -135,7 +135,7 @@ const TemplateWorkspace = ({ template }: Readonly<{ template: EmailTemplateDetai
 
       {canWrite ? null : (
         <Alert tone="info" title="Read only">
-          Editing templates needs the email_templates.write permission.
+          Your role cannot edit templates.
         </Alert>
       )}
 

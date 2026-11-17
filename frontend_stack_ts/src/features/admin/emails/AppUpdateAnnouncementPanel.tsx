@@ -105,7 +105,7 @@ export const AppUpdateAnnouncementPanel = (): React.ReactElement => {
             hint={
               canRequire
                 ? "Also raises the minimum app version, so older apps ask clients to update before continuing."
-                : "Needs the config.publish permission."
+                : "Your role cannot make an update required."
             }
             checked={mandatory}
             disabled={!canRequire}

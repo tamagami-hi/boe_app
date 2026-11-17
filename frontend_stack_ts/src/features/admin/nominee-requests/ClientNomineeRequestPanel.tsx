@@ -67,7 +67,7 @@ export const ClientNomineeRequestPanel = ({ userId, nomineeVersion, accountState
                 />
               ) : (
                 <p className={PROSE_SM}>
-                  {`${pending.nominee.name} (${pending.nominee.relation}) is waiting for a decision. Deciding needs the clients.create permission.`}
+                  {`${pending.nominee.name} (${pending.nominee.relation}) is waiting for a decision. Your role cannot decide nominee requests.`}
                 </p>
               )}
               {closed.length === 0 ? null : (

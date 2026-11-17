@@ -151,7 +151,7 @@ export const EarlierInvestmentForm = ({
       <div className={STACK_LG}>
         {canWrite ? null : (
           <Alert tone="info" title="Read only">
-            Recording an investment needs the client_position.write permission.
+            Your role cannot record investments.
           </Alert>
         )}
 

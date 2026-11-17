@@ -96,8 +96,8 @@ export const ContactReleasePanel = ({
   if (!canRelease) {
     return (
       <p className={PROSE_SM}>
-        This closed account still holds its email address and phone number. Releasing them needs the users.close
-        permission.
+        This closed account still holds its email address and phone number. Your role cannot
+        release them.
       </p>
     )
   }

@@ -83,7 +83,7 @@ const FundWorkspaceScreen = (): React.ReactElement => {
             />
           ) : (
             <Alert tone="info" title="Read only">
-              Changing fund terms needs the funds.write permission.
+              Your role cannot publish fund terms.
             </Alert>
           )}
         </Page>

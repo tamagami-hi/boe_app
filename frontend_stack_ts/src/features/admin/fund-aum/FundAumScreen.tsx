@@ -90,7 +90,7 @@ const FundAumScreen = (): React.ReactElement => {
               <CurrentFundSize current={current} />
               {!canWrite ? (
                 <Alert tone="info" title="Read only">
-                  Recording AUM needs the aum.write permission.
+                  Your role cannot record AUM.
                 </Alert>
               ) : (
                 <>

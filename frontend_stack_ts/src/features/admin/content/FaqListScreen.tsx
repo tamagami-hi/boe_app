@@ -229,7 +229,7 @@ const FaqListScreen = (): React.ReactElement => {
         </Section>
       ) : (
         <Alert tone="info" title="You can read these but not change them">
-          Writing or publishing an FAQ needs the content.publish permission.
+          Your role cannot write or publish FAQs.
         </Alert>
       )}
 

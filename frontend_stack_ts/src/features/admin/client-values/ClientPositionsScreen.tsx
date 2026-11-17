@@ -57,8 +57,7 @@ const ClientValuesScreen = (): React.ReactElement => {
 
       {canWrite ? null : (
         <Alert tone="info" title="You can read this but not adjust values">
-          Adjusting investor value needs the client_growth.write permission. Recording an earlier
-          investment or reversing an entry needs client_position.write.
+          Your role cannot adjust investor values, record earlier investments or reverse entries.
         </Alert>
       )}
 

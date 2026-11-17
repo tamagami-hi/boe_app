@@ -275,7 +275,7 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
                   </div>
                 ) : (
                   <Alert tone="info" title="You can read this but not publish it">
-                    Publishing configuration needs the config.publish permission.
+                    Your role cannot publish configuration.
                   </Alert>
                 )}
               </Card>

@@ -165,7 +165,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
                   </div>
                 ) : (
                   <Alert tone="info" title="You can read this but not decide it">
-                    Deciding an application needs the applications.decide permission.
+                    Your role cannot decide applications.
                   </Alert>
                 )}
               </Section>

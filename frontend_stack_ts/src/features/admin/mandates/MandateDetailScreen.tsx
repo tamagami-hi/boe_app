@@ -175,7 +175,7 @@ const MandateDetailScreen = (): React.ReactElement => {
                   </>
                 ) : (
                   <Alert tone="info" title="You can read this but not act on it">
-                    Reconciling or cancelling a mandate needs the finance.operate permission.
+                    Your role cannot reconcile or cancel mandates.
                   </Alert>
                 )}
               </Card>

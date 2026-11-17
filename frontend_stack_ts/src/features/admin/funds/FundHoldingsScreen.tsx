@@ -169,7 +169,7 @@ const FundHoldings = ({ fundId }: Readonly<{ fundId: string }>): React.ReactElem
                 </Section>
               ) : (
                 <Alert tone="info" title="You can read these but not change them">
-                  Editing holdings needs the funds.write permission.
+                  Your role cannot edit holdings.
                 </Alert>
               )}
 

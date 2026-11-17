@@ -55,8 +55,7 @@ const CorrectionGate = ({ user, reloading, onReload }: ContactsProps): React.Rea
           if (!canCorrect) {
             return (
               <p className={PROSE_SM}>
-                Correcting an invitee's email or phone needs the clients.create and clients.password_links.send
-                permissions.
+                Your role cannot correct an invitee's email or phone.
               </p>
             )
           }

@@ -294,7 +294,7 @@ export const ClientNomineeSection = ({ userId, accountState }: SectionProps): Re
                 <p className={PROSE_SM}>
                   {accountState === "closed"
                     ? "This account is closed, so its nominee cannot be changed."
-                    : "Changing the nominee needs the clients.create permission."}
+                    : "Your role cannot change the nominee."}
                 </p>
               )}
             </>

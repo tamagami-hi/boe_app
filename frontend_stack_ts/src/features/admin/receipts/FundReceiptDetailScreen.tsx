@@ -193,7 +193,7 @@ const FundReceiptDetailScreen = (): React.ReactElement => {
                     </>
                   ) : (
                     <Alert tone="info" title="You can read this but not acknowledge it">
-                      Acknowledging funds needs the funds.receipts.write permission.
+                      Your role cannot acknowledge funds.
                     </Alert>
                   )}
                 </Card>
