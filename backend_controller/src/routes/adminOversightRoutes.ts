@@ -24,6 +24,7 @@ import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository, UserId } from "../db/repositories.js"
 import type { Database, EmailVerificationState, UserAccountState } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
+import { refuseSelfLockout } from "../domain/admin/selfLockout.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
 import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
@@ -352,6 +353,7 @@ const changeUserState = async (
   requireAnyPermission(principal, permissions)
   const userId = parseOrThrow(uuidParam, (request.params as { userId?: unknown }).userId)
   const body = parseOrThrow(lifecycleBodySchema, request.body ?? undefined)
+  refuseSelfLockout(principal.userId, userId, nextState)
   const now = deps.clock()
 
   return mutate(

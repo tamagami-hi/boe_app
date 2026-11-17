@@ -65,12 +65,13 @@ export const UserLifecyclePanel = ({
   onReload,
 }: UserLifecyclePanelProps): React.ReactElement => {
   const lifecycle = useUserLifecycle(userId)
-  const { hasAnyPermission } = useSession()
+  const { hasAnyPermission, principal } = useSession()
   const [pending, setPending] = useState<UserLifecycle | null>(null)
   const [held, setHeld] = useState<HeldAction | null>(null)
   const [outcome, setOutcome] = useState<Outcome>(IDLE)
   const [reason, setReason] = useState("")
 
+  const ownAccount = principal !== null && principal.userId.toLowerCase() === userId.toLowerCase()
   const canSuspend = hasAnyPermission(["users.suspend"])
   const canClose = hasAnyPermission(["users.close"])
   const unknown = outcome.kind === "unknown"
@@ -174,7 +175,7 @@ export const UserLifecyclePanel = ({
         </FormField>
 
         <div className={ACTION_ROW}>
-          {accountState === "active" && canSuspend ? (
+          {accountState === "active" && canSuspend && !ownAccount ? (
             <Button
               tone="danger"
               disabled={busy}
@@ -195,7 +196,7 @@ export const UserLifecyclePanel = ({
               Reinstate
             </Button>
           ) : null}
-          {accountState !== "closed" && canClose ? (
+          {accountState !== "closed" && canClose && !ownAccount ? (
             <Button
               tone="danger"
               disabled={busy}
@@ -208,7 +209,9 @@ export const UserLifecyclePanel = ({
           ) : null}
         </div>
 
-        {!canSuspend && !canClose ? (
+        {ownAccount ? (
+          <p className={PROSE_SM}>You cannot suspend or close your own account. Another admin can do this.</p>
+        ) : !canSuspend && !canClose ? (
           <p className={PROSE_SM}>Changing an account state needs the users.suspend or users.close permission.</p>
         ) : null}
       </Card>
