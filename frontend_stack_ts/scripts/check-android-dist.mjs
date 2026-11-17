@@ -9,6 +9,8 @@ const assetsRoot = join(distRoot, "assets")
 const MAX_CSS_BYTES = 640 * 1024
 const MAX_TOTAL_BYTES = 2600 * 1024
 
+const STATIC_CHUNK_IMPORT = /\b(?:import|export)\s*(?:[\w$*{},\s]+?\s*from\s*)?["']\.\/([^"']+\.js)["']/gu
+
 const FORBIDDEN_FONT_SUBSETS = ["cyrillic", "greek", "vietnamese"]
 
 const CROSS_TARGET_PATTERNS = {
@@ -110,9 +112,8 @@ const buildChunkGraph = async (assets) => {
   for (const asset of jsAssets) {
     const source = await readFile(asset.path, "utf8")
     const edges = new Set()
-    for (const candidate of names) {
-      if (candidate === asset.name) continue
-      if (source.includes(candidate)) edges.add(candidate)
+    for (const match of source.matchAll(STATIC_CHUNK_IMPORT)) {
+      if (match[1] !== asset.name && names.has(match[1])) edges.add(match[1])
     }
     graph.set(asset.name, edges)
   }

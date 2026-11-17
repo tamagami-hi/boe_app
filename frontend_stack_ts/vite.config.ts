@@ -70,6 +70,7 @@ export default defineConfig({
             return "vendor"
           }
           if (id.endsWith(".css")) return undefined
+          if (id.includes("/src/features/")) return undefined
           if (id.includes("/src/")) return "app"
           return undefined
         },
