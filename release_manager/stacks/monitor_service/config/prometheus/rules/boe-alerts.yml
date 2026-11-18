@@ -13,7 +13,7 @@ groups:
   - name: boe-availability
     rules:
       - alert: ProductionEndpointDown
-        expr: probe_success{instance=~"https://(app|admin)\\.beonedge\\.in"} == 0
+        expr: probe_success{instance="https://app.beonedge.in"} == 0
         for: 3m
         labels:
           severity: critical
@@ -33,7 +33,7 @@ groups:
           description: "/health/ready is not returning 200. The database dependency is the usual cause."
 
       - alert: DevelopmentEndpointDown
-        expr: probe_success{instance=~"https://dev-(app|admin)\\.beonedge\\.in"} == 0
+        expr: probe_success{instance="https://dev-app.beonedge.in"} == 0
         for: 15m
         labels:
           severity: warning

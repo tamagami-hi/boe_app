@@ -137,7 +137,7 @@ defined in [RULES.md](RULES.md#product-copy-and-accessibility).
 | Task | Context |
 | --- | --- |
 | Rules, safety, context, Git, verification | Root `RULES.md` |
-| Current requested features and approval | `plans/admin-improvements.md` (previous: `plans/app-onboarding-contact-investment-email.md`) |
+| Current requested features and approval | `plans/admin-improvements.md` (previous, archived: `release_manager/docs/Completed/app-onboarding-contact-investment-email.md`) |
 | Account creation/password links | `src/domain/admin/createClientAccount.ts`, `src/domain/auth/passwordCredential.ts`, onboarding/password routes |
 | Client contacts and verification | Client auth/email-verification domain, user/verification repositories, frontend profile feature |
 | Earlier principal and growth | `src/domain/admin/recordContribution.ts`, client-growth domain/repositories, frontend admin client-values feature |
