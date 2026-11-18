@@ -24,7 +24,7 @@ import { LoadMore } from "~/ui/patterns/LoadMore"
 import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { CARD_STACK } from "~/ui/recipes/surface"
-import { FEED_MEASURE } from "~/ui/recipes/layout"
+import { ACTION_ROW, FEED_MEASURE } from "~/ui/recipes/layout"
 import { cx } from "~/lib/cx"
 import { LINK_TEXT, META_MUTED } from "~/ui/recipes/text"
 import { Badge } from "~/ui/primitives/Badge"
@@ -142,12 +142,13 @@ const ActivityScreen = (): React.ReactElement => {
             ? "Your investments, value updates and withdrawals, newest first."
             : "Everything that has happened to your investments, and every payment behind it."
         }
-        actions={
-          <ButtonLink to="/activity/receipts" tone="secondary" size="sm">
-            Receipts
-          </ButtonLink>
-        }
       />
+
+      <div className={ACTION_ROW}>
+        <ButtonLink to="/activity/receipts" tone="secondary" size="sm">
+          Receipts
+        </ButtonLink>
+      </div>
 
       {paymentsOff ? null : (
         <Tabs id={ACTIVITY_TABS_ID} label="Activity view" value={tab} items={TABS} onChange={setTab} />

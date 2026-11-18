@@ -134,7 +134,7 @@ const ProfileScreen = (): React.ReactElement => {
             <DetailRow label="Email verification">{emailVerification}</DetailRow>
           )}
           <DetailRow label="Investing">
-            <InvestingStatus availableLabel="Unlocked" />
+            <InvestingStatus availableLabel="Available" />
           </DetailRow>
         </DataList>
       </Card>

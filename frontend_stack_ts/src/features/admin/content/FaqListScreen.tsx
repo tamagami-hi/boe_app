@@ -22,13 +22,14 @@ import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { Textarea } from "~/ui/primitives/Textarea"
 
-import { ADMIN_CODE, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
-import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
+import { ADMIN_FORM_GRID } from "~/ui/recipes/admin"
+import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
-import { META_TEXT } from "~/ui/recipes/text"
+import { META_TEXT, REFERENCE_TEXT } from "~/ui/recipes/text"
 
 import { useArchiveFaq, useCreateFaq, useEditFaq, useSetFaqStatus } from "./faqQueries"
 import type { FaqFields } from "./faqQueries"
+import { FAQ_QUESTION_CELL } from "./faq.recipe"
 
 type StatusChange = Readonly<{ faqId: string; question: string; status: "published" | "draft" }>
 
@@ -260,9 +261,9 @@ const FaqListScreen = (): React.ReactElement => {
                   key: "question",
                   header: "Question",
                   render: (row) => (
-                    <span className={ENTRY_TEXT}>
+                    <span className={FAQ_QUESTION_CELL}>
                       <span>{row.question}</span>
-                      <span className={ADMIN_CODE}>{row.contentKey}</span>
+                      <span className={REFERENCE_TEXT}>{row.contentKey}</span>
                     </span>
                   ),
                 },

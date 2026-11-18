@@ -39,7 +39,7 @@ import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/da
 import { FIELD_ERROR, FORM_ROOT } from "~/ui/recipes/field"
 import { HONESTY_TEXT, META_MUTED } from "~/ui/recipes/text"
 
-import { SIP_FIELD, SIP_HINT } from "./sip.recipe"
+import { SIP_DAY_CHOICES, SIP_FIELD, SIP_HINT } from "./sip.recipe"
 
 const AUTOPAY_MAX_RUPEES = 15_000
 const AUTOPAY_MAX_MONTHS = 360
@@ -257,13 +257,15 @@ const SipStartForm = (): React.ReactElement => {
 
                 <div className={SIP_FIELD}>
                   <span className={STAT_LABEL}>Collection day</span>
-                  <PresetChoice
-                    label="Day of the month"
-                    value={debitDay}
-                    options={DEBIT_DAYS}
-                    format={(value) => String(value)}
-                    onChange={setDebitDay}
-                  />
+                  <div className={SIP_DAY_CHOICES}>
+                    <PresetChoice
+                      label="Day of the month"
+                      value={debitDay}
+                      options={DEBIT_DAYS}
+                      format={(value) => String(value)}
+                      onChange={setDebitDay}
+                    />
+                  </div>
                   <span className={SIP_HINT}>
                     {mode === "manual_checkout"
                       ? "The day each month your payment is due."

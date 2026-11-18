@@ -9,4 +9,6 @@ export const SIP_SCHEDULE = [
 
 export const SIP_FIELD = "flex flex-col gap-3"
 
+export const SIP_DAY_CHOICES = "[&_button]:min-w-target"
+
 export const SIP_HINT = "max-w-[60ch] font-ui text-xs leading-normal text-fg-muted"
