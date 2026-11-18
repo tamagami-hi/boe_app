@@ -41,7 +41,7 @@ const previewFigures = (preview: AdminSipEarlyExitPreview): ExitFigureValues => 
   effectiveDate: preview.effectiveDate,
   maturityLine:
     preview.maturity === null
-      ? "No maturity date is set on this holding."
+      ? "No maturity date is cancelled."
       : `The maturity date ${dateOf(preview.maturity.maturityDate)} on this holding is cancelled.`,
 })
 
@@ -53,7 +53,7 @@ const confirmedFigures = (done: AdminSipEarlyExitItem): ExitFigureValues => ({
   effectiveDate: done.effectiveDate,
   maturityLine:
     done.cancelledMaturityDate === null
-      ? "No maturity date was set on this holding."
+      ? "No maturity date was cancelled."
       : `The maturity date ${dateOf(done.cancelledMaturityDate)} on this holding was cancelled.`,
 })
 
@@ -139,10 +139,10 @@ export const SipEarlyExitPanel = ({
         {(data) => (
           <div className={STACK_LG}>
             <p className={PROSE_SM}>
-              Closing early ends this SIP before its last month and returns the full current value of the client&apos;s holding in
-              this fund, with no charge. The holding&apos;s value goes to zero. If the value is below the amount invested, the
-              invested amount it does not cover stays on record. The client is told in the app and by email, and it cannot be
-              undone.
+              Closing early ends this SIP before its last month and returns the current value of the client&apos;s SIP, with no
+              charge. One-time investments in this fund are not touched. The SIP&apos;s value goes to zero. If the value is below
+              the amount the SIP invested, the invested amount it does not cover stays on record. The client is told in the app
+              and by email, and it cannot be undone.
             </p>
             <ExitFigures values={previewFigures(data)} />
             {data.refusal === null ? null : (
@@ -169,7 +169,7 @@ export const SipEarlyExitPanel = ({
             <ConfirmDialog
               open={confirming}
               title="Close this SIP early?"
-              description="The schedule closes for good, the full current value below is withdrawn from the holding as a pending payout, and the client is told. There is no undo."
+              description="The schedule closes for good, the current value of the SIP below is withdrawn as a pending payout, and the client is told. There is no undo."
               confirmLabel="Close early"
               confirmTone="danger"
               onConfirm={() => {
