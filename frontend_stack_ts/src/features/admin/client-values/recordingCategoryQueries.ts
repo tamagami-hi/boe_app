@@ -55,6 +55,7 @@ const useRefreshInvestor = (userId: string): (() => Promise<void>) => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: investorRoot(userId) }),
       queryClient.invalidateQueries({ queryKey: qk.admin.clientValueSummaryRoot() }),
+      queryClient.invalidateQueries({ queryKey: qk.admin.investmentsToCategorise() }),
     ])
   }
 }

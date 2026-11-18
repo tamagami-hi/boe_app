@@ -15,6 +15,7 @@ import { Skeleton } from "~/ui/primitives/Feedback"
 import { ADMIN_QUEUE_COUNT } from "~/ui/recipes/admin"
 import { META_MUTED } from "~/ui/recipes/text"
 
+import { INVESTMENTS_TO_CATEGORISE_PATH, InvestmentsToCategoriseTile } from "./InvestmentsToCategoriseTile"
 import { useFailedEmails, useFundValueUpdates, usePendingInvites } from "./overviewQueries"
 
 type Readable<TData> = Readonly<{ data: TData | undefined; error: unknown; refetch: () => unknown }>
@@ -163,6 +164,8 @@ export const DailyTiles = ({ reachablePaths }: Props): React.ReactElement => {
         <OpenTicketsTile canOpen={reachablePaths.has("/support")} />
 
         <NomineeRequestsTile canOpen={reachablePaths.has("/nominee-requests")} />
+
+        <InvestmentsToCategoriseTile canOpen={reachablePaths.has(INVESTMENTS_TO_CATEGORISE_PATH)} />
       </ContentGrid>
     </Section>
   )

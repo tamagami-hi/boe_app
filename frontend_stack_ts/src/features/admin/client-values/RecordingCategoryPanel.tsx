@@ -40,6 +40,17 @@ type Ask =
 
 const dated = (isoDate: string): string => formatDate(`${isoDate}T00:00:00Z`)
 
+const isLinkedToSipMonth = (recording: AdminClientRecordingItem): boolean =>
+  recording.sipScheduleId !== null || recording.sipMonth !== null
+
+const canMarkOneTime = (recording: AdminClientRecordingItem): boolean =>
+  recording.oneTimeAllowed && !isLinkedToSipMonth(recording)
+
+const oneTimeStateOf = (recording: AdminClientRecordingItem): string => {
+  if (isLinkedToSipMonth(recording)) return "Linked to a SIP month"
+  return recording.category === "one_time" ? "One-time" : "Cannot be categorised"
+}
+
 export type RecordingCategoryPanelProps = Readonly<{ userId: string; investorLabel: string }>
 
 export const RecordingCategoryPanel = ({ userId, investorLabel }: RecordingCategoryPanelProps): React.ReactElement => {
@@ -111,7 +122,7 @@ export const RecordingCategoryPanel = ({ userId, investorLabel }: RecordingCateg
   }
 
   const oneTimeCell = (recording: AdminClientRecordingItem): React.ReactElement =>
-    recording.oneTimeAllowed ? (
+    canMarkOneTime(recording) ? (
       <Button
         size="sm"
         tone="ghost"
@@ -123,13 +134,13 @@ export const RecordingCategoryPanel = ({ userId, investorLabel }: RecordingCateg
         Mark as one-time
       </Button>
     ) : (
-      <span className={META_TEXT}>One-time</span>
+      <span className={META_TEXT}>{oneTimeStateOf(recording)}</span>
     )
 
   return (
     <Section
       title="Earlier recordings without a SIP month"
-      description="Give each earlier investment its category: a SIP payment, linked to a month of the client's SIP schedule for that fund, or a one-time investment. The amount and date never change, and the client gets no email for this."
+      description="Give each earlier recording its category, corrections included: a SIP payment, linked to a month of the client's SIP schedule for that fund, or a one-time investment. A recording linked to a SIP month stays a SIP payment. The amount and date never change, and the client gets no email for this. Until every recording has a category, the client's breakdown shows as being prepared."
     >
       {link.outcome.kind === "done" ? (
         <Alert tone="success" title="Marked as a SIP payment">

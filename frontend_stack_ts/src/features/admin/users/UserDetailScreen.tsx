@@ -33,6 +33,7 @@ import { ClientContactsSection } from "./ClientContactsSection"
 import { ClientHubActions } from "./ClientHubActions"
 import { ClientHubTabs } from "./ClientHubTabs"
 import { ClientNomineeSection } from "./ClientNomineeSection"
+import { InvestmentsCategoryBanner } from "./InvestmentsCategoryBanner"
 import { PasswordLinkPanel } from "./PasswordLinkPanel"
 import { SipScheduleSection } from "./SipScheduleSection"
 import { UserLifecyclePanel } from "./UserLifecyclePanel"
@@ -144,6 +145,8 @@ const UserDetailScreen = (): React.ReactElement => {
                 </ButtonLink>
               </div>
             </Card>
+
+            {data.roles.length === 0 ? <InvestmentsCategoryBanner userId={userId} /> : null}
 
             {data.roles.length === 0 ? (
               <Section

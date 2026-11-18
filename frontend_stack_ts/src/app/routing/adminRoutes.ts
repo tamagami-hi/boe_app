@@ -296,6 +296,17 @@ export const ADMIN_ROUTES: RouteManifest = [
     back: { kind: "parent", path: "/client-values" },
   },
   {
+    id: "client-values-to-categorise",
+    path: "/client-values/to-categorise",
+    title: "Investments to categorise",
+    access: "session",
+    role: "admin",
+    permissions: ["client_values.read"],
+    element: () => import("~/features/admin/users/InvestmentsToCategoriseScreen"),
+    nav: { domain: "client-values", order: 6.5, label: "To categorise" },
+    back: { kind: "parent", path: "/client-values" },
+  },
+  {
     id: "support",
     path: "/support",
     title: "Support",
