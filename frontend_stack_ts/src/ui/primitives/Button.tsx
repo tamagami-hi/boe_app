@@ -58,11 +58,10 @@ export const Button = ({
     type={type}
     className={cx(
       BUTTON_BASE,
-      BUTTON_TONE[tone],
+      disabled === true && !loading ? BUTTON_DISABLED : BUTTON_TONE[tone],
       BUTTON_SIZE[size],
       fullWidth ? "w-full" : undefined,
       loading ? BUTTON_BUSY : undefined,
-      disabled === true && !loading ? BUTTON_DISABLED : undefined,
     )}
     disabled={disabled === true || loading}
     aria-busy={loading}
