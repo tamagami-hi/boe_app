@@ -16,7 +16,9 @@ import { Skeleton } from "~/ui/primitives/Feedback"
 
 import { StatementEarlyExits } from "./StatementEarlyExits"
 import {
+  STATEMENT_BODY,
   STATEMENT_CAPTION,
+  STATEMENT_HEAD,
   STATEMENT_HEAD_CELL,
   STATEMENT_HEAD_NUMERIC,
   STATEMENT_MONTH_CELL,
@@ -28,15 +30,19 @@ import {
   STATEMENT_TABLE_SCROLL,
 } from "./statements.recipe"
 
-const NUMERIC_COLUMNS = [
-  "Opening",
-  "Contributions",
-  "Growth",
-  "Corrections",
-  "Withdrawals",
-  "Closing",
-  "Invested to date",
-] as const
+type StatementPeriod = NonNullable<ReturnType<typeof useStatements>["data"]>["items"][number]
+
+type StatementColumn = Readonly<{ label: string; value: (period: StatementPeriod) => string; signed: boolean }>
+
+const COLUMNS: readonly StatementColumn[] = [
+  { label: "Opening", value: (period) => period.openingValuePaise, signed: false },
+  { label: "Contributions", value: (period) => period.contributionsPaise, signed: false },
+  { label: "Growth", value: (period) => period.growthPaise, signed: true },
+  { label: "Corrections", value: (period) => period.reversalsPaise, signed: true },
+  { label: "Withdrawals", value: (period) => period.withdrawalsPaise, signed: true },
+  { label: "Closing", value: (period) => period.closingValuePaise, signed: false },
+  { label: "Invested to date", value: (period) => period.totalInvestmentPaise, signed: false },
+]
 
 const printStatement = (): void => {
   window.print()
@@ -88,45 +94,35 @@ const StatementPrintScreen = (): React.ReactElement => {
             <div className={STATEMENT_TABLE_SCROLL} tabIndex={0} role="region" aria-label="Statement table">
               <table className={STATEMENT_TABLE}>
                 <caption className={STATEMENT_CAPTION}>Month-by-month value of your investments</caption>
-                <thead>
+                <thead className={STATEMENT_HEAD}>
                   <tr>
                     <th scope="col" className={STATEMENT_HEAD_CELL}>
                       Month
                     </th>
-                    {NUMERIC_COLUMNS.map((column) => (
-                      <th key={column} scope="col" className={STATEMENT_HEAD_NUMERIC}>
-                        {column}
+                    {COLUMNS.map((column) => (
+                      <th key={column.label} scope="col" className={STATEMENT_HEAD_NUMERIC}>
+                        {column.label}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className={STATEMENT_BODY}>
                   {data.items.map((period) => (
                     <tr key={period.id} className={STATEMENT_ROW}>
                       <th scope="row" className={STATEMENT_MONTH_CELL}>
                         {formatMonth(`${period.period}-01`)}
                       </th>
-                      <td className={STATEMENT_NUMERIC_CELL}>
-                        <MoneyValue amount={toPaise(period.openingValuePaise)} size="sm" />
-                      </td>
-                      <td className={STATEMENT_NUMERIC_CELL}>
-                        <MoneyValue amount={toPaise(period.contributionsPaise)} size="sm" />
-                      </td>
-                      <td className={STATEMENT_NUMERIC_CELL}>
-                        <MoneyValue amount={toPaise(period.growthPaise)} size="sm" tone="signed" showSign />
-                      </td>
-                      <td className={STATEMENT_NUMERIC_CELL}>
-                        <MoneyValue amount={toPaise(period.reversalsPaise)} size="sm" tone="signed" showSign />
-                      </td>
-                      <td className={STATEMENT_NUMERIC_CELL}>
-                        <MoneyValue amount={toPaise(period.withdrawalsPaise)} size="sm" tone="signed" showSign />
-                      </td>
-                      <td className={STATEMENT_NUMERIC_CELL}>
-                        <MoneyValue amount={toPaise(period.closingValuePaise)} size="sm" />
-                      </td>
-                      <td className={STATEMENT_NUMERIC_CELL}>
-                        <MoneyValue amount={toPaise(period.totalInvestmentPaise)} size="sm" />
-                      </td>
+                      {COLUMNS.map((column) => (
+                        <td key={column.label} className={STATEMENT_NUMERIC_CELL} data-label={column.label}>
+                          <MoneyValue
+                            amount={toPaise(column.value(period))}
+                            size="sm"
+                            tone={column.signed ? "signed" : "default"}
+                            showSign={column.signed}
+                            showDecimals
+                          />
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>

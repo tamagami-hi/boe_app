@@ -19,11 +19,11 @@ import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
 import { Alert } from "~/ui/primitives/Feedback"
-import { ADMIN_CODE } from "~/ui/recipes/admin"
 
 import { EARLY_EXIT_LABEL, EarlyExitLabelFailure } from "./EarlyExitLabelFailure"
 import { earlyExitEntryIds, useClientSipEarlyExits } from "./earlyExitQueries"
 import { parseLedgerReversal } from "./heldBodies"
+import { ledgerReasonLabel } from "./ledgerReasons"
 import { useReverseClientLedgerEntry } from "./ledgerReversalQueries"
 import { ListSkeleton } from "./ListSkeleton"
 
@@ -180,7 +180,7 @@ export const LedgerEntries = ({
                   <MoneyValue amount={toPaise(row.valueDeltaPaise)} size="sm" tone="signed" showSign showDecimals />
                 ),
               },
-              { key: "reason", header: "Reason", render: (row) => <span className={ADMIN_CODE}>{row.reasonCode}</span> },
+              { key: "reason", header: "Reason", render: (row) => ledgerReasonLabel(row.reasonCode) },
               { key: "action", header: "Correction", render: actionFor },
             ]}
           />

@@ -14,6 +14,7 @@ import { useEmailVerificationStatus } from "~/features/profile/EmailVerification
 import { InvestingStatus } from "~/features/profile/InvestingStatus"
 import { InlineReadFailure } from "~/features/shared/InlineReadFailure"
 import { useEligibility, useFunds, usePortfolio, useSipPlans } from "~/features/shared/queries"
+import { isRunningSip } from "~/features/sip/sipLifecycle"
 import { cx } from "~/lib/cx"
 import { Reveal } from "~/ui/motion/Reveal"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -57,7 +58,8 @@ const DashboardScreen = (): React.ReactElement => {
   const firstName = session.principal?.fullName.split(" ")[0] ?? "there"
   const verificationState = eligibility.data?.emailVerificationState ?? null
   const emailStatus = useEmailVerificationStatus(META_MUTED)
-  const sipPlanCount = sips.data?.items.length ?? 0
+  const sipPlans = sips.data?.items ?? []
+  const runningSipCount = sipPlans.filter((plan) => isRunningSip(plan.status)).length
   const isSipReadFailed = sips.data === undefined && sips.isError
 
   return (
@@ -165,16 +167,16 @@ See portfolio
                   />
                 </div>
               ) : null}
-              {sipPlanCount === 0 ? null : (
-                <>
-                  <div className={STATUS_ROW}>
-                    <span className={META_MUTED}>SIP plans</span>
-                    <span className={META_MUTED}>{String(sipPlanCount)}</span>
-                  </div>
-                  <ButtonLink to="/sips" tone="secondary" size="sm" trailing>
-                    Manage SIPs
-                  </ButtonLink>
-                </>
+              {runningSipCount === 0 ? null : (
+                <div className={STATUS_ROW}>
+                  <span className={META_MUTED}>SIP plans</span>
+                  <span className={META_MUTED}>{String(runningSipCount)}</span>
+                </div>
+              )}
+              {sipPlans.length === 0 ? null : (
+                <ButtonLink to="/sips" tone="secondary" size="sm" trailing>
+                  Manage SIPs
+                </ButtonLink>
               )}
             </Card>
           </Reveal>

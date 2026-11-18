@@ -5,6 +5,7 @@ import {
   getClientInvestedFund,
   listClientInvestedFunds,
   listClientReceipts,
+  listClientTransactions,
   listClientValueUpdates,
 } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
@@ -14,6 +15,8 @@ import { STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 
 const FUND_PAGE_LIMIT = 25
+
+const LEDGER_WALK_LIMIT = 100
 
 export type InvestedFunds = DataOf<typeof listClientInvestedFunds>
 
@@ -57,5 +60,17 @@ export const useFundValueUpdates = (fundId: string): PagedQuery<DataOf<typeof li
     enabled: fundId !== "",
     fetchPage: async (after) =>
       api.request(listClientValueUpdates, { query: { limit: FUND_PAGE_LIMIT, after, fundId } }),
+  })
+}
+
+export const useWholeLedger = (enabled: boolean): PagedQuery<DataOf<typeof listClientTransactions>> => {
+  const api = useApi()
+  return usePagedQuery({
+    queryKey: qk.client.transactions("all"),
+    staleTime: STALE.MONEY,
+    limit: LEDGER_WALK_LIMIT,
+    enabled,
+    loadAll: true,
+    fetchPage: async (after) => api.request(listClientTransactions, { query: { limit: LEDGER_WALK_LIMIT, after } }),
   })
 }

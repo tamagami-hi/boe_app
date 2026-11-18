@@ -117,34 +117,35 @@ const StatementsScreen = (): React.ReactElement => {
 
                 <div className={STAT_ROOT}>
                   <span className={STAT_LABEL}>Closing value</span>
-                  <MoneyValue amount={toPaise(period.closingValuePaise)} size="lg" />
+                  <MoneyValue amount={toPaise(period.closingValuePaise)} size="lg" showDecimals />
                 </div>
 
                 <div className={SUMMARY_GRID}>
                   <div className={STAT_ROOT}>
                     <span className={STAT_LABEL}>Opening</span>
-                    <MoneyValue amount={toPaise(period.openingValuePaise)} size="sm" tone="muted" />
+                    <MoneyValue amount={toPaise(period.openingValuePaise)} size="sm" tone="muted" showDecimals />
                   </div>
                   <div className={STAT_ROOT}>
                     <span className={STAT_LABEL}>Contributions</span>
-                    <MoneyValue amount={toPaise(period.contributionsPaise)} size="sm" />
+                    <MoneyValue amount={toPaise(period.contributionsPaise)} size="sm" showDecimals />
                   </div>
                   <div className={STAT_ROOT}>
                     <span className={STAT_LABEL}>Growth</span>
-                    <MoneyValue
-                      amount={toPaise(period.growthPaise)}
-                      size="sm"
-                      tone="signed"
-                      showSign
-                    />
+                    <MoneyValue amount={toPaise(period.growthPaise)} size="sm" tone="signed" showSign showDecimals />
                   </div>
+                  {period.reversalsPaise === "0" ? null : (
+                    <div className={STAT_ROOT}>
+                      <span className={STAT_LABEL}>Corrections</span>
+                      <MoneyValue amount={toPaise(period.reversalsPaise)} size="sm" tone="signed" showSign showDecimals />
+                    </div>
+                  )}
                   <div className={STAT_ROOT}>
                     <span className={STAT_LABEL}>Withdrawals</span>
-                    <MoneyValue amount={toPaise(period.withdrawalsPaise)} size="sm" tone="signed" showSign />
+                    <MoneyValue amount={toPaise(period.withdrawalsPaise)} size="sm" tone="signed" showSign showDecimals />
                   </div>
                   <div className={STAT_ROOT}>
                     <span className={STAT_LABEL}>Invested to date</span>
-                    <MoneyValue amount={toPaise(period.totalInvestmentPaise)} size="sm" />
+                    <MoneyValue amount={toPaise(period.totalInvestmentPaise)} size="sm" showDecimals />
                   </div>
                 </div>
 
@@ -152,7 +153,6 @@ const StatementsScreen = (): React.ReactElement => {
                   {period.entryCount === 1
                     ? "1 entry"
                     : countOf(period.entryCount, "entry", "entries")}
-                  {period.reversalsPaise === "0" ? "" : " · includes a correction"}
                 </span>
               </Card>
             ))}

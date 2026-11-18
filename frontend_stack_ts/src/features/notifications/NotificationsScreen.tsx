@@ -9,7 +9,7 @@ import { notificationLink, resolveDestination, type Destination } from "~/app/ro
 import { formatDateTime } from "~/domain/dates"
 import { describeClientFailure } from "~/domain/failure"
 import { useUpdatePrompt } from "~/features/app-update/updatePrompt"
-import { notificationCategory } from "~/domain/notifications"
+import { notificationCategory, type NotificationCategory } from "~/domain/notifications"
 import { useMarkNotificationRead, useNotifications } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { openDestination } from "~/platform/openExternal"
@@ -31,6 +31,12 @@ const LEGACY_CLIENT_PREFIX = "/app/"
 
 const APP_UPDATE_KIND = "app_update_available"
 
+const VALUE_UPDATE_KIND = "client_value_updated"
+
+const ACTIVITY_LINK = /^\/activity(?:[/?#]|$)/u
+
+const ACTIVITY_CATEGORY: NotificationCategory = { label: "Activity", tone: "info" }
+
 const deepLinkOf = (kind: string, payload: Record<string, unknown>): string | null => {
   const candidate = notificationLink(kind, payload)
   return typeof candidate === "string" && candidate.trim() !== "" ? candidate.trim() : null
@@ -42,6 +48,12 @@ const destinationOf = (kind: string, payload: Record<string, unknown>): Destinat
   const candidate = link.startsWith(LEGACY_CLIENT_PREFIX) ? link.slice(LEGACY_CLIENT_PREFIX.length - 1) : link
   const destination = resolveDestination(candidate, CLIENT_ROUTES)
   return destination.kind === "refused" ? null : destination
+}
+
+const categoryOf = (kind: string, payload: Record<string, unknown>): NotificationCategory | null => {
+  const link = deepLinkOf(kind, payload)
+  const opensActivity = link !== null && ACTIVITY_LINK.test(link)
+  return kind === VALUE_UPDATE_KIND && opensActivity ? ACTIVITY_CATEGORY : notificationCategory(kind)
 }
 
 type ReadableNotification = Readonly<{ id: string; read: boolean }>
@@ -133,7 +145,7 @@ const NotificationsScreen = (): React.ReactElement => {
             <div className={cx(CARD_STACK, FEED_MEASURE)}>
               {data.items.map((item) => {
                 const action = actionOf(item)
-                const category = notificationCategory(item.kind)
+                const category = categoryOf(item.kind, item.payload)
                 return (
                   <Card key={item.id} tone={item.read ? "default" : "elevated"}>
                     <div className={STACK_SM}>

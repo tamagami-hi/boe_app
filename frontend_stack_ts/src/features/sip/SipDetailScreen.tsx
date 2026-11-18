@@ -47,6 +47,7 @@ import { ACTION_DANGER_ROW, ACTION_GROUP, ACTION_ROW } from "~/ui/recipes/layout
 import { HONESTY_TEXT } from "~/ui/recipes/text"
 
 import { SIP_CARD_TOP } from "./sip.recipe"
+import { isEndedSip } from "./sipLifecycle"
 import { upcomingDueDate } from "./sipSchedule"
 
 const MANUAL_EXPLANATION =
@@ -54,6 +55,8 @@ const MANUAL_EXPLANATION =
 
 const AUTOPAY_EXPLANATION =
   "This plan is collected by PhonePe UPI AutoPay. PhonePe lets you know a day before each collection."
+
+const ENDED_EXPLANATION = "This plan has ended. Nothing more is collected or recorded for it."
 
 const AUTOPAY_OFF_EXPLANATION =
   "AutoPay is not collecting at the moment. Your investments are recorded by the BeOnEdge team and appear in your portfolio."
@@ -245,11 +248,13 @@ Back to SIP plans
 
               <div className={PROSE_PANEL}>
                 <p className={HONESTY_TEXT}>
-                  {isAutoPay
-                    ? paymentsOff
-                      ? AUTOPAY_OFF_EXPLANATION
-                      : AUTOPAY_EXPLANATION
-                    : MANUAL_EXPLANATION}
+                  {isEndedSip(plan.status)
+                    ? ENDED_EXPLANATION
+                    : isAutoPay
+                      ? paymentsOff
+                        ? AUTOPAY_OFF_EXPLANATION
+                        : AUTOPAY_EXPLANATION
+                      : MANUAL_EXPLANATION}
                 </p>
               </div>
 

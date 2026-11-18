@@ -47,6 +47,12 @@ export const InvestedFundSummary = ({ fundId }: InvestedFundSummaryProps): React
                 <span className={STAT_LABEL}>Growth</span>
                 <MoneyValue amount={toPaise(pool.totalGrowthPaise)} size="md" tone="signed" showSign />
               </div>
+              {pool.withdrawnTotalPaise === "0" ? null : (
+                <div className={STAT_ROOT}>
+                  <span className={STAT_LABEL}>Withdrawn</span>
+                  <MoneyValue amount={toPaise(pool.withdrawnTotalPaise)} size="md" />
+                </div>
+              )}
               <div className={STAT_ROOT}>
                 <span className={STAT_LABEL}>Return</span>
                 <span className={cx(MONEY_BASE, MONEY_SIZE.md, MONEY_TONE.default)}>

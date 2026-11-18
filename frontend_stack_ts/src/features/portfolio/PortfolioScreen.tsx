@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
-import { toPaise } from "~/domain/money"
+import { formatINR, toPaise } from "~/domain/money"
 import { countOf } from "~/domain/plural"
 import { formatPercent } from "~/domain/percent"
 import { INVESTMENTS_RECORDED_NOTE } from "~/features/investing/InvestmentsRecorded"
@@ -141,7 +141,11 @@ const PortfolioScreen = (): React.ReactElement => {
                         {formatPercent(pool.returnPercent, { showSign: true })}
                       </span>
                     </div>
-                    <span className={META_TEXT}>{countOf(pool.contributionCount, "payment")}</span>
+                    <span className={META_TEXT}>
+                      {pool.withdrawnTotalPaise === "0"
+                        ? countOf(pool.contributionCount, "payment")
+                        : `${countOf(pool.contributionCount, "payment")} · ${formatINR(toPaise(pool.withdrawnTotalPaise))} withdrawn`}
+                    </span>
                   </Card>
                   </Link>
                 ))}

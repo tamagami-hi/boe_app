@@ -12,11 +12,12 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 
 import { FundReceiptList } from "./FundReceiptList"
 import { FundValueUpdateList } from "./FundValueUpdateList"
+import { FundWithdrawalList } from "./FundWithdrawalList"
 import { InvestedFundSummary } from "./InvestedFundSummary"
 import { useInvestedFund } from "./investedFundQueries"
 
 const CLOSED_FUND =
-  "This fund is not open in the fund list right now. Your investment in it, its recorded payments and its value updates are shown here."
+  "This fund is not open in the fund list right now. Your investment in it, its recorded payments, its value updates and any withdrawals are shown here."
 
 const InvestedFundScreen = (): React.ReactElement => {
   const { fundId = "" } = useParams<{ fundId: string }>()
@@ -27,7 +28,7 @@ const InvestedFundScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title={fund.data?.investedFund.fundName ?? "Your investment"}
-        description="What this investment is worth, what was recorded and how its value has changed."
+        description="What this investment is worth, what was recorded, how its value has changed and what was withdrawn."
       />
 
       <AsyncBoundary
@@ -53,6 +54,7 @@ const InvestedFundScreen = (): React.ReactElement => {
             )}
             <FundReceiptList fundId={fundId} />
             <FundValueUpdateList fundId={fundId} />
+            <FundWithdrawalList fundId={fundId} />
           </>
         )}
       </AsyncBoundary>

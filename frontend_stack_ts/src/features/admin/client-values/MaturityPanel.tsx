@@ -60,6 +60,9 @@ const maturityStatusOf = ({ state, settlement }: Pick<AdminMaturity, "state" | "
 
 const noteOf = (text: string): Readonly<{ note?: string }> => (text.trim() === "" ? {} : { note: text.trim() })
 
+const isEmptyHolding = (position: Position): boolean =>
+  BigInt(position.currentValuePaise) <= 0n && BigInt(position.principalPaise) <= 0n
+
 export const MaturityPanel = ({ userId, investorLabel, canWrite, positions, onUnsavedHold }: Props): React.ReactElement => {
   const funds = useFundNames()
   const maturities = useMaturityRecords(userId)
@@ -107,8 +110,12 @@ export const MaturityPanel = ({ userId, investorLabel, canWrite, positions, onUn
   const withdrawalPaise = parsePositiveRupees(withdrawalRupees)
   const isAmountValid =
     withdrawalPaise !== null && position !== undefined && BigInt(withdrawalPaise) <= BigInt(position.currentValuePaise)
-  const isEmptyPosition =
-    position === undefined || (BigInt(position.currentValuePaise) <= 0n && BigInt(position.principalPaise) <= 0n)
+  const isEmptyPosition = position === undefined || isEmptyHolding(position)
+  const hasOpenMaturity = (rowFundId: string): boolean =>
+    items.some((maturity) => maturity.fundId === rowFundId && maturity.state === "pending")
+  const offeredPositions = positions.filter(
+    (row) => !isEmptyHolding(row) || row.fundId === fundId || hasOpenMaturity(row.fundId),
+  )
 
   const reload = (): void => {
     void maturities.refetch()
@@ -176,7 +183,7 @@ export const MaturityPanel = ({ userId, investorLabel, canWrite, positions, onUn
                     disabled={locked || !funds.ready}
                     options={[
                       { value: "", label: "Choose a fund position" },
-                      ...positions.map((row) => ({ value: row.fundId, label: funds.nameOf(row.fundId) })),
+                      ...offeredPositions.map((row) => ({ value: row.fundId, label: funds.nameOf(row.fundId) })),
                     ]}
                     onChange={(event) => {
                       changeFund(event.target.value)
@@ -298,14 +305,19 @@ export const MaturityPanel = ({ userId, investorLabel, canWrite, positions, onUn
           )}
         </AsyncBoundary>
         <p>
-          Withdrawal payouts (latest 100). Recording a withdrawal does not execute a bank transfer. Reversing a ledger
-          entry does not mean transferred money has returned.
+          Maturity withdrawal payouts (latest 100). Recording a withdrawal does not execute a bank transfer. Early-exit
+          payouts are shown with their early exits.
         </p>
         <AsyncBoundary
           query={payouts}
           skeleton={<ListSkeleton />}
           isEmpty={(data) => data.items.length === 0}
-          empty={<EmptyState title="No withdrawal payout" description="No withdrawal has been recorded for this investor." />}
+          empty={
+            <EmptyState
+              title="No maturity payout"
+              description="No maturity withdrawal has been recorded for this investor. Early-exit payouts are shown with their early exits."
+            />
+          }
         >
           {(data) =>
             data.items.map((payout) => (

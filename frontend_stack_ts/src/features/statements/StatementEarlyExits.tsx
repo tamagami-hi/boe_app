@@ -25,7 +25,7 @@ export const StatementEarlyExits = (): React.ReactElement | null => {
     <ul className={STATEMENT_NOTES}>
       {exits.data.items.map((exit) => (
         <li key={exit.earlyExitId}>
-          {earlyExitText(exit, formatDate(`${exit.effectiveDate}T00:00:00Z`), formatINR(toPaise(exit.amountPaise)))}
+          {earlyExitText(exit, formatDate(`${exit.effectiveDate}T00:00:00Z`), formatINR(toPaise(exit.amountPaise), { showDecimals: true }))}
         </li>
       ))}
     </ul>
