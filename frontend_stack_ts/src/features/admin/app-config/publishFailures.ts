@@ -18,7 +18,7 @@ const waitText = (retryAfterSeconds: number | null): string => {
 }
 
 export const describeConfirmFailure = (error: unknown): string => {
-  if (hasCode(error, "INVALID_CREDENTIALS")) return "That password is not right."
+  if (hasCode(error, "INVALID_CREDENTIALS", "VALIDATION_FAILED")) return "That password is not right."
   if (isApiError(error) && error.code === "RATE_LIMITED") {
     return `Too many tries. Wait ${waitText(error.retryAfterSeconds)}, then try again.`
   }
