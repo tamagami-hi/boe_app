@@ -42,18 +42,23 @@ export const AccountPasswordPanel = (): React.ReactElement => {
     confirmation === newPassword &&
     !reused
 
+  const clearPasswords = (): void => {
+    setCurrentPassword("")
+    setNewPassword("")
+    setConfirmation("")
+  }
+
   const submit = (): void => {
     setFailure(null)
     change.mutate(
       { currentPassword, newPassword },
       {
         onSuccess: () => {
-          setCurrentPassword("")
-          setNewPassword("")
-          setConfirmation("")
+          clearPasswords()
           setChanged(true)
         },
         onError: (cause) => {
+          clearPasswords()
           setFailure(cause)
         },
       },

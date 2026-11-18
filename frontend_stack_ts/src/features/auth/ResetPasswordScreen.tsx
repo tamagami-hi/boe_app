@@ -36,15 +36,22 @@ const ResetPasswordScreen = (): React.ReactElement => {
   const ready =
     token !== "" && passwordLength >= MIN_PASSWORD_LENGTH && confirmation === newPassword
 
+  const clearPasswords = (): void => {
+    setNewPassword("")
+    setConfirmation("")
+  }
+
   const submit = (): void => {
     setError(null)
     redeem.mutate(
       { token, newPassword },
       {
         onSuccess: () => {
+          clearPasswords()
           setDone(true)
         },
         onError: (cause) => {
+          clearPasswords()
           setError(cause)
         },
       },
