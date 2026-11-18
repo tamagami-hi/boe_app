@@ -58,17 +58,19 @@ public class MainActivity extends BridgeActivity {
         // other insets reach the WebView unchanged through onApplyWindowInsets. Below
         // WebView 140 Chromium's env(safe-area-inset-*) leaves out the system bars, so
         // this listener publishes the variables itself, computed as the plugin's
-        // injectSafeAreaCSS computes them; tokens-core.css reads them before env().
+        // injectSafeAreaCSS computes them except that the bottom drops to 0 only under
+        // a keyboard with a bottom inset; tokens-core.css reads them before env().
         //
         // insetsHandling is deliberately left on "css": only then does the plugin
         // re-request insets once the page commits, which is when the first values
         // published here land.
         ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), (view, insets) -> {
             boolean keyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime());
-            publishKeyboardHeight(keyboardVisible ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0);
+            int imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+            publishKeyboardHeight(keyboardVisible ? imeBottom : 0);
             publishSafeArea(
                 insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()),
-                keyboardVisible
+                keyboardVisible && imeBottom > 0
             );
 
             WindowInsetsCompat withoutIme = new WindowInsetsCompat.Builder(insets)
@@ -91,9 +93,9 @@ public class MainActivity extends BridgeActivity {
     // Density-scaled to CSS pixels, like the --safe-area-inset-* values.
     //
     // Published on every dispatch rather than only on change. The first dispatch happens
-    // before the document exists, so that write is lost; Capacitor re-requests insets on
-    // DOM ready, and an unconditional write is what makes the value land then. Inset
-    // dispatch is not a hot path.
+    // before the document exists, so that write is lost; the plugin re-requests insets
+    // once the page commits, and an unconditional write is what makes the value land
+    // then. Inset dispatch is not a hot path.
     private void publishKeyboardHeight(int bottomPx) {
         int cssPx = Math.round(bottomPx / getResources().getDisplayMetrics().density);
 
@@ -108,7 +110,7 @@ public class MainActivity extends BridgeActivity {
         ));
     }
 
-    private void publishSafeArea(Insets safeArea, boolean keyboardVisible) {
+    private void publishSafeArea(Insets safeArea, boolean keyboardCoversBottom) {
         float density = getResources().getDisplayMetrics().density;
 
         evaluateOnPage(String.format(
@@ -121,7 +123,7 @@ public class MainActivity extends BridgeActivity {
                 + " } catch (e) {}",
             (int) (safeArea.top / density),
             (int) (safeArea.right / density),
-            (int) ((keyboardVisible ? 0 : safeArea.bottom) / density),
+            (int) ((keyboardCoversBottom ? 0 : safeArea.bottom) / density),
             (int) (safeArea.left / density)
         ));
     }
