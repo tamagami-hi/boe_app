@@ -212,13 +212,23 @@ describe("emails for new recordings by category", () => {
   })
 
   test("the deployed worker guards and renders queued shared, SIP and one-time emails rather than failing them as unknown", async () => {
-    const legacy = await harness.stack.seedUser()
-    const sip = await harness.stack.seedUser()
-    const oneTime = await harness.stack.seedUser()
-    const schedule = await harness.scheduleFor(sip.id, fundId, "2025-01", 12)
-    await harness.recordOk(legacy.id, { fundId, effectiveDate: "2025-05-05", reasonCode: MONTHLY })
-    await harness.recordOk(sip.id, sipBody(schedule.scheduleId, "2025-05", "2025-05-05"))
-    await harness.recordOk(oneTime.id, oneTimeBody("2025-05-05"))
+    const queueEach = async (closeAfter: boolean) => {
+      const clients = await Promise.all([harness.stack.seedUser(), harness.stack.seedUser(), harness.stack.seedUser()])
+      const [legacy, sip, oneTime] = clients
+      if (legacy === undefined || sip === undefined || oneTime === undefined) throw new Error("expected three clients")
+      const schedule = await harness.scheduleFor(sip.id, fundId, "2025-01", 12)
+      await harness.recordOk(legacy.id, { fundId, effectiveDate: "2025-05-05", reasonCode: MONTHLY })
+      await harness.recordOk(sip.id, sipBody(schedule.scheduleId, "2025-05", "2025-05-05"))
+      await harness.recordOk(oneTime.id, oneTimeBody("2025-05-05"))
+      if (closeAfter) for (const client of clients) await harness.stack.setAccountState(client.id, "closed")
+      return [
+        [legacy.id, LEGACY_KEY],
+        [sip.id, SIP_KEY],
+        [oneTime.id, ONE_TIME_KEY],
+      ] as const
+    }
+    const kept = await queueEach(false)
+    const closed = await queueEach(true)
     const worker = composeEmailDispatchWorker(harness.workerEnv())
 
     try {
@@ -227,19 +237,21 @@ describe("emails for new recordings by category", () => {
       await worker.dispose()
     }
 
-    const outcomes = await Promise.all(
-      [
-        [legacy.id, LEGACY_KEY],
-        [sip.id, SIP_KEY],
-        [oneTime.id, ONE_TIME_KEY],
-      ].map(async ([userId, templateKey]) =>
-        (await harness.mailOf(userId ?? "", templateKey ?? "")).map((row) => [templateKey, row.state, row.last_error_code]),
-      ),
-    )
-    expect(outcomes).toEqual([
+    const outcomesOf = (pairs: readonly (readonly [string, string])[]) =>
+      Promise.all(
+        pairs.map(async ([userId, templateKey]) =>
+          (await harness.mailOf(userId, templateKey)).map((row) => [templateKey, row.state, row.last_error_code]),
+        ),
+      )
+    expect(await outcomesOf(kept)).toEqual([
       [[LEGACY_KEY, "retryable_failed", "EMAIL_TRANSPORT_NOT_CONFIGURED"]],
       [[SIP_KEY, "retryable_failed", "EMAIL_TRANSPORT_NOT_CONFIGURED"]],
       [[ONE_TIME_KEY, "retryable_failed", "EMAIL_TRANSPORT_NOT_CONFIGURED"]],
+    ])
+    expect((await outcomesOf(closed)).map((rows) => rows.map(([templateKey, state]) => [templateKey, state]))).toEqual([
+      [[LEGACY_KEY, "cancelled"]],
+      [[SIP_KEY, "cancelled"]],
+      [[ONE_TIME_KEY, "cancelled"]],
     ])
   })
 })
