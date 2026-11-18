@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "date": "2026-11-18",
+  "events": [
+    {
+      "at": "2026-11-18T00:02:17.905Z",
+      "session": "696c7b47-c091-4bf6-90c8-79c6d53f3b8f",
+      "track": "p-chunk-split",
+      "agent": "claude-opus-5-5",
+      "verb": "session_open"
+    },
+    {
+      "at": "2026-11-18T00:02:30.935Z",
+      "session": "696c7b47-c091-4bf6-90c8-79c6d53f3b8f",
+      "track": "p-chunk-split",
+      "agent": "claude-opus-5-5",
+      "verb": "evidence_record",
+      "target": "M19-patches-0-18 / P-chunk-split, green"
+    },
+    {
+      "at": "2026-11-18T00:02:31.216Z",
+      "session": "696c7b47-c091-4bf6-90c8-79c6d53f3b8f",
+      "track": "p-chunk-split",
+      "agent": "claude-opus-5-5",
+      "verb": "review_record",
+      "target": "M19-patches-0-18 / P-chunk-split"
+    },
+    {
+      "at": "2026-11-18T00:02:31.545Z",
+      "session": "696c7b47-c091-4bf6-90c8-79c6d53f3b8f",
+      "track": "p-chunk-split",
+      "agent": "claude-opus-5-5",
+      "verb": "review_record",
+      "target": "M19-patches-0-18 / P-apk-contracts-build"
+    },
+    {
+      "at": "2026-11-18T00:02:35.303Z",
+      "session": "696c7b47-c091-4bf6-90c8-79c6d53f3b8f",
+      "track": "p-chunk-split",
+      "agent": "claude-opus-5-5",
+      "verb": "land_start",
+      "target": "M19-patches-0-18 / P-chunk-split"
+    },
+    {
+      "at": "2026-11-18T00:07:06.450Z",
+      "session": "696c7b47-c091-4bf6-90c8-79c6d53f3b8f",
+      "track": "p-chunk-split",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M19-patches-0-18 / P-apk-contracts-build"
+    },
+    {
+      "at": "2026-11-18T00:07:06.746Z",
+      "session": "696c7b47-c091-4bf6-90c8-79c6d53f3b8f",
+      "track": "p-chunk-split",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M19-patches-0-18 / P-chunk-split"
+    },
+    {
+      "at": "2026-11-18T00:07:10.403Z",
+      "session": "696c7b47-c091-4bf6-90c8-79c6d53f3b8f",
+      "track": "p-chunk-split",
+      "agent": "claude-opus-5-5",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-18T00:07:19.470Z",
+      "session": "269d8f9d-e2b5-4993-a077-5b3e33c5f367",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "track_close",
+      "target": "p-chunk-split"
+    }
+  ]
+}

@@ -7364,6 +7364,37 @@
       "note": "frontend build:admin on cc3a986",
       "head": "cc3a986d748f7d6478678f218c1df340ad7297f3",
       "dirty": false
+    },
+    {
+      "id": "04b850a4-dfc5-487a-934a-659a9a3acb78",
+      "task": "P-chunk-split",
+      "track": "p-chunk-split",
+      "agent": "claude-opus-5-5",
+      "kind": "green",
+      "command": [
+        "tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "cd packages/contracts && npm ci && npm run build && cd ../../frontend_stack_ts && npm ci && npm run check && npm run build:android:admin && npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-chunk-split",
+      "started": "2026-11-17T23:59:30Z",
+      "seconds": 240,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-chunk-split/.temp/p-chunk-split/checks.log",
+        "sha256": "f14505bbc0b276fe0d94b977ea793b84dc9a87bb04f6a3bd57410a6c32349329",
+        "bytes": 32735
+      },
+      "summary": {
+        "testFiles": 58,
+        "passed": 511,
+        "failed": 0,
+        "adminChunks": 92,
+        "clientChunks": 61,
+        "largestChunkBytes": 310053
+      },
+      "note": "Admin app chunk 646 kB -> 310 kB, client 356 kB -> 236 kB; no Vite 500 kB warning; static back-edge control and zero-edge control both fail the dist check."
     }
   ]
 }

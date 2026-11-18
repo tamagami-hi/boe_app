@@ -2227,6 +2227,35 @@
             "frontend_stack_ts/src/features/whats-new/clientNotes.ts"
           ],
           "landedAt": "2026-11-17T19:31:59.956Z"
+        },
+        {
+          "id": "P-chunk-split",
+          "track": "p-chunk-split",
+          "status": "landed",
+          "commit": "34e1d5f",
+          "also": [
+            "34e1d5f",
+            "8540538",
+            "d6a2a42"
+          ],
+          "brief": "Admin bundle's app chunk is 646 kB (Vite's 500 kB warning) because manualChunks forces every src module into 'app', defeating the lazy route imports. Let src/features split by route; check-android-dist counts only static import/export chunk edges (lazy import() and the preload map run after launch, so they cannot cause a launch-order crash), with a red control proving a static cycle still fails.",
+          "paths": [
+            "frontend_stack_ts/vite.config.ts",
+            "frontend_stack_ts/scripts/check-android-dist.mjs"
+          ],
+          "landedAt": "2026-11-18T00:06:57.248Z"
+        },
+        {
+          "id": "P-apk-contracts-build",
+          "track": "p-chunk-split",
+          "status": "landed",
+          "commit": "d6a2a42",
+          "also": [],
+          "brief": "emu/boe_update.sh runs vite against packages/contracts/dist without building it, so a stale dist failed the 0.18.1 export (listClientSipEarlyExits not exported). Build contracts once before the variant builds.",
+          "paths": [
+            "emu/boe_update.sh"
+          ],
+          "landedAt": "2026-11-18T00:07:06.411Z"
         }
       ]
     }

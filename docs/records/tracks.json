@@ -1032,6 +1032,27 @@
         "agent": "tally"
       },
       "closedWhy": "landed, and idle since 2026-11-17T19:32:29.656Z"
+    },
+    {
+      "name": "p-chunk-split",
+      "branch": "track/p-chunk-split",
+      "worktree": ".temp/worktrees/p-chunk-split",
+      "purpose": "0.18.2: split lazy feature screens out of the single app chunk (admin 646 kB), check only static chunk cycles; build contracts before the APK vite build",
+      "paths": [
+        "frontend_stack_ts/vite.config.ts",
+        "frontend_stack_ts/scripts/check-android-dist.mjs",
+        "emu/boe_update.sh"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-17T23:58:27.030Z",
+      "closedAt": "2026-11-18T00:07:18.238Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      }
     }
   ]
 }
