@@ -16025,6 +16025,293 @@
       },
       "head": "041f0f7b5df4c8a58dfc129ce02fe4125f61c112",
       "dirty": false
+    },
+    {
+      "id": "47f73d0f-c2a6-41f6-b67f-c44da6e022c9",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "agent": "claude-opus-5-5 builder p-fixes-0185",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-fixes-0185/packages/contracts",
+      "started": "2026-11-18T16:54:57Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-fixes-0185/20261118T165457Z-908198-green.log",
+        "sha256": "5343dd4bc902ff6732147a0d64aa59b698cb7ef5395b8af3b1cbb7dc0b04796a",
+        "bytes": 568
+      },
+      "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
+      "dirty": false
+    },
+    {
+      "id": "535fa2fe-eb3a-452a-b164-b1f9f2dc659f",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "agent": "claude-opus-5-5 builder p-fixes-0185",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-fixes-0185/backend_controller",
+      "started": "2026-11-18T16:55:10Z",
+      "seconds": 52,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-fixes-0185/20261118T165510Z-910517-green.log",
+        "sha256": "b7d7f298cd3128addbd453055205e919501f8e2d037a8fd5858e092f690e1eed",
+        "bytes": 17941
+      },
+      "summary": {
+        "passed": 1281,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
+      "dirty": false
+    },
+    {
+      "id": "ed216edd-4a75-4a31-9436-518dc610fae0",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "agent": "claude-opus-5-5 builder p-fixes-0185",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-fixes-0185/frontend_stack_ts",
+      "started": "2026-11-18T16:55:11Z",
+      "seconds": 53,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-fixes-0185/20261118T165511Z-911033-green.log",
+        "sha256": "7837697270414737292e7dac1893d6ea5d731f102cdf007869e72f11ed7037e9",
+        "bytes": 19959
+      },
+      "summary": {
+        "passed": 614,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "recorded as other, not green: it exited 1",
+      "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
+      "dirty": false
+    },
+    {
+      "id": "b83e4c9c-bd1e-40aa-98dd-19d86638b6db",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "agent": "claude-opus-5-5 builder p-fixes-0185",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-fixes-0185/frontend_stack_ts",
+      "started": "2026-11-18T16:56:16Z",
+      "seconds": 45,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-fixes-0185/20261118T165616Z-923233-green.log",
+        "sha256": "2470f3d98e63fd6932a9af98c169eebbc60b4732bdd0e4e72ad19cad6887dcf3",
+        "bytes": 17430
+      },
+      "summary": {
+        "passed": 615,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "rerun alone: the first run's only failure was a 5.2 s timeout in app/routing/guards.test.tsx under parallel backend load",
+      "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
+      "dirty": false
+    },
+    {
+      "id": "d4ce892b-6fb5-481e-bbac-857b1f8aac08",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "agent": "claude-opus-5-5 builder p-fixes-0185",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-fixes-0185/frontend_stack_ts",
+      "started": "2026-11-18T16:57:09Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-fixes-0185/20261118T165709Z-928418-green.log",
+        "sha256": "17870b297dd635cb79d9f8dee36c6edac6a73603ef46898b91ef6f9d637b61b7",
+        "bytes": 11045
+      },
+      "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
+      "dirty": false
+    },
+    {
+      "id": "84d9b3cf-9700-4f83-b72e-3e12a8f2ae9f",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "agent": "claude-opus-5-5 builder p-fixes-0185",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminInvestmentCleanup.integration.test.ts test/integration/clientInvestmentBreakdown.integration.test.ts test/integration/investmentGrowth.integration.test.ts test/integration/recordingCategories.integration.test.ts test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-fixes-0185/backend_controller",
+      "started": "2026-11-18T16:57:09Z",
+      "seconds": 10,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-fixes-0185/20261118T165709Z-928973-green.log",
+        "sha256": "01bf9b9fd2f7c559e269ad1a15bcd1ac478ffa6dd399de7a65f4b5f1d4da254a",
+        "bytes": 24966
+      },
+      "summary": {
+        "passed": 27,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "recorded as other, not green: it exited 1",
+      "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
+      "dirty": false
+    },
+    {
+      "id": "a0a592e9-08c2-4b6b-a774-87525ec2e68c",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "agent": "claude-opus-5-5 builder p-fixes-0185",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/adminInvestmentCleanup.integration.test.ts test/integration/clientInvestmentBreakdown.integration.test.ts test/integration/investmentGrowth.integration.test.ts test/integration/recordingCategories.integration.test.ts test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-fixes-0185/backend_controller",
+      "started": "2026-11-18T16:57:28Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-fixes-0185/20261118T165728Z-934913-green.log",
+        "sha256": "77d74ddcafa1faa05fae8ab9cff23387d1ba62201adeca3f58e3fae0ed163178",
+        "bytes": 1299
+      },
+      "summary": {
+        "passed": 27,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "coverage off for a five-file subset (finding-22); the previous run passed 27/27 and failed only the global branch gate",
+      "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
+      "dirty": false
+    },
+    {
+      "id": "28ec58fa-de33-4d16-9bd1-5cb5f010b75b",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "agent": "claude-opus-5-5 builder p-fixes-0185",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/adminInvestmentCleanup.integration.test.ts -t \"accepts a zero part\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-fixes-0185/backend_controller",
+      "started": "2026-11-18T16:57:44Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-fixes-0185/20261118T165744Z-939716-red.log",
+        "sha256": "27dc3cd6ce2503e22ef678c0cd99eec50cd6382ee4821aa725674a9564395695",
+        "bytes": 2270
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 4
+      },
+      "note": "R1: earlierGrowthSplit.ts restored to v0.18.4 (zero part refused); expect the zero-part case to fail",
+      "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
+      "dirty": true
+    },
+    {
+      "id": "1a2236f2-9cfb-4e81-ad18-cf4a1801b284",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "agent": "claude-opus-5-5 builder p-fixes-0185",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/adminInvestmentCleanup.integration.test.ts -t \"agree on which funds need a split\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-fixes-0185/backend_controller",
+      "started": "2026-11-18T16:57:59Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-fixes-0185/20261118T165759Z-943785-red.log",
+        "sha256": "a81c9b02a26f99425d49a29adb76d18f0032ef77ecbfc2e6d6ca173b9453b3ff",
+        "bytes": 2476
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 4
+      },
+      "note": "R2: projection needsConfirmation back to uncoveredEntryIds.length > 0 (v0.18.4); expect list and banner to disagree",
+      "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
+      "dirty": true
+    },
+    {
+      "id": "7bd58731-0b1c-4d8a-a2c4-46699e712cee",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "agent": "claude-opus-5-5 builder p-fixes-0185",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/client-values/earlierGrowthSplit.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-fixes-0185/frontend_stack_ts",
+      "started": "2026-11-18T16:58:05Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-fixes-0185/20261118T165805Z-946413-red.log",
+        "sha256": "a642ca6b5715fb183a12983c31dfc08a55ff3eab3f6bb606f80dfe560bdf44ae",
+        "bytes": 2963
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "R3: splitBodyOf without the zero-part filter; expect the zero-parts body case to fail",
+      "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
+      "dirty": true
     }
   ]
 }

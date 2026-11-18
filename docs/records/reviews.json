@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextId": 110,
+  "nextId": 111,
   "reviews": [
     {
       "id": "review-1",
@@ -2380,6 +2380,25 @@
         "agent": "claude-opus-5-5 (coordinator)"
       },
       "at": "2026-11-18T15:07:35.389Z"
+    },
+    {
+      "id": "review-110",
+      "milestone": "M19-patches-0-18",
+      "task": "P-fixes-0185",
+      "track": "p-fixes-0185",
+      "commit": "f093e20",
+      "reviewer": "claude-opus-5-5 (coordinator)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 1
+      },
+      "summary": "Read the diff. Server skips zero parts before the known-investment and duplicate checks, keeps the exact sum, stores and audits only non-zero parts, so released 0.18.4 apps sending 0 can confirm. Screen pre-fills 0 for investments the proposal leaves out (deliberately, V1 omits ones not held) and sends only non-zero parts; the review dialog reads from the fields. One rule needsEarlierGrowthSplit for the list count and needsConfirmation. Early-exit preview hides amounts for the not-sorted refusal; copy fixes. Red controls R1 20261118T165744Z-939716, R2 -165759Z-943785, R3 -165805Z-946413; backend 20261118T165510Z-910517, frontend 20261118T165616Z-923233, integration 20261118T165728Z-934913 (27 of 27). Low kept: a zero part naming a foreign investment is dropped rather than refused (writes nothing).",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T17:00:12.496Z"
     }
   ]
 }

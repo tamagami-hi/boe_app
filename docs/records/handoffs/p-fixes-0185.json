@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "track": "p-fixes-0185",
+  "current": {
+    "task": "P-fixes-0185",
+    "from": "claude-opus-5-5 builder p-fixes-0185",
+    "track": "p-fixes-0185",
+    "at": "2026-11-18T16:58:52.703Z",
+    "lines": [
+      "Commit: f093e202 fix(admin-growth): confirm splits with zero parts and agree on split count (one feature commit; contracts untouched, so no contracts commit).",
+      "1 Server: confirmEarlierGrowthSplit skips zero parts before the known-investment and duplicate checks (field errors keep body indices), then sums and stores only non-zero parts. Released 0.18.4 admin apps that send 0 now confirm.",
+      "1 Contract: SignedPaise already allows 0, so no relaxing and no regeneration were needed. Only the domain refused zero.",
+      "1 Screen: proposedAmountOf falls back to \"0\", so every field the proposal leaves out is pre-filled 0. splitBodyOf drops zero parts. The paise sum gate is unchanged. The review dialog now reads amounts from the fields, not body.parts[index].",
+      "2 Cause: toCategorise skipped a fund that still has uncategorised recordings; the projection's needsConfirmation (banner, panel) did not. Both read the same settled pass, so this is the only difference.",
+      "2 Fix: both now use needsEarlierGrowthSplit(fund) = no uncategorised recordings AND uncovered untargeted growth. While a fund has uncategorised recordings its investments are not known (a recording may be a SIP month), the server refuses its split anyway, and it counts under recordings.",
+      "2 Dev data: in the 0.18.4 code the list and banner can differ only for a fund with an uncategorised recording, so BOE Test Funds on Rahul likely has one. After 0.18.5 the banner lists it under 'investments ... need a category', and its Earlier growth panel appears once it is categorised.",
+      "2 Doubt for the maintainer: a pre-0.18.4 whole-holding early exit leaves one-time investments at Rs 0 but still counted as held (live contributions). Growth written after that counts as multi-investment and is proposed in equal shares. Whether a Rs 0 holding is 'held' is a design call; left unchanged.",
+      "3 SipEarlyExitPanel hides Returned / Of which invested / Of which growth when the refusal is the preparing case. That case travels as principal_below_zero (no new enum value, rule 11), so the panel matches the server message prefix 'This fund's investments are not sorted yet'. If that copy changes, the rows show again (today's behaviour).",
+      "4 SipEarlyExitList copy: 'Each one withdrew the value of the client's SIP as a payout.'",
+      "5 investmentLabelOf no longer appends 'reversed'; the server label already says it.",
+      "Coordinator add-on: the IndividualGrowthForm Categorise first alert now uses the server's text. The value sheet's Categorise first rows have no sentence (badge and link only), so I changed the sheet's Categorise first alert and the whole-fund screen's Categorise first hint, which said 'recordings categorised'.",
+      "Rule 11: no response key or enum value added; needsConfirmation is still a boolean and fundsNeedingSplit still a number. The split body accepts more (zero parts) and the response parts can only get shorter. No migration, no config.",
+      "Tests: 2 integration cases in adminInvestmentCleanup.integration.test.ts: a zero part for a later-recorded one-time is accepted, and the response and stored split hold only the 2 non-zero parts; the list and the client funds agree (1 and 1) when a second fund has an uncategorised recording. 1 unit case in earlierGrowthSplit.test.ts: zero parts left out of the body.",
+      "Red: R1 20261118T165744Z-939716 (v0.18.4 domain gives 400, not 201); R2 20261118T165759Z-943785 (old projection gives 2 funds, not 1); R3 20261118T165805Z-946413 (unfiltered body). Each file restored and cmp-identical.",
+      "Green: contracts build 20261118T165457Z-908198. Backend check 20261118T165510Z-910517 (107 files, 1281 tests).",
+      "Green: frontend check 20261118T165616Z-923233 (70 files, 615 tests). Its first run, 20261118T165511Z-911033, failed one unrelated 5.2 s timeout in app/routing/guards.test.tsx while the backend check ran in parallel.",
+      "Green: build:android:admin 20261118T165709Z-928418. Integration, 5 suites (adminInvestmentCleanup, clientInvestmentBreakdown, investmentGrowth, recordingCategories, sipEarlyExit): 20261118T165728Z-934913, 27/27. The first try, 20261118T165709Z-928973, also passed 27/27 but failed the global branch coverage gate on a subset (finding-22).",
+      "Not run: build:android (client) and build:client; no client file changed.",
+      "Deploy note: none (no migration, env or contract change). The backend alone fixes Confirm for installed 0.18.4 admin apps.",
+      "Emulator, dev, Rahul Kumar only, step 1: Users > Rahul Kumar > Ledger > Earlier growth, BOE_ARBITRAGE. The reversed one-time field shows 0, labelled 'One-time investment, reversed, Rs0.00, from 18 Nov 2026' with no second 'reversed'. The SIP and one-time fields show the proposal (480.33, 43.13).",
+      "Step 1, continued: Confirm is enabled; the dialog lists Rs0.00 for the reversed one; confirm. Expect 'Earlier growth split confirmed', no email, and the fund leaves the panel.",
+      "Step 2: compare the banner's split sentence with Client values > To categorise for Rahul: the same number of funds. If BOE Test Funds has an uncategorised recording, it shows in the banner's category sentence and not in the panel. Categorise it, and its panel appears with the Ended SIP field pre-filled 0.",
+      "Step 3, before sorting a fund: One investor > Rahul > that fund. The Categorise first alert reads 'Sort this client's investments first: categorise their recordings and confirm any earlier growth split in the Ledger tab.'",
+      "Step 4, before sorting: Users > Rahul > SIP schedules > that fund's SIP > SIP early exit. Expect only Fund, Dated and Maturity date rows, plus the 'not sorted yet' alert; no Rs amounts.",
+      "Step 5: Client values > Early exits. The description says 'Each one withdrew the value of the client's SIP as a payout.'",
+      "Optional, 0.18.4 admin app on the 0.18.5 backend: type 0 in a blank field and Confirm. Expect it accepted, not 400 parts.N. Its label still says reversed twice (that fix is frontend only)."
+    ]
+  },
+  "history": []
+}

@@ -2630,6 +2630,21 @@
             "release_manager/lib/nginx_ship.sh"
           ],
           "landedAt": "2026-11-18T15:05:45.141Z"
+        },
+        {
+          "id": "P-fixes-0185",
+          "track": "p-fixes-0185",
+          "status": "landed",
+          "commit": "f093e20",
+          "also": [],
+          "brief": "0.18.4 dev test: confirm-split refuses zero parts while the screen requires every investment (reversed or ended ones come blank), so such funds can never be confirmed; banner and To categorise count different funds; early-exit preview shows an amount while refused; stale early-exit list copy; label says reversed twice.",
+          "paths": [
+            "backend_controller",
+            "packages/contracts",
+            "frontend_stack_ts/src/api/generated",
+            "frontend_stack_ts/src/features/admin"
+          ],
+          "landedAt": "2026-11-18T17:02:12.657Z"
         }
       ]
     }

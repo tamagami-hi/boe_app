@@ -1682,6 +1682,28 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       }
+    },
+    {
+      "name": "p-fixes-0185",
+      "branch": "track/p-fixes-0185",
+      "worktree": ".temp/worktrees/p-fixes-0185",
+      "purpose": "0.18.5: earlier-growth split refuses zero parts the screen requires; dev-test findings on 0.18.4",
+      "paths": [
+        "backend_controller",
+        "packages/contracts",
+        "frontend_stack_ts/src/api/generated",
+        "frontend_stack_ts/src/features/admin"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T16:45:01.135Z",
+      "closedAt": "2026-11-18T17:02:13.297Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     }
   ]
 }
