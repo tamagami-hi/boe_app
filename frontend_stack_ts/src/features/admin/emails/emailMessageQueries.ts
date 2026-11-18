@@ -2,13 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
 
 import {
-  getAdminUser,
   previewAdminEmailMessage,
   sendAdminEmailMessage,
   sendTestAdminEmailMessage,
 } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
-import { STALE, qk } from "~/api/queryKeys"
+import { qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 
 export type EmailPreview = DataOf<typeof previewAdminEmailMessage>
@@ -38,16 +37,6 @@ export const useEmailPreview = (templateId: string, userId: string): UseQueryRes
           query: { templateId, ...(userId === "" ? {} : { userId }) },
         })
       ).data,
-  })
-}
-
-export const useChosenClient = (userId: string, enabled: boolean): UseQueryResult<DataOf<typeof getAdminUser>> => {
-  const api = useApi()
-  return useQuery({
-    queryKey: qk.admin.user(userId),
-    enabled: enabled && userId !== "",
-    staleTime: STALE.MONEY,
-    queryFn: async () => (await api.request(getAdminUser, { params: { userId } })).data,
   })
 }
 

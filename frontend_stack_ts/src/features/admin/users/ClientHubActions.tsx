@@ -1,7 +1,6 @@
 import { Section } from "~/app/layouts/Section"
-import { useSession } from "~/app/providers/SessionProvider"
-import { ADMIN_ROUTES } from "~/app/routing/adminRoutes"
 import { recordLinkQuery } from "~/features/admin/client-values/linkedRecord"
+import { useRouteAccess } from "~/features/admin/shared/routeAccess"
 import { Button } from "~/ui/primitives/Button"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
@@ -33,12 +32,8 @@ type Props = Readonly<{
 }>
 
 export const ClientHubActions = ({ userId, canRecord, isRecording, canClose, onToggleRecord }: Props): React.ReactElement => {
-  const { hasAnyPermission, hasAllPermissions } = useSession()
-  const isOpen = (routeId: string): boolean => {
-    const route = ADMIN_ROUTES.find((entry) => entry.id === routeId)
-    return route !== undefined && hasAnyPermission(route.permissions ?? []) && hasAllPermissions(route.requiresAll ?? [])
-  }
-  const links = ACTION_LINKS.filter((link) => isOpen(link.routeId))
+  const canOpen = useRouteAccess()
+  const links = ACTION_LINKS.filter((link) => canOpen(link.routeId))
 
   return (
     <Section title="Actions">

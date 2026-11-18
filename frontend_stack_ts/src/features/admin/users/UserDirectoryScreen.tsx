@@ -37,15 +37,32 @@ const SEGMENTS = [
   { value: "pending_invites", label: "Invite not accepted" },
 ] as const
 
+const MAX_SEARCH_LENGTH = 120
+
+const searchOf = (text: string | null): string => (text ?? "").trim().slice(0, MAX_SEARCH_LENGTH)
+
 const UserDirectoryScreen = (): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canCreateClient = hasAnyPermission(["clients.create"])
-  const [searchParams] = useSearchParams()
-  const initialSearch = (searchParams.get("q") ?? "").trim().slice(0, 120)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const applied = searchOf(searchParams.get("q"))
   const [filter, setFilter] = useUrlFilter("status", FILTERS, "any")
   const [segment, setSegment] = useUrlFilter("segment", SEGMENTS, "everyone")
-  const [search, setSearch] = useState(initialSearch)
-  const [applied, setApplied] = useState(initialSearch)
+  const [typed, setTyped] = useState({ text: applied, appliedTo: applied })
+  const search = typed.appliedTo === applied ? typed.text : applied
+  const applySearch = (): void => {
+    const next = searchOf(search)
+    if (next === applied) return
+    setSearchParams(
+      (current) => {
+        const params = new URLSearchParams(current)
+        if (next === "") params.delete("q")
+        else params.set("q", next)
+        return params
+      },
+      { replace: true },
+    )
+  }
   const query = useAdminUsers({
     ...(filter === "any" ? {} : { status: filter }),
     ...(applied === "" ? {} : { q: applied }),
@@ -74,14 +91,12 @@ const UserDirectoryScreen = (): React.ReactElement => {
         aria-label="Search users"
         value={search}
         onChange={(event) => {
-          setSearch(event.target.value)
+          setTyped({ text: event.target.value, appliedTo: applied })
         }}
         onKeyDown={(event) => {
-          if (event.key === "Enter") setApplied(search.trim())
+          if (event.key === "Enter") applySearch()
         }}
-        onBlur={() => {
-          setApplied(search.trim())
-        }}
+        onBlur={applySearch}
       />
 
       <FilterRow label="Accounts">

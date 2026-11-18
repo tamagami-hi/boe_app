@@ -5,6 +5,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
+import { useAdminUser } from "~/features/admin/shared/adminQueries"
 import { useAdminUsers } from "~/features/admin/users/userDirectoryQueries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
@@ -19,7 +20,7 @@ import { ADMIN_EMAIL_PREVIEW, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
 import { STACK_LG } from "~/ui/recipes/layout"
 
 import type { EmailPreview, QueuedEmail } from "./emailMessageQueries"
-import { useChosenClient, useEmailPreview, useSendEmail, useSendTestEmail } from "./emailMessageQueries"
+import { useEmailPreview, useSendEmail, useSendTestEmail } from "./emailMessageQueries"
 import type { EmailTemplateList } from "./emailTemplateQueries"
 import { useEmailTemplates } from "./emailTemplateQueries"
 import { AppUpdateAnnouncementPanel } from "./AppUpdateAnnouncementPanel"
@@ -221,7 +222,7 @@ const OneClientMode = (): React.ReactElement => {
     search === "" ? { status: "active", segment: "clients" } : { status: "active", segment: "clients", q: search },
   )
   const preview = useEmailPreview(templateId, userId)
-  const chosen = useChosenClient(clientQuery === "" ? userId : "", hasAnyPermission(["users.read"]))
+  const chosen = useAdminUser(clientQuery === "" && hasAnyPermission(["users.read"]) ? userId : "")
 
   const picker = templatePicker(templates)
   const hasTemplatesFailed = hasFailed(templates)

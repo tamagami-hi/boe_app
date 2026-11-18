@@ -3,6 +3,8 @@ import { Link } from "react-router-dom"
 import { formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { AdminTable, type AdminColumn } from "~/features/admin/shared/AdminTable"
+import { ClientPageLink, clientPagePath } from "~/features/admin/shared/clientPageLink"
+import { useRouteAccess } from "~/features/admin/shared/routeAccess"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { ADMIN_CELL_LINK, ADMIN_CODE } from "~/ui/recipes/admin"
 import { ENTRY_TEXT } from "~/ui/recipes/datalist"
@@ -10,7 +12,7 @@ import { META_TEXT } from "~/ui/recipes/text"
 
 import type { AuditTrailItem } from "./auditQueries"
 
-type RecordLink = Readonly<{ to: string; label: string }>
+type RecordLink = Readonly<{ to: string; label: string; routeId: string }>
 
 const ORDER_ENTITIES: ReadonlySet<string> = new Set(["refund_operation", "fund_receipt_acknowledgement"])
 const MATURITY_ENTITIES: ReadonlySet<string> = new Set([
@@ -20,26 +22,37 @@ const MATURITY_ENTITIES: ReadonlySet<string> = new Set([
 ])
 
 const recordLinkOf = (row: AuditTrailItem): RecordLink | null => {
-  if (row.entityType === "support_request") return { to: `/support/${row.entityId}`, label: "Support request" }
+  if (row.entityType === "support_request") {
+    return { to: `/support/${row.entityId}`, label: "Support request", routeId: "support-ticket" }
+  }
   if (row.client !== null && row.ledgerEntryId !== null) {
-    return { to: `/users/${row.client.userId}?tab=ledger`, label: "Ledger entry" }
+    return { to: `${clientPagePath(row.client.userId)}?tab=ledger`, label: "Ledger entry", routeId: "user-detail" }
   }
   if (row.client !== null && MATURITY_ENTITIES.has(row.entityType)) {
-    return { to: `/users/${row.client.userId}?tab=maturity`, label: "Maturity" }
+    return { to: `${clientPagePath(row.client.userId)}?tab=maturity`, label: "Maturity", routeId: "user-detail" }
   }
-  if (row.orderId !== null && ORDER_ENTITIES.has(row.entityType)) return { to: `/receipts/${row.orderId}`, label: "Order" }
+  if (row.orderId !== null && ORDER_ENTITIES.has(row.entityType)) {
+    return { to: `/receipts/${row.orderId}`, label: "Order", routeId: "receipt-detail" }
+  }
   return null
 }
 
-const recordCell = (row: AuditTrailItem): React.ReactElement => {
+const RecordCell = ({ row }: Readonly<{ row: AuditTrailItem }>): React.ReactElement => {
+  const canOpen = useRouteAccess()
   const link = recordLinkOf(row)
+  const label =
+    link === null ? (
+      <span>{row.entityType}</span>
+    ) : canOpen(link.routeId) ? (
+      <Link to={link.to} className={ADMIN_CELL_LINK}>
+        {link.label}
+      </Link>
+    ) : (
+      <span>{link.label}</span>
+    )
   return (
     <span className={ENTRY_TEXT}>
-      {link === null ? <span>{row.entityType}</span> : (
-        <Link to={link.to} className={ADMIN_CELL_LINK}>
-          {link.label}
-        </Link>
-      )}
+      {label}
       <span className={ADMIN_CODE}>{row.ledgerEntryId ?? row.entityId}</span>
     </span>
   )
@@ -75,13 +88,7 @@ const CLIENT_COLUMN: AdminColumn<AuditTrailItem> = {
   key: "client",
   header: "Client",
   render: (row) =>
-    row.client === null ? (
-      "—"
-    ) : (
-      <Link to={`/users/${row.client.userId}`} className={ADMIN_CELL_LINK}>
-        {row.client.fullName}
-      </Link>
-    ),
+    row.client === null ? "—" : <ClientPageLink userId={row.client.userId}>{row.client.fullName}</ClientPageLink>,
 }
 
 const TAIL_COLUMNS: readonly AdminColumn<AuditTrailItem>[] = [
@@ -92,7 +99,7 @@ const TAIL_COLUMNS: readonly AdminColumn<AuditTrailItem>[] = [
     render: (row) =>
       row.amountPaise === null ? "—" : <MoneyValue amount={toPaise(row.amountPaise)} size="sm" tone="signed" showDecimals showSign />,
   },
-  { key: "record", header: "Record", render: recordCell },
+  { key: "record", header: "Record", render: (row) => <RecordCell row={row} /> },
   { key: "request", header: "Request", render: (row) => <span className={ADMIN_CODE}>{row.requestId}</span> },
 ]
 

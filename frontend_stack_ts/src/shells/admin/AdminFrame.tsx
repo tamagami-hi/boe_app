@@ -205,9 +205,14 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
         {groups.map((group) => (
           <div key={group.domain} className={ADMIN_MORE_GROUP}>
             {group.entries.length > 1 ? (
-              <span className={ADMIN_MORE_GROUP_LABEL}>{group.label}</span>
+              <span id={`${sidebarId}-more-${group.domain}`} className={ADMIN_MORE_GROUP_LABEL}>
+                {group.label}
+              </span>
             ) : null}
-            <ul className={ADMIN_MORE_LIST}>
+            <ul
+              aria-labelledby={group.entries.length > 1 ? `${sidebarId}-more-${group.domain}` : undefined}
+              className={ADMIN_MORE_LIST}
+            >
               {group.entries.map((entry) => (
                 <li key={entry.id}>
                   <Link
