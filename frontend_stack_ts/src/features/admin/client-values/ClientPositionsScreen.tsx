@@ -15,13 +15,13 @@ const ENTRIES = [
     routeId: "client-values-monthly",
     to: "/client-values/monthly",
     title: "Monthly value update",
-    hint: "Type each client's gain since they invested for one fund. The changes are previewed and written together, and every client is notified.",
+    hint: "Type each client's gain since they invested for one fund. The changes are previewed and written together. Each client is told in the app, and active clients by email too.",
   },
   {
     routeId: "client-values-payment-sheet",
     to: "/client-values/payment-sheet",
     title: "Monthly payments",
-    hint: "Record a month of SIP payments for every client in one sheet, or paste them in. Each row is recorded on its own and every client is notified.",
+    hint: "Record a month of SIP payments for every client in one sheet, or paste them in. Each row is recorded on its own. Each client is told in the app, and active clients get an email with the SIP month and amount.",
   },
   {
     routeId: "client-values-individual",
@@ -79,10 +79,10 @@ const ClientValuesScreen = (): React.ReactElement => {
       <Section title="What an adjustment does">
         <Card>
           <Prose>
-            An adjustment appends a growth entry against a position and notifies the investor that
-            their value changed. The notification never carries an amount. The entry is dated by the
-            effective date you choose, so it lands in that month&apos;s statement. A negative
-            adjustment is allowed, but one that would take a position below zero is refused rather
+            An adjustment appends a growth entry against a position. The investor is told in the app
+            that their value changed, without an amount. If their account is active, an email also shows
+            the change and their new value in that fund. The entry is dated by the effective date you
+            choose, so it lands in that month&apos;s statement. A negative adjustment is allowed, but one that would take a position below zero is refused rather
             than stopped at zero.
           </Prose>
         </Card>

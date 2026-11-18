@@ -211,7 +211,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
             </Button>
           }
         >
-          {`${String(committed.targetCount)} position(s) adjusted. Every investor in the batch has been notified.`}
+          {`${String(committed.targetCount)} position(s) adjusted. Every investor in the batch was told in the app, and active investors by email.`}
         </Alert>
       )}
 
@@ -302,7 +302,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
 
           <Section
             title="Commit the batch"
-            description="This writes one growth entry per position and notifies every investor in it."
+            description="This writes one growth entry per position. Every investor in it is told in the app, and active investors by email."
           >
             <Card>
               <div className={STACK_LG}>
@@ -399,8 +399,9 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
           </DataList>
         )}
         <p className={PROSE_SM}>
-          One growth entry is written for every position above and every investor in the batch is
-          notified. A mistake is corrected later with a reversal, not by editing.
+          One growth entry is written for every position above. Every investor in the batch is told in the
+          app, and active investors get an email with the change and their new value. A mistake is corrected
+          later with a reversal, not by editing.
         </p>
       </ConfirmDialog>
 

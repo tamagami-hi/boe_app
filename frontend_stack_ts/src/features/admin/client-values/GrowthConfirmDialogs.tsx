@@ -75,7 +75,8 @@ export const GrowthConfirmDialogs = ({
         </DetailRow>
       </DataList>
       <p className={PROSE_SM}>
-        One growth entry is appended to this position and the investor is notified. The server recalculates the figures
+        One growth entry is appended to this position. The investor is told in the app, and by email with the change
+        and new value if their account is active. The server recalculates the figures
         and its answer is the truth. A mistake is corrected later with a reversal, not by editing.
       </p>
     </ConfirmDialog>

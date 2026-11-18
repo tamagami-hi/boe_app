@@ -233,7 +233,8 @@ export const IndividualGrowthForm = ({
             </Button>
           }
         >
-          The ledger entry is written and the investor has been notified. The form is held so the same adjustment cannot
+          The ledger entry is written. The investor was told in the app, and by email if their account is active. The
+          form is held so the same adjustment cannot
           be appended twice by mistake.
         </Alert>
       )}

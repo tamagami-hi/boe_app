@@ -98,7 +98,7 @@ export const ValueUpdatePreview = ({
 
       <Section
         title="Commit the batch"
-        description="One value-update record is written for each client above, and each of them is notified."
+        description="One value-update record is written for each client above. Each is told in the app, and active clients by email."
       >
         <Card>
           <div className={STACK_LG}>

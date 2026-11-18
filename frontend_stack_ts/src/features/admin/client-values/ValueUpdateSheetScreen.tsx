@@ -256,7 +256,7 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
             </Button>
           }
         >
-          {`${String(committed.targetCount)} client(s) updated. Each of them has been notified.`}
+          {`${String(committed.targetCount)} client(s) updated. Each was told in the app, and active clients by email.`}
         </Alert>
       )}
 
@@ -365,7 +365,8 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
           </DataList>
         )}
         <p className={PROSE_SM}>
-          Each client in the batch is notified that their fund value was updated.
+          Each client in the batch is told in the app that their fund value was updated. Active clients also get an
+          email with the change and their new value.
         </p>
       </ConfirmDialog>
 
