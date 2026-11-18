@@ -177,6 +177,36 @@ describe("a verified client is kept as a record without contact details", () => 
     expect(String(b.phone_e164)).toMatch(/^\+999\d{11}$/u)
     expect(a.phone_e164).not.toBe(b.phone_e164)
   })
+
+  test("cancels a queued growth email and scrubs its recipient and sealed payload", async () => {
+    const { stack } = harness
+    const client = await seedClient(harness, { verified: true })
+    const recorded = await recordFor(harness, client.id, 120_000n)
+    expect((await growIndividually(harness, client.id)).statusCode).toBe(201)
+    const queued = await stack.first(
+      "select d.id, d.state, p.ciphertext is not null as sealed from email_deliveries d " +
+        "join email_delivery_payloads p on p.email_delivery_id = d.id where d.user_id = $1 and d.template_key = 'investment_growth'",
+      [client.id],
+    )
+    expect(queued).toMatchObject({ state: "queued", sealed: true })
+    await stack.pool.query(
+      "insert into client_value_entries (user_id, fund_id, entry_type, principal_delta_paise, value_delta_paise, effective_date, " +
+        "reason_code, reverses_entry_id, actor_type, created_by_user_id, request_id) " +
+        "select user_id, fund_id, 'reversal', 0, -value_delta_paise, effective_date, 'correction', id, 'admin', $2, $3 " +
+        "from client_value_entries where user_id = $1 and entry_type = 'growth_adjustment'",
+      [client.id, harness.admin.userId, randomUUID()],
+    )
+    await reverseEntry(harness, client.id, recorded.entryId, 120_000n)
+
+    expect((await erase(harness, client.id, "kept_as_record")).statusCode).toBe(200)
+
+    const deliveryId = String(queued.id)
+    expect(await stack.deliveryRow(deliveryId)).toMatchObject({ state: "cancelled", recipient_ciphertext: null, recipient_nonce: null })
+    expect(await stack.outboxRowOf(deliveryId)).toMatchObject({ state: "cancelled" })
+    const payload = await stack.payloadRow(deliveryId)
+    expect(payload).toMatchObject({ ciphertext: null, nonce: null })
+    expect(payload.scrubbed_at).not.toBeNull()
+  })
 })
 
 describe("a client who never verified their email is deleted completely", () => {

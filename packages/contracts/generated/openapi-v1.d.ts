@@ -16264,7 +16264,7 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "queued" | "sending" | "sent" | "delivered" | "retryable_failed" | "permanent_failed" | "cancelled";
-                templateKey?: "application_rejected" | "account_approved" | "password_set_link" | "password_reset_link" | "password_app_download" | "contact_phone_changed" | "email_change_code" | "contact_email_changed" | "admin_message" | "app_update_notice" | "investment_recorded" | "maturity_options" | "nominee_request_decided" | "sip_early_exit";
+                templateKey?: "application_rejected" | "account_approved" | "password_set_link" | "password_reset_link" | "password_app_download" | "contact_phone_changed" | "email_change_code" | "contact_email_changed" | "admin_message" | "app_update_notice" | "investment_recorded" | "maturity_options" | "nominee_request_decided" | "sip_early_exit" | "investment_growth";
                 applicationId?: string;
                 userId?: string;
                 after?: string;

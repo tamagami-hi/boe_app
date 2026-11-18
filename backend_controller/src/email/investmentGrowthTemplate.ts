@@ -35,7 +35,7 @@ const render = (data: Readonly<Record<string, unknown>>, config: EmailTemplateCo
         kind: "text",
         text: `The value of your investment in ${fundName} was updated as of ${date}. This update is a ${change.kind} of ${change.amount}.`,
       },
-      { kind: "text", text: `After this update, your value in this fund is ${valueAfter}.` },
+      { kind: "text", text: `Your value in this fund is now ${valueAfter}.` },
       { kind: "text", text: "Open the BeOnEdge app and go to Portfolio to see your current value." },
       ...webAppBlocks(config),
       { kind: "text", text: "If you have questions about this update, contact BeOnEdge support." },

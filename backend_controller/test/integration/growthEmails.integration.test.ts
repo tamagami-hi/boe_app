@@ -250,7 +250,7 @@ describe("growth emails are queued in the growth write's own transaction", () =>
     await expectOneEmail(client, fund, batchId, { fullName: "Rahul Kumar", fundName: "Harbour Growth Fund", deltaPaise, valueAfterPaise })
   })
 
-  test("a collective rate update emails each active client in the fund once, not a suspended or excluded one, and a replay queues none", async () => {
+  test("a collective rate update emails each active client in the fund once with that fund's value, not a suspended or excluded one, and a replay queues none", async () => {
     const fund = await seedFund("Lighthouse Balanced Fund")
     const other = await seedFund("Other Fund")
     const first = await seedClient("Asha Rao")
@@ -263,6 +263,7 @@ describe("growth emails are queued in the growth write's own transaction", () =>
     await seedPosition(suspended.id, fund, 200_000)
     await seedZeroValuePosition(excluded.id, fund, 300_000)
     await seedPosition(elsewhere.id, other, 400_000)
+    await seedPosition(first.id, other, 700_000)
 
     const run = await collective(fund.fundId, { growthBasisPoints: 200 })
     const replay = await run.again()
@@ -374,7 +375,7 @@ describe("the email worker", () => {
     expect(sent[0]?.text).toContain(
       "The value of your investment in Harbour Growth Fund was updated as of 20 August 2026. This update is a gain of ₹250.00.",
     )
-    expect(sent[0]?.text).toContain("After this update, your value in this fund is ₹10,250.00.")
+    expect(sent[0]?.text).toContain("Your value in this fund is now ₹10,250.00.")
     expect(sent[0]?.text).toContain("Investments are subject to market risk.")
     expect((await growthEmailsOf(kept.id)).map((row) => row.state)).toEqual(["sent"])
     for (const client of skipped) {

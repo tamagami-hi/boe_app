@@ -26770,7 +26770,8 @@
                 "investment_recorded",
                 "maturity_options",
                 "nominee_request_decided",
-                "sip_early_exit"
+                "sip_early_exit",
+                "investment_growth"
               ]
             },
             "required": false,

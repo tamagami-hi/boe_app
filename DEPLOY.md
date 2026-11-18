@@ -202,13 +202,19 @@ Migration 075 (growth emails, DEC-72, 0.18.3) is expand-only and not a boundary:
 the `email_deliveries` template check with the new key `investment_growth`, which every
 existing row already satisfies, and the previous release never writes that key. From 0.18.3
 a one-investor growth adjustment, a collective growth commit and a monthly value update
-queue one `investment_growth` email per client and fund in the same transaction as the
-ledger rows. No API response or notification kind changes, so released apps are unaffected.
+queue one `investment_growth` email per active client and fund, in the same transaction as
+the ledger rows; suspended, closed and erased clients get none. No API response or
+notification kind changes. Released admin apps list such a delivery under its raw key
+`investment_growth` and cannot filter by it. The email-deliveries filter accepts the key from
+0.18.3, so a newer admin app that filters by it against an earlier backend gets a refused
+request.
+
 **Deploy the API and the email worker together**, as `_boe_deploy.sh` does: an email worker
 from before 0.18.3 has no `investment_growth` template and permanently dead-letters such an
-email (the `finding-26` case). For the same reason, a growth email still queued at an
-images-only rollback to a release before 0.18.3 is dead-lettered and not re-sent after the
-roll-forward; the ledger rows and the in-app notice are not affected.
+email (the `finding-26` case). During an images-only rollback to a release before 0.18.3, a
+growth email still queued at the rollback is dead-lettered and not re-sent after the
+roll-forward, and growth writes made while the earlier release runs send no email, then or
+later. The ledger rows and the in-app notice are not affected.
 
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.

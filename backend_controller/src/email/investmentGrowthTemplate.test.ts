@@ -28,7 +28,8 @@ describe("investment growth email", () => {
     expect(email.text).toContain(
       "The value of your investment in Harbour Growth Fund was updated as of 20 August 2026. This update is a gain of ₹2,500.00.",
     )
-    expect(email.text).toContain("After this update, your value in this fund is ₹1,02,500.00.")
+    expect(email.text).toContain("Your value in this fund is now ₹1,02,500.00.")
+    expect(email.html).toContain("Your value in this fund is now ₹1,02,500.00.")
     expect(email.text).toContain("Open the BeOnEdge app and go to Portfolio to see your current value.")
     expect(email.text).toContain("Investments are subject to market risk.")
     expect(email.text).toContain("support@beonedge.example")
@@ -40,7 +41,7 @@ describe("investment growth email", () => {
     const email = rendered({ ...DATA, deltaPaise: "-123456", valueAfterPaise: "876544" })
 
     expect(email.text).toContain("This update is a loss of ₹1,234.56.")
-    expect(email.text).toContain("After this update, your value in this fund is ₹8,765.44.")
+    expect(email.text).toContain("Your value in this fund is now ₹8,765.44.")
     expect(email.text).not.toContain("gain")
     expect(email.text).not.toContain("-₹")
   })
