@@ -53176,6 +53176,1312 @@
           }
         }
       }
+    },
+    "/v1/admin/investment-growth/individual": {
+      "post": {
+        "operationId": "appendAdminIndividualInvestmentGrowth",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "fundId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "ref": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "sip"
+                            ]
+                          },
+                          "scheduleId": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "scheduleId"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "one_time"
+                            ]
+                          },
+                          "allocationId": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "allocationId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "growthPaise": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                  },
+                  "growthBasisPoints": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": -2000,
+                    "maximum": 2000
+                  },
+                  "effectiveDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                  },
+                  "reasonCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "userId",
+                  "fundId",
+                  "ref",
+                  "effectiveDate",
+                  "reasonCode"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "batchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "entryId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fundId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "effectiveDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                        },
+                        "reasonCode": {
+                          "type": "string"
+                        },
+                        "principalPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "beforePaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "currentValuePaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "deltaPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "growthPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "afterPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "newValuePaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "part": {
+                          "type": "object",
+                          "properties": {
+                            "ref": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "sip"
+                                      ]
+                                    },
+                                    "scheduleId": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "scheduleId"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "one_time"
+                                      ]
+                                    },
+                                    "allocationId": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "allocationId"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "investedPaise": {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                            },
+                            "beforePaise": {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                            },
+                            "deltaPaise": {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                            },
+                            "afterPaise": {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                            }
+                          },
+                          "required": [
+                            "ref",
+                            "label",
+                            "investedPaise",
+                            "beforePaise",
+                            "deltaPaise",
+                            "afterPaise"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "batchId",
+                        "entryId",
+                        "userId",
+                        "fundId",
+                        "effectiveDate",
+                        "reasonCode",
+                        "principalPaise",
+                        "beforePaise",
+                        "currentValuePaise",
+                        "deltaPaise",
+                        "growthPaise",
+                        "afterPaise",
+                        "newValuePaise",
+                        "part"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/admin/investment-growth/preview": {
+      "post": {
+        "operationId": "previewAdminInvestmentGrowth",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fundId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "growthBasisPoints": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": -2000,
+                    "maximum": 2000
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "ref": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "sip"
+                                  ]
+                                },
+                                "scheduleId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "scheduleId"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "one_time"
+                                  ]
+                                },
+                                "allocationId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "allocationId"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "gainSinceInvestedPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "ref",
+                        "gainSinceInvestedPaise"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 500
+                  }
+                },
+                "required": [
+                  "fundId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fundId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "percentage",
+                            "gain_since_invested"
+                          ]
+                        },
+                        "basisHash": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$/u"
+                        },
+                        "targetCount": {
+                          "type": "integer"
+                        },
+                        "totalDeltaPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "beforePaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "deltaPaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "afterPaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "parts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "ref": {
+                                      "oneOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "sip"
+                                              ]
+                                            },
+                                            "scheduleId": {
+                                              "type": "string",
+                                              "format": "uuid"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "scheduleId"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "one_time"
+                                              ]
+                                            },
+                                            "allocationId": {
+                                              "type": "string",
+                                              "format": "uuid"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "allocationId"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "investedPaise": {
+                                      "type": "string",
+                                      "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "beforePaise": {
+                                      "type": "string",
+                                      "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "deltaPaise": {
+                                      "type": "string",
+                                      "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "afterPaise": {
+                                      "type": "string",
+                                      "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                                    }
+                                  },
+                                  "required": [
+                                    "ref",
+                                    "label",
+                                    "investedPaise",
+                                    "beforePaise",
+                                    "deltaPaise",
+                                    "afterPaise"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "beforePaise",
+                              "deltaPaise",
+                              "afterPaise",
+                              "parts"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "skipped": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "reason": {
+                                "type": "string",
+                                "enum": [
+                                  "categorise_first",
+                                  "zero_invested"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "reason"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "fundId",
+                        "mode",
+                        "basisHash",
+                        "targetCount",
+                        "totalDeltaPaise",
+                        "entries",
+                        "skipped"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/admin/investment-growth/commit": {
+      "post": {
+        "operationId": "commitAdminInvestmentGrowth",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fundId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "growthBasisPoints": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": -2000,
+                    "maximum": 2000
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "ref": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "sip"
+                                  ]
+                                },
+                                "scheduleId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "scheduleId"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "one_time"
+                                  ]
+                                },
+                                "allocationId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "allocationId"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "gainSinceInvestedPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "ref",
+                        "gainSinceInvestedPaise"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 500
+                  },
+                  "basisHash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$/u"
+                  },
+                  "effectiveDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                  },
+                  "reasonCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "fundId",
+                  "basisHash",
+                  "effectiveDate",
+                  "reasonCode"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "batchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fundId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "percentage",
+                            "gain_since_invested"
+                          ]
+                        },
+                        "effectiveDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                        },
+                        "targetCount": {
+                          "type": "integer"
+                        },
+                        "totalDeltaPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "beforePaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "deltaPaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "afterPaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "parts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "ref": {
+                                      "oneOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "sip"
+                                              ]
+                                            },
+                                            "scheduleId": {
+                                              "type": "string",
+                                              "format": "uuid"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "scheduleId"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "one_time"
+                                              ]
+                                            },
+                                            "allocationId": {
+                                              "type": "string",
+                                              "format": "uuid"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "allocationId"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "investedPaise": {
+                                      "type": "string",
+                                      "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "beforePaise": {
+                                      "type": "string",
+                                      "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "deltaPaise": {
+                                      "type": "string",
+                                      "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "afterPaise": {
+                                      "type": "string",
+                                      "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                                    }
+                                  },
+                                  "required": [
+                                    "ref",
+                                    "label",
+                                    "investedPaise",
+                                    "beforePaise",
+                                    "deltaPaise",
+                                    "afterPaise"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "beforePaise",
+                              "deltaPaise",
+                              "afterPaise",
+                              "parts"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "skipped": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "reason": {
+                                "type": "string",
+                                "enum": [
+                                  "categorise_first",
+                                  "zero_invested"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "reason"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "batchId",
+                        "fundId",
+                        "mode",
+                        "effectiveDate",
+                        "targetCount",
+                        "totalDeltaPaise",
+                        "entries",
+                        "skipped"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
     }
   },
   "webhooks": {}

@@ -3060,6 +3060,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/investment-growth/individual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["appendAdminIndividualInvestmentGrowth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/investment-growth/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["previewAdminInvestmentGrowth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/investment-growth/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["commitAdminInvestmentGrowth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -29018,6 +29066,555 @@ export interface operations {
             };
             /** @description Error */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    appendAdminIndividualInvestmentGrowth: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    userId: string;
+                    /** Format: uuid */
+                    fundId: string;
+                    ref: {
+                        /** @enum {string} */
+                        kind: "sip";
+                        /** Format: uuid */
+                        scheduleId: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "one_time";
+                        /** Format: uuid */
+                        allocationId: string;
+                    };
+                    growthPaise?: string;
+                    growthBasisPoints?: number | null;
+                    effectiveDate: string;
+                    reasonCode: string;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            /** Format: uuid */
+                            batchId: string;
+                            /** Format: uuid */
+                            entryId: string;
+                            /** Format: uuid */
+                            userId: string;
+                            /** Format: uuid */
+                            fundId: string;
+                            effectiveDate: string;
+                            reasonCode: string;
+                            principalPaise: string;
+                            beforePaise: string;
+                            currentValuePaise: string;
+                            deltaPaise: string;
+                            growthPaise: string;
+                            afterPaise: string;
+                            newValuePaise: string;
+                            part: {
+                                ref: {
+                                    /** @enum {string} */
+                                    kind: "sip";
+                                    /** Format: uuid */
+                                    scheduleId: string;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "one_time";
+                                    /** Format: uuid */
+                                    allocationId: string;
+                                };
+                                label: string;
+                                investedPaise: string;
+                                beforePaise: string;
+                                deltaPaise: string;
+                                afterPaise: string;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    previewAdminInvestmentGrowth: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-csrf-token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    fundId: string;
+                    growthBasisPoints?: number | null;
+                    items?: {
+                        /** Format: uuid */
+                        userId: string;
+                        ref: {
+                            /** @enum {string} */
+                            kind: "sip";
+                            /** Format: uuid */
+                            scheduleId: string;
+                        } | {
+                            /** @enum {string} */
+                            kind: "one_time";
+                            /** Format: uuid */
+                            allocationId: string;
+                        };
+                        gainSinceInvestedPaise: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            /** Format: uuid */
+                            fundId: string;
+                            /** @enum {string} */
+                            mode: "percentage" | "gain_since_invested";
+                            basisHash: string;
+                            targetCount: number;
+                            totalDeltaPaise: string;
+                            entries: {
+                                /** Format: uuid */
+                                userId: string;
+                                beforePaise: string;
+                                deltaPaise: string;
+                                afterPaise: string;
+                                parts: {
+                                    ref: {
+                                        /** @enum {string} */
+                                        kind: "sip";
+                                        /** Format: uuid */
+                                        scheduleId: string;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "one_time";
+                                        /** Format: uuid */
+                                        allocationId: string;
+                                    };
+                                    label: string;
+                                    investedPaise: string;
+                                    beforePaise: string;
+                                    deltaPaise: string;
+                                    afterPaise: string;
+                                }[];
+                            }[];
+                            skipped: {
+                                /** Format: uuid */
+                                userId: string;
+                                /** @enum {string} */
+                                reason: "categorise_first" | "zero_invested";
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    commitAdminInvestmentGrowth: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    fundId: string;
+                    growthBasisPoints?: number | null;
+                    items?: {
+                        /** Format: uuid */
+                        userId: string;
+                        ref: {
+                            /** @enum {string} */
+                            kind: "sip";
+                            /** Format: uuid */
+                            scheduleId: string;
+                        } | {
+                            /** @enum {string} */
+                            kind: "one_time";
+                            /** Format: uuid */
+                            allocationId: string;
+                        };
+                        gainSinceInvestedPaise: string;
+                    }[];
+                    basisHash: string;
+                    effectiveDate: string;
+                    reasonCode: string;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            /** Format: uuid */
+                            batchId: string;
+                            /** Format: uuid */
+                            fundId: string;
+                            /** @enum {string} */
+                            mode: "percentage" | "gain_since_invested";
+                            effectiveDate: string;
+                            targetCount: number;
+                            totalDeltaPaise: string;
+                            entries: {
+                                /** Format: uuid */
+                                userId: string;
+                                beforePaise: string;
+                                deltaPaise: string;
+                                afterPaise: string;
+                                parts: {
+                                    ref: {
+                                        /** @enum {string} */
+                                        kind: "sip";
+                                        /** Format: uuid */
+                                        scheduleId: string;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "one_time";
+                                        /** Format: uuid */
+                                        allocationId: string;
+                                    };
+                                    label: string;
+                                    investedPaise: string;
+                                    beforePaise: string;
+                                    deltaPaise: string;
+                                    afterPaise: string;
+                                }[];
+                            }[];
+                            skipped: {
+                                /** Format: uuid */
+                                userId: string;
+                                /** @enum {string} */
+                                reason: "categorise_first" | "zero_invested";
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
