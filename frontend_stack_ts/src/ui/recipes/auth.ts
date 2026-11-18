@@ -8,7 +8,7 @@ export const AUTH_MESH = "pointer-events-none absolute inset-0 z-0 mesh-warm lg:
 
 export const AUTH_NARRATIVE = [
   "relative z-2 flex flex-col justify-center gap-4 lg:gap-6",
-  "px-[max(var(--be-space-5),var(--be-safe-left))]",
+  "pl-[max(var(--be-space-5),var(--be-safe-left))] pr-[max(var(--be-space-5),var(--be-safe-right))]",
   "pt-[calc(var(--be-space-10)+var(--be-safe-top))] pb-5",
   "lg:px-10 lg:py-12 lg:pt-12",
   "lg:bg-gradient-to-b lg:from-[color-mix(in_srgb,var(--be-sand)_46%,transparent)] lg:to-transparent",
@@ -38,7 +38,7 @@ export const AUTH_MARKER_DOT = "size-1 lg:size-[5px] rounded-full bg-gold"
 
 export const AUTH_PANEL_AREA = [
   "relative z-2 flex items-start justify-center",
-  "px-[max(var(--be-space-4),var(--be-safe-left))] pb-8",
+  "pl-[max(var(--be-space-4),var(--be-safe-left))] pr-[max(var(--be-space-4),var(--be-safe-right))] pb-8",
   "lg:items-center lg:bg-parchment lg:px-10 lg:py-12 lg:pl-8",
 ].join(" ")
 
@@ -63,7 +63,7 @@ export const AUTH_PANEL_TITLE =
 
 export const AUTH_FOOTNOTE = [
   "relative z-2 m-0 text-center font-ui text-xs text-fg-muted",
-  "px-[max(var(--be-space-5),var(--be-safe-left))]",
+  "pl-[max(var(--be-space-5),var(--be-safe-left))] pr-[max(var(--be-space-5),var(--be-safe-right))]",
   "pb-[calc(var(--be-space-5)+var(--be-safe-bottom))]",
   "lg:absolute lg:bottom-0 lg:left-0 lg:w-[51%] lg:px-10 lg:pb-8 lg:text-left",
 ].join(" ")

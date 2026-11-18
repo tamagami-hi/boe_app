@@ -8,7 +8,7 @@ export const SCRIM = [
 export const SHEET_PANEL = [
   "relative flex w-full flex-col gap-4 overflow-y-auto",
   "max-h-[88dvh] lg:max-h-[80dvh] lg:max-w-panel",
-  "px-[max(var(--be-space-5),var(--be-safe-left))]",
+  "pl-[max(var(--be-space-5),var(--be-safe-left))] pr-[max(var(--be-space-5),var(--be-safe-right))]",
   "pt-5 pb-[calc(var(--be-space-6)+max(var(--be-safe-bottom),var(--be-keyboard-height)))]",
   "lg:p-7 lg:pb-[calc(var(--spacing)*7+var(--be-keyboard-height))]",
   "rounded-t-squircle-xl lg:rounded-squircle-lg",
@@ -43,7 +43,7 @@ export const SHEET_ACTIONS = "flex flex-col-reverse gap-2 lg:flex-row lg:justify
 export const BLOCK_LAYER = [
   "fixed inset-0 z-toast flex justify-center overflow-y-auto",
   "bg-bg",
-  "px-[max(var(--be-page-pad-x),var(--be-safe-left))]",
+  "pl-[max(var(--be-page-pad-x),var(--be-safe-left))] pr-[max(var(--be-page-pad-x),var(--be-safe-right))]",
   "pt-[calc(var(--be-space-10)+var(--be-safe-top))]",
   "pb-[calc(var(--be-space-10)+var(--be-safe-bottom))]",
   "motion-safe:animate-[be-fade-in_var(--be-dur-base)_var(--be-ease-out)_both]",
