@@ -2630,6 +2630,10 @@
     {
       "commit": "02ae953",
       "note": "Release v0.18.2 cut by the maintainer with release_manager/status.sh (tag v0.18.2): lazy feature screens split out of the app chunk, static-only chunk cycle check, contracts built before the APK vite build; VERSION only."
+    },
+    {
+      "commit": "926c68d",
+      "note": "Maintainer's release cut v0.18.3 through release_manager/status.sh (VERSION 0.18.2 to 0.18.3, tag v0.18.3), exported and deployed to dev on 2026-11-18"
     }
   ]
 }
