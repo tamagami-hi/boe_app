@@ -1,5 +1,5 @@
 import type { SipEarlyExitHolding } from "../domain/admin/earlyExit.js"
-import { SIP_EARLY_EXIT_REFUSALS, sipEarlyExitRefusal } from "../domain/admin/earlyExitRules.js"
+import { SIP_EARLY_EXIT_REFUSALS, sipEarlyExitRefusal, sipEarlyExitRefusalCode } from "../domain/admin/earlyExitRules.js"
 import { withdrawalPortions } from "../domain/admin/withdrawalEntry.js"
 import type { AdminSipScheduleRow } from "../repositories/adminSipScheduleRepository.js"
 import type { SipEarlyExitRow } from "../repositories/earlyExitRepository.js"
@@ -63,7 +63,9 @@ export const mapSipEarlyExitPreview = (schedule: AdminSipScheduleRow, holding: S
     growthPortionPaise: portions.growthPortionPaise.toString(),
     effectiveDate: holding.facts.today,
     maturity:
-      holding.maturity === null ? null : { scheduleId: holding.maturity.id, maturityDate: holding.maturity.maturityDate },
-    refusal: refusal === null ? null : { code: refusal, message: SIP_EARLY_EXIT_REFUSALS[refusal] },
+      holding.cancelledMaturity === null
+        ? null
+        : { scheduleId: holding.cancelledMaturity.id, maturityDate: holding.cancelledMaturity.maturityDate },
+    refusal: refusal === null ? null : { code: sipEarlyExitRefusalCode(refusal), message: SIP_EARLY_EXIT_REFUSALS[refusal] },
   }
 }

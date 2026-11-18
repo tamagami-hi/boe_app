@@ -5,12 +5,14 @@ import { exportPKCS8, exportSPKI, generateKeyPair } from "jose"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccessTokenService, type AccessTokenService } from "../../src/auth/accessToken.js"
+import { foldFundBreakdown } from "../../src/domain/client/investmentBreakdown.js"
 import { createSipEarlyExitGuard } from "../../src/domain/email/earlyExitGuard.js"
 import { createAdminSipScheduleRepository } from "../../src/repositories/adminSipScheduleRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createClientMaturityOfferRepository } from "../../src/repositories/clientMaturityOfferRepository.js"
 import { createClientMaturityScheduleRepository } from "../../src/repositories/clientMaturityScheduleRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
+import { createInvestmentBreakdownRepository } from "../../src/repositories/investmentBreakdownRepository.js"
 import { createMaturityRepository } from "../../src/repositories/maturityRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createSipEarlyExitRepository } from "../../src/repositories/earlyExitRepository.js"
@@ -22,6 +24,7 @@ import { createApplication } from "../../src/runtime/application.js"
 import { registerSipEarlyExitSurface } from "../../src/runtime/earlyExitComposition.js"
 import { ADMIN_ORIGIN, adminHeaders, adminWebAuth, registerAdminLogin, signInRoleAdmin, type AdminSession } from "./adminSessionSupport.js"
 import { growthMailDeps } from "./growthMailSupport.js"
+import { allocationOf, seedGrowthEntry } from "./investmentBreakdownSupport.js"
 import { PasswordMailStack, type Row } from "./passwordMailSupport.js"
 
 interface Envelope<T> {
@@ -111,11 +114,11 @@ const growBy = async (holding: Holding, growthPaise: string): Promise<void> => {
   expect(response.statusCode, response.body).toBe(201)
 }
 
-const addContribution = async (holding: Holding, invested: number): Promise<void> => {
+const addContribution = async (holding: Holding, invested: number, orderType = "lump_sum"): Promise<string> => {
   const order = await stack.first(
     "insert into investment_orders (user_id, fund_id, fund_version_id, type, state, amount_paise, accepted_at) " +
-      "values ($1, $2, $3, 'lump_sum', 'accepted', $4, now()) returning id",
-    [holding.userId, fundId, fundVersionId, invested],
+      "values ($1, $2, $3, $4, 'accepted', $5, now()) returning id",
+    [holding.userId, fundId, fundVersionId, orderType, invested],
   )
   const payment = await stack.first(
     "insert into payments (order_id, user_id, amount_paise, state, succeeded_at) values ($1, $2, $3, 'succeeded', now()) returning id",
@@ -126,12 +129,13 @@ const addContribution = async (holding: Holding, invested: number): Promise<void
       "values ($1, $2, $3, $4, $5, $6) returning id",
     [order.id, holding.userId, fundId, invested, finance.userId, randomUUID()],
   )
-  await stack.pool.query(
+  const entry = await stack.first(
     "insert into client_value_entries (user_id, fund_id, allocation_id, entry_type, principal_delta_paise, value_delta_paise, " +
       "effective_date, order_id, payment_id, reason_code, actor_type, created_by_user_id, request_id) " +
-      "values ($1, $2, $3, 'contribution', $4, $4, '2025-01-15', $5, $6, 'investment_accepted', 'admin', $7, $8)",
+      "values ($1, $2, $3, 'contribution', $4, $4, '2025-01-15', $5, $6, 'investment_accepted', 'admin', $7, $8) returning id",
     [holding.userId, fundId, allocation.id, invested, order.id, payment.id, finance.userId, randomUUID()],
   )
+  return String(entry.id)
 }
 
 const seedHolding = async (growthPaise: string | null = null, invested = INVESTED): Promise<Holding> => {
@@ -143,8 +147,8 @@ const seedHolding = async (growthPaise: string | null = null, invested = INVESTE
   return holding
 }
 
-const seedActiveSip = async (holding: Holding): Promise<string> =>
-  String(
+const seedActiveSip = async (holding: Holding): Promise<string> => {
+  const scheduleId = String(
     (
       await stack.first(
         "insert into admin_sip_schedules (user_id, fund_id, monthly_amount_paise, start_month, month_count, created_by_user_id, updated_by_user_id, request_id) " +
@@ -152,6 +156,26 @@ const seedActiveSip = async (holding: Holding): Promise<string> =>
         [holding.userId, holding.fundId, finance.userId, randomUUID()],
       )
     ).id,
+  )
+  const contributions = await stack.pool.query<{ id: string }>(
+    "select id from client_value_entries where user_id = $1 and fund_id = $2 and entry_type = 'contribution' order by created_at, id",
+    [holding.userId, holding.fundId],
+  )
+  for (const [month, contribution] of contributions.rows.entries()) {
+    await stack.pool.query(
+      "insert into admin_sip_schedule_months (schedule_id, user_id, fund_id, sip_month, entry_id, created_by_user_id, request_id) " +
+        "values ($1, $2, $3, ('2025-01-01'::date + make_interval(months => $4::int))::date, $5, $6, $7)",
+      [scheduleId, holding.userId, holding.fundId, month, contribution.id, finance.userId, randomUUID()],
+    )
+  }
+  return scheduleId
+}
+
+const fundBreakdown = async (holding: Holding) =>
+  foldFundBreakdown(
+    await createInvestmentBreakdownRepository().loadBreakdownInput(stack.database, holding.userId),
+    holding.fundId,
+    TODAY_IN_INDIA,
   )
 
 const setMaturityDate = async (holding: Holding, maturityDate: string): Promise<string> => {
@@ -284,10 +308,11 @@ afterAll(async () => {
 })
 
 describe("SIP early exit", () => {
-  test("returns the full current value once, split into principal and growth, empties the holding and closes the SIP and its maturity date", async () => {
+  test("with only the SIP in the fund, returns the whole holding once, split into principal and growth, empties it and closes the SIP and its maturity date", async () => {
     const holding = await seedHolding("20000")
     const sipId = await seedActiveSip(holding)
     const maturityId = await setMaturityDate(holding, FUTURE_MATURITY)
+    expect(await sums(holding)).toEqual({ principal: "100000", value: "120000" })
 
     const preview = await readAs(finance, exitUrl(holding, sipId))
     expect(preview.statusCode, preview.body).toBe(200)
@@ -338,6 +363,9 @@ describe("SIP early exit", () => {
       title: "SIP closed early",
       payload: { fundId, scheduleId: sipId, earlyExitId: earlyExit.earlyExitId, deepLink: "/activity" },
     })
+    const notice = String((await stack.first("select body from notifications where user_id = $1 and payload ? 'earlyExitId'", [holding.userId])).body)
+    expect(notice).toContain("₹1,200.00, the current value of your SIP, is being returned to you. The payout is awaited.")
+    expect(notice).not.toContain("full current value")
 
     const transport = stack.transport()
     const guard = createSipEarlyExitGuard({ sipEarlyExitRepository: createSipEarlyExitRepository(), userRepository: stack.userRepository })
@@ -348,7 +376,9 @@ describe("SIP early exit", () => {
     expect(mail).toHaveLength(1)
     expect(mail[0]?.subject).toBe("Your SIP was closed early")
     expect(mail[0]?.text).toContain(`Your SIP in ${FUND_NAME} was closed early`)
-    expect(mail[0]?.text).toContain("₹1,200.00")
+    expect(mail[0]?.text).toContain(`Your SIP in ${FUND_NAME} was closed early on`)
+    expect(mail[0]?.text).toContain("The current value of your SIP, ₹1,200.00, is being returned to you.")
+    expect(mail[0]?.text).not.toContain("full current value")
     expect(mail[0]?.text).toContain("The payout is awaited.")
     expect(mail[0]?.text).not.toMatch(/IFSC|UTR|bank|transfer to/iu)
 
@@ -389,6 +419,112 @@ describe("SIP early exit", () => {
       principalPortionPaise: "80000",
     })
     expect(await sums(loss)).toEqual({ principal: "20000", value: "0" })
+  })
+
+  test("with a one-time investment in the fund, returns only the SIP's value and invested amount and leaves the one-time investment as it was", async () => {
+    const holding = await seedHolding("20000")
+    const sipId = await seedActiveSip(holding)
+    const oneTimeEntry = await addContribution(holding, 50_000)
+    await seedGrowthEntry(stack.pool, {
+      userId: holding.userId,
+      fundId: holding.fundId,
+      actorUserId: finance.userId,
+      valuePaise: 5_000n,
+      parts: [{ target: { kind: "one_time", allocationId: await allocationOf(stack.pool, oneTimeEntry) }, amountPaise: 5_000n }],
+    })
+    expect(await sums(holding)).toEqual({ principal: "150000", value: "175000" })
+    const before = await fundBreakdown(holding)
+    expect(before.status).toBe("ready")
+    expect(before.oneTime).toHaveLength(1)
+    expect(before.oneTime[0]).toMatchObject({ investedPaise: 50_000n, valuePaise: 55_000n, reversed: false })
+
+    const preview = await readAs(finance, exitUrl(holding, sipId))
+    expect(preview.statusCode, preview.body).toBe(200)
+    expect(envelopeOf<Row>(preview).data).toMatchObject({
+      principalPaise: "100000",
+      currentValuePaise: "120000",
+      principalPortionPaise: "100000",
+      growthPortionPaise: "20000",
+      refusal: null,
+    })
+
+    const stale = await exitEarly(holding, sipId, { expectedVersion: 1, expectedValuePaise: "175000" })
+    expect(stale.statusCode, stale.body).toBe(409)
+    const response = await exitEarly(holding, sipId, { expectedVersion: 1, expectedValuePaise: "120000" })
+    expect(response.statusCode, response.body).toBe(201)
+    expect(envelopeOf<{ earlyExit: EarlyExit }>(response).data.earlyExit).toMatchObject({
+      amountPaise: "120000",
+      principalBeforePaise: "100000",
+      valueBeforePaise: "120000",
+      payout: { amountPaise: "120000", growthPortionPaise: "20000", principalPortionPaise: "100000" },
+    })
+    expect(await sums(holding)).toEqual({ principal: "50000", value: "55000" })
+    const after = await fundBreakdown(holding)
+    expect(after.status).toBe("ready")
+    expect(after.oneTime).toEqual(before.oneTime)
+    expect(after.sips).toEqual([expect.objectContaining({ scheduleId: sipId, state: "ended", investedPaise: 0n, valuePaise: 0n })])
+    expect(after.lines).toEqual([])
+  })
+
+  test("with a one-time investment and a maturity date in the fund, keeps the date and the one-time block, at a gain and at a loss", async () => {
+    const cases = [
+      { growth: "20000", value: "120000", principal: "100000", growthPortion: "20000" },
+      { growth: "-20000", value: "80000", principal: "80000", growthPortion: "0" },
+    ]
+    for (const exit of cases) {
+      const holding = await seedHolding(exit.growth)
+      const sipId = await seedActiveSip(holding)
+      await addContribution(holding, 50_000)
+      const maturityId = await setMaturityDate(holding, FUTURE_MATURITY)
+      const before = await fundBreakdown(holding)
+      expect(before.status, exit.growth).toBe("ready")
+
+      const preview = await readAs(finance, exitUrl(holding, sipId))
+      expect(preview.statusCode, preview.body).toBe(200)
+      expect(envelopeOf<Row>(preview).data, exit.growth).toMatchObject({
+        currentValuePaise: exit.value,
+        principalPortionPaise: exit.principal,
+        growthPortionPaise: exit.growthPortion,
+        maturity: null,
+        refusal: null,
+      })
+
+      const response = await exitEarly(holding, sipId, { expectedVersion: 1, expectedValuePaise: exit.value })
+      expect(response.statusCode, response.body).toBe(201)
+      expect(envelopeOf<{ earlyExit: EarlyExit }>(response).data.earlyExit, exit.growth).toMatchObject({
+        amountPaise: exit.value,
+        cancelledMaturityScheduleId: null,
+        cancelledMaturityDate: null,
+        payout: { amountPaise: exit.value, principalPortionPaise: exit.principal, growthPortionPaise: exit.growthPortion },
+      })
+      expect(await stack.first("select state from client_maturity_schedules where id = $1", [maturityId]), exit.growth).toEqual({ state: "scheduled" })
+      expect(await stack.count("audit_events", "command = 'client_maturity_schedule.cancelled' and metadata->>'userId' = $1", [holding.userId])).toBe(0)
+      const after = await fundBreakdown(holding)
+      expect(after.status, exit.growth).toBe("ready")
+      expect(after.oneTime).toEqual(before.oneTime)
+      expect(after.oneTime[0], exit.growth).toMatchObject({ investedPaise: 50_000n, valuePaise: 50_000n })
+      expect(await sums(holding), exit.growth).toEqual({ principal: String(150_000 - Number(exit.principal)), value: "50000" })
+    }
+  })
+
+  test("refuses while the fund has a recording without a category, writing nothing", async () => {
+    const holding = await seedHolding("20000")
+    const sipId = await seedActiveSip(holding)
+    await addContribution(holding, 50_000, "recorded_offline")
+    expect((await fundBreakdown(holding)).status).toBe("preparing")
+    const before = await holdingState(holding)
+
+    const preview = await readAs(finance, exitUrl(holding, sipId))
+    expect(preview.statusCode, preview.body).toBe(200)
+    const refusal = envelopeOf<{ refusal: { code: string; message: string } | null }>(preview).data.refusal
+    expect(refusal?.code).toBe("principal_below_zero")
+    expect(refusal?.message).toContain("not sorted yet")
+    for (const value of ["120000", "170000"]) {
+      const response = await exitEarly(holding, sipId, { expectedVersion: 1, expectedValuePaise: value })
+      expect(response.statusCode, response.body).toBe(409)
+      expect(envelopeOf(response).error.message).toContain("not sorted yet")
+    }
+    expect(await holdingState(holding)).toEqual(before)
   })
 
   test("a retry with the same key returns the first outcome, and a concurrent second exit is refused", async () => {

@@ -131,6 +131,11 @@ const earlyExit = async (): Promise<FinalEntry> => {
       "values ($1, $2, 500000, '2025-01-01', 12, $3, $3, $4) returning id",
     [holding.userId, holding.fundId, finance.userId, randomUUID()],
   )
+  await stack.pool.query(
+    "insert into admin_sip_schedule_months (schedule_id, user_id, fund_id, sip_month, entry_id, created_by_user_id, request_id) " +
+      "select $1, user_id, fund_id, '2025-01-01', id, $2, $3 from client_value_entries where user_id = $4 and fund_id = $5 and entry_type = 'contribution'",
+    [schedule.id, finance.userId, randomUUID(), holding.userId, holding.fundId],
+  )
   const response = await post(`/v1/admin/clients/${holding.userId}/sip-schedules/${String(schedule.id)}/early-exit`, {
     expectedVersion: 1,
     expectedValuePaise: String(INVESTED),

@@ -18,7 +18,7 @@ const render = (data: Readonly<Record<string, unknown>>, config: EmailTemplateCo
       { kind: "text", text: `Hello ${requiredString(data, "fullName")},` },
       {
         kind: "text",
-        text: `Your SIP in ${fundName} was closed early on ${date}. The full current value of your investment in this fund, ${amount}, is being returned to you.`,
+        text: `Your SIP in ${fundName} was closed early on ${date}. The current value of your SIP, ${amount}, is being returned to you.`,
       },
       { kind: "text", text: "The payout is awaited. Open the BeOnEdge app to see the early exit in your activity." },
       ...webAppBlocks(config),

@@ -4,6 +4,8 @@ import { AppError } from "../../http/errorCatalog.js"
 import type { LockedSipSchedule } from "../../repositories/adminSipScheduleRepository.js"
 import type { MaturityScheduleRow } from "../../repositories/clientMaturityScheduleRepository.js"
 import type { SipEarlyExitRepository, SipEarlyExitRow } from "../../repositories/earlyExitRepository.js"
+import type { InvestmentBreakdownRepository } from "../../repositories/investmentBreakdownRepository.js"
+import { foldFundBreakdown } from "../client/investmentBreakdown.js"
 import { queueSipEarlyExitMail, type SipEarlyExitMailDeps } from "../email/earlyExitMail.js"
 import { formatAppCalendarDate, indiaCalendarDate } from "../shared/calendarDate.js"
 import { closeAdminSipSchedule, type AdminSipScheduleDeps } from "./adminSipSchedules.js"
@@ -16,7 +18,10 @@ export type SipEarlyExitDeps = AdminSipScheduleDeps &
   MaturitySettlementDeps &
   MaturityScheduleDeps &
   SipEarlyExitMailDeps &
-  Readonly<{ sipEarlyExitRepository: SipEarlyExitRepository }>
+  Readonly<{
+    sipEarlyExitRepository: SipEarlyExitRepository
+    investmentBreakdownRepository: Pick<InvestmentBreakdownRepository, "loadBreakdownInput">
+  }>
 
 export interface SipEarlyExitCommand {
   readonly userId: string
@@ -30,6 +35,7 @@ export interface SipEarlyExitCommand {
 export interface SipEarlyExitHolding {
   readonly position: WithdrawalPosition
   readonly maturity: MaturityScheduleRow | null
+  readonly cancelledMaturity: MaturityScheduleRow | null
   readonly facts: SipEarlyExitFacts
 }
 
@@ -45,32 +51,54 @@ const openMaturityOf = async (
     (row) => row.fundId === schedule.fundId && row.state === "scheduled",
   ) ?? null
 
+interface SipBlockPosition {
+  readonly position: WithdrawalPosition
+  readonly isBreakdownReady: boolean
+  readonly isOtherValueLeft: boolean
+}
+
+const sipBlockOf = async (
+  tx: Transaction,
+  deps: SipEarlyExitDeps,
+  schedule: Pick<LockedSipSchedule, "id" | "userId" | "fundId">,
+  today: string,
+): Promise<SipBlockPosition> => {
+  const input = await deps.investmentBreakdownRepository.loadBreakdownInput(tx, schedule.userId)
+  const fund = foldFundBreakdown(input, schedule.fundId, today)
+  const block = fund.sips.find((sip) => sip.scheduleId === schedule.id)
+  const others = [...fund.sips.filter((sip) => sip.scheduleId !== schedule.id), ...fund.oneTime, ...fund.lines]
+  return {
+    position: { principalPaise: block?.investedPaise ?? 0n, currentValuePaise: block?.valuePaise ?? 0n },
+    isBreakdownReady: fund.status === "ready",
+    isOtherValueLeft: others.some((other) => other.valuePaise > 0n),
+  }
+}
+
 export const readSipEarlyExitHolding = async (
   tx: Transaction,
   deps: SipEarlyExitDeps,
   schedule: Pick<LockedSipSchedule, "id" | "userId" | "fundId" | "state">,
 ): Promise<SipEarlyExitHolding> => {
-  const basis = await deps.clientGrowthRepository.findPositionBasis(tx, schedule.userId, schedule.fundId)
-  const position = {
-    principalPaise: basis === null ? 0n : BigInt(basis.principalPaise),
-    currentValuePaise: basis === null ? 0n : BigInt(basis.currentValuePaise),
-  }
+  const today = indiaCalendarDate(deps.clock())
+  const { position, isBreakdownReady, isOtherValueLeft } = await sipBlockOf(tx, deps, schedule, today)
   const maturity = await openMaturityOf(tx, deps, schedule)
   const offer = maturity === null ? null : await deps.maturityOfferRepository.lockOpenForSchedule(tx, maturity.id)
   const marked = await deps.maturityRepository.lockOpenMaturity(tx, schedule)
   return {
     position,
     maturity,
+    cancelledMaturity: isOtherValueLeft ? null : maturity,
     facts: {
       scheduleState: schedule.state,
       wasClosedEarly: await deps.sipScheduleRepository.wasClosedEarly(tx, schedule.id),
+      isBreakdownReady,
       principalPaise: position.principalPaise,
       currentValuePaise: position.currentValuePaise,
       hasMarkedMaturity: marked !== null,
       openMaturity:
         maturity === null ? null : { maturityDate: maturity.maturityDate, hasClientChoice: (offer?.chosenOption ?? null) !== null },
       latestEntryDate: await deps.maturityRepository.getPositionEffectiveDate(tx, schedule.userId, schedule.fundId),
-      today: indiaCalendarDate(deps.clock()),
+      today,
     },
   }
 }
@@ -140,7 +168,7 @@ const tellClient = async (
     userId: client.id,
     kind: "client_value_updated",
     title: "SIP closed early",
-    body: `Your SIP in ${row.fundName} was closed early on ${formatAppCalendarDate(row.effectiveDate)}. ${formatRupeesFromPaise(row.amountPaise)}, the full current value, is being returned to you. The payout is awaited.`,
+    body: `Your SIP in ${row.fundName} was closed early on ${formatAppCalendarDate(row.effectiveDate)}. ${formatRupeesFromPaise(row.amountPaise)}, the current value of your SIP, is being returned to you. The payout is awaited.`,
     payload: { fundId: row.fundId, scheduleId: row.scheduleId, earlyExitId: row.id, deepLink: "/activity" },
   })
   await queueSipEarlyExitMail(tx, deps, {
@@ -176,12 +204,12 @@ export const exitSipEarly = async (
     note: null,
   })
   await closeAdminSipSchedule(tx, deps, { ...actor, userId: schedule.userId, scheduleId: schedule.id, expectedVersion: command.expectedVersion })
-  if (holding.maturity !== null) {
+  if (holding.cancelledMaturity !== null) {
     await cancelMaturitySchedule(tx, deps, {
       ...actor,
       userId: schedule.userId,
-      scheduleId: holding.maturity.id,
-      expectedVersion: Number(holding.maturity.version),
+      scheduleId: holding.cancelledMaturity.id,
+      expectedVersion: Number(holding.cancelledMaturity.version),
     })
   }
   const inserted = await deps.sipEarlyExitRepository.insert(tx, {
@@ -194,7 +222,7 @@ export const exitSipEarly = async (
     amountPaise: holding.position.currentValuePaise,
     principalBeforePaise: holding.position.principalPaise,
     valueBeforePaise: holding.position.currentValuePaise,
-    cancelledMaturityScheduleId: holding.maturity?.id ?? null,
+    cancelledMaturityScheduleId: holding.cancelledMaturity?.id ?? null,
     effectiveDate: holding.facts.today,
   })
   const row = await loadEarlyExit(tx, deps, schedule.userId, inserted.id)
