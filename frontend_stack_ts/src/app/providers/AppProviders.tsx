@@ -7,6 +7,7 @@ import { AppLinkRouter } from "~/app/native/AppLinkRouter"
 import { NativeBackCoordinator } from "~/app/native/NativeBackCoordinator"
 import type { TransactionalBackHandler } from "~/app/native/NativeBackCoordinator"
 import { SystemBarsController } from "~/app/native/SystemBarsController"
+import { WebVersionBanner } from "~/app/native/WebVersionBanner"
 import type { BackPolicyResolver } from "~/app/native/backPolicy"
 import { KeyboardAvoidance } from "~/app/providers/KeyboardAvoidance"
 import { NetworkStatusProvider } from "~/app/providers/NetworkStatusProvider"
@@ -51,6 +52,7 @@ export const AppProviders = ({
                 {...(onTransactionalBack === undefined ? {} : { onTransactionalBack })}
               />
               <ConnectivityBanner />
+              <WebVersionBanner />
               {children}
             </ToastProvider>
           </DeviceLockGate>

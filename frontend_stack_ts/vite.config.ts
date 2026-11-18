@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url"
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "vite"
+import type { Plugin } from "vite"
 
 import { NativeAuthHeaders } from "../packages/contracts/dist/index.js"
 
@@ -34,8 +35,22 @@ const resolveAppVersion = (): string => {
 
 const appVersion = resolveAppVersion()
 
+const VERSION_MANIFEST_FILE = "version.json"
+
+const versionManifest = (): Plugin => ({
+  name: "beo-version-manifest",
+  apply: "build",
+  generateBundle() {
+    this.emitFile({
+      type: "asset",
+      fileName: VERSION_MANIFEST_FILE,
+      source: `${JSON.stringify({ version: appVersion, target: appTarget })}\n`,
+    })
+  },
+})
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), versionManifest()],
   define: {
     "import.meta.env.VITE_BEO_APP_TARGET": JSON.stringify(appTarget),
     "import.meta.env.VITE_BEO_APP_VERSION": JSON.stringify(appVersion),
