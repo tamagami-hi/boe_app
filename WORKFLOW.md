@@ -64,8 +64,10 @@ VPS. Never report a deployment or device check from a unit-test result.
    `VERSION` are released, and `releasedNotes.test.ts` fails for any released entry
    with no row in `releasedNotes.json` or whose text changed. With `VERSION` set to
    the new version in your working tree only, run
-   `npx vitest run src/features/whats-new/releasedNotes.test.ts` from
-   `frontend_stack_ts`, copy the `{ id, sha256 }` rows it reports into
+   `npx vitest run src/features/whats-new/releasedNotes.test.ts -t "released client notes freeze"`
+   from `frontend_stack_ts`, then again with `admin` in place of `client` (Vitest merges
+   the two failures into one report if they run together), copy the `{ id, sha256 }` row
+   each reports into
    `releasedNotes.json` (newest first, per audience), restore `VERSION`, and commit
    the notes and the rows together. A released entry is never edited afterwards.
 2. Use `release_manager/status.sh` to inspect/prepare Git and release state.
