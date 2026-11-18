@@ -2809,6 +2809,10 @@
     {
       "commit": "311379a",
       "note": "Release cut v0.18.4 by the maintainer (release_manager), exported and deployed to dev on 2026-11-18"
+    },
+    {
+      "commit": "4ab5e52",
+      "note": "Release cut v0.18.5 by the maintainer (release_manager), exported and deployed to dev on 2026-11-18"
     }
   ]
 }
