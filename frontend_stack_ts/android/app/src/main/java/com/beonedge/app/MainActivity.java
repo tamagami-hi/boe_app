@@ -86,9 +86,9 @@ public class MainActivity extends BridgeActivity {
     //
     // The inset is stripped above so that nothing resizes, which also leaves the web
     // layer with no signal at all: env(keyboard-inset-height) stays 0px, measured. One
-    // surface does need to move — the sign-in panel, which the keyboard would otherwise
+    // thing does need to move — the focused field, which the keyboard would otherwise
     // cover with no way to scroll to it — so the height is published as a CSS variable
-    // and only that surface consumes it.
+    // and the web layer's keyboard avoidance consumes it for every field.
     //
     // Density-scaled to CSS pixels, like the --safe-area-inset-* values.
     //

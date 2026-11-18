@@ -11,6 +11,7 @@ export const SHEET_PANEL = [
   "pl-[max(var(--be-space-5),var(--be-safe-left))] pr-[max(var(--be-space-5),var(--be-safe-right))]",
   "pt-5 pb-[calc(var(--be-space-6)+max(var(--be-safe-bottom),var(--be-keyboard-height)))]",
   "lg:p-7 lg:pb-[calc(var(--spacing)*7+var(--be-keyboard-height))]",
+  "motion-safe:transition-[padding-bottom] motion-safe:duration-[var(--be-dur-base)] motion-safe:ease-out",
   "rounded-t-squircle-xl lg:rounded-squircle-lg",
   "bg-parchment shadow-ambient-3",
   "motion-safe:animate-[be-sheet-up_var(--be-dur-slow)_var(--be-ease-out)_both]",

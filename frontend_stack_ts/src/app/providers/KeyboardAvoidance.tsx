@@ -9,6 +9,8 @@ const TOP_BAR_SELECTOR = "header, nav, [role='status']"
 const OVERLAY_SELECTOR = "[aria-modal='true']"
 const PINNED_POSITIONS: ReadonlySet<string> = new Set(["fixed", "sticky"])
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)"
+const SAFE_TOP_PROBE =
+  "position:fixed;top:0;left:0;width:0;height:var(--be-safe-top);visibility:hidden;pointer-events:none"
 
 const boxOf = (node: Element): Box => {
   const rect = node.getBoundingClientRect()
@@ -20,6 +22,8 @@ const spanOf = (node: Element): Span => {
   return { top: rect.top, bottom: rect.bottom }
 }
 
+const isShown = (node: Element): boolean => node.getClientRects().length > 0
+
 const describedSpans = (control: HTMLElement): readonly Span[] =>
   (control.getAttribute("aria-describedby") ?? "")
     .split(/\s+/u)
@@ -28,6 +32,18 @@ const describedSpans = (control: HTMLElement): readonly Span[] =>
     .filter((node): node is HTMLElement => node !== null)
     .map(spanOf)
     .filter((span) => span.bottom > span.top)
+
+const isSubmitControl = (node: Element): boolean =>
+  (node instanceof HTMLButtonElement || node instanceof HTMLInputElement) && node.type === "submit"
+
+const submitSpans = (control: HTMLElement): readonly Span[] => {
+  const form = control.closest("form")
+  if (form === null) return []
+  const shown = [...form.elements].filter(isShown)
+  const editable = shown.filter((node) => isEditableControl(node) && !node.matches(":disabled"))
+  if (editable.at(-1) !== control) return []
+  return shown.filter(isSubmitControl).map(spanOf)
+}
 
 const ancestorsOf = (node: HTMLElement): readonly HTMLElement[] => {
   const parent = node.parentElement
@@ -43,12 +59,25 @@ const scrollBoxOf = (node: HTMLElement): ScrollBox => ({
   span: spanOf(node),
 })
 
-const topBarBottom = (control: HTMLElement, viewportHeight: number): number => {
-  const bars = [...document.querySelectorAll(TOP_BAR_SELECTOR)]
+const safeTop = (): number => {
+  const probe = document.createElement("div")
+  probe.setAttribute("aria-hidden", "true")
+  probe.style.cssText = SAFE_TOP_PROBE
+  document.body.append(probe)
+  const height = probe.getBoundingClientRect().height
+  probe.remove()
+  return height
+}
+
+const pinnedBars = (control: HTMLElement): readonly Box[] =>
+  [...document.querySelectorAll(TOP_BAR_SELECTOR)]
     .filter((bar) => !bar.contains(control) && PINNED_POSITIONS.has(getComputedStyle(bar).position))
     .map(boxOf)
-  return topInset(bars, boxOf(control), viewportHeight)
-}
+
+const runningAnimations = (node: Element): readonly Animation[] =>
+  "getAnimations" in node
+    ? node.getAnimations().filter((animation) => animation.playState === "running")
+    : []
 
 const scrollBehavior = (): ScrollBehavior => (mediaMatches(REDUCED_MOTION) ? "auto" : "smooth")
 
@@ -62,21 +91,30 @@ const applyPlan = (plan: RevealPlan, ancestors: readonly HTMLElement[]): void =>
   target?.scrollTo({ top: target.scrollTop + plan.delta, behavior })
 }
 
-const revealFocusedControl = (keyboardHeight: number): void => {
+const revealFocusedControl = (keyboardHeight: number, retry: () => void): void => {
   const control = document.activeElement
   if (!isEditableControl(control)) return
 
+  const overlay = control.closest(OVERLAY_SELECTOR)
+  const moving = overlay === null ? [] : runningAnimations(overlay)
+  if (moving.length > 0) {
+    void Promise.allSettled(moving.map((animation) => animation.finished)).then(() => {
+      retry()
+    })
+    return
+  }
+
   const viewportHeight = window.innerHeight
   const ancestors = ancestorsOf(control)
-  const isInOverlay = control.closest(OVERLAY_SELECTOR) !== null
   const plan = planReveal({
     field: spanOf(control),
     hints: describedSpans(control),
+    trailing: submitSpans(control),
     ancestors: ancestors.map(scrollBoxOf),
     viewportHeight,
     keyboardHeight,
-    topBarBottom: isInOverlay ? 0 : topBarBottom(control, viewportHeight),
-    canScrollDocument: !isInOverlay,
+    topBarBottom: topInset(overlay === null ? pinnedBars(control) : [], boxOf(control), viewportHeight, safeTop()),
+    canScrollDocument: overlay === null,
   })
   if (plan !== null) applyPlan(plan, ancestors)
 }
@@ -85,12 +123,13 @@ export const KeyboardAvoidance = (): null => {
   useEffect(() => {
     let keyboardHeight = 0
     let frame: number | null = null
+    let isDisposed = false
 
     const schedule = (): void => {
-      if (frame !== null) return
+      if (frame !== null || isDisposed) return
       frame = window.requestAnimationFrame(() => {
         frame = null
-        revealFocusedControl(keyboardHeight)
+        revealFocusedControl(keyboardHeight, schedule)
       })
     }
 
@@ -106,6 +145,7 @@ export const KeyboardAvoidance = (): null => {
     document.addEventListener("focusin", onFocusIn)
 
     return () => {
+      isDisposed = true
       stopWatching()
       document.removeEventListener("focusin", onFocusIn)
       if (frame !== null) window.cancelAnimationFrame(frame)

@@ -19,6 +19,7 @@ export type ScrollBox = Readonly<{
 export type RevealInput = Readonly<{
   field: Span
   hints: readonly Span[]
+  trailing: readonly Span[]
   ancestors: readonly ScrollBox[]
   viewportHeight: number
   keyboardHeight: number
@@ -49,7 +50,12 @@ export const isEditableControl = (node: Element | null): node is HTMLElement => 
 const isScrollBox = (box: ScrollBox): boolean =>
   SCROLLING_OVERFLOW.has(box.overflowY) && box.scrollHeight - box.clientHeight > SCROLL_TOLERANCE
 
-export const topInset = (bars: readonly Box[], field: Box, viewportHeight: number): number =>
+export const topInset = (
+  bars: readonly Box[],
+  field: Box,
+  viewportHeight: number,
+  safeTop: number,
+): number =>
   bars
     .filter(
       (bar) =>
@@ -58,23 +64,33 @@ export const topInset = (bars: readonly Box[], field: Box, viewportHeight: numbe
         bar.left < field.right &&
         bar.right > field.left,
     )
-    .reduce((bottom, bar) => Math.max(bottom, bar.bottom), 0)
+    .reduce((bottom, bar) => Math.max(bottom, bar.bottom), Math.max(0, safeTop))
 
-const withHints = (field: Span, hints: readonly Span[]): Span => ({
+type Target = Readonly<{ field: Span; extended: Span }>
+
+const reaching = (field: Span, spans: readonly Span[], reach: number): Span => ({
   top: field.top,
-  bottom: hints
-    .filter((hint) => hint.top >= field.top && hint.top - field.bottom <= HINT_REACH)
-    .reduce((bottom, hint) => Math.max(bottom, hint.bottom), field.bottom),
+  bottom: spans
+    .filter((span) => span.top >= field.top && span.top - field.bottom <= reach)
+    .reduce((bottom, span) => Math.max(bottom, span.bottom), field.bottom),
 })
+
+const targetOf = (input: RevealInput): Target => {
+  const field = reaching(input.field, input.hints, HINT_REACH)
+  return { field, extended: reaching(field, input.trailing, Number.POSITIVE_INFINITY) }
+}
+
+const heightOf = (span: Span): number => span.bottom - span.top
 
 const roundAway = (value: number): number => (value > 0 ? Math.ceil(value) : Math.floor(value))
 
-const deltaWithin = (field: Span, visible: Span): number | null => {
+const deltaWithin = (target: Target, visible: Span): number | null => {
   const top = visible.top + KEYBOARD_FIELD_MARGIN
   const bottom = visible.bottom - KEYBOARD_FIELD_MARGIN
   if (bottom <= top) return null
-  if (field.bottom > bottom) return roundAway(Math.min(field.bottom - bottom, field.top - top))
-  if (field.top < visible.top) return roundAway(field.top - top)
+  const span = heightOf(target.extended) <= bottom - top ? target.extended : target.field
+  if (span.bottom > bottom) return roundAway(Math.min(span.bottom - bottom, span.top - top))
+  if (span.top < visible.top) return roundAway(span.top - top)
   return 0
 }
 
@@ -84,10 +100,10 @@ const hasRoom = (box: ScrollBox, delta: number): boolean =>
 
 type Candidate = Readonly<{ index: number; delta: number; fits: boolean }>
 
-const candidatesOf = (input: RevealInput, field: Span, keyboardTop: number): readonly Candidate[] =>
+const candidatesOf = (input: RevealInput, target: Target, keyboardTop: number): readonly Candidate[] =>
   input.ancestors.flatMap((box, index) => {
     if (!isScrollBox(box)) return []
-    const delta = deltaWithin(field, {
+    const delta = deltaWithin(target, {
       top: Math.max(input.topBarBottom, box.span.top),
       bottom: Math.min(keyboardTop, box.span.bottom),
     })
@@ -101,8 +117,8 @@ export const planReveal = (input: RevealInput): RevealPlan | null => {
   if (!(input.keyboardHeight > 0)) return null
 
   const keyboardTop = input.viewportHeight - input.keyboardHeight
-  const field = withHints(input.field, input.hints)
-  const candidates = candidatesOf(input, field, keyboardTop)
+  const target = targetOf(input)
+  const candidates = candidatesOf(input, target, keyboardTop)
   const nearest = candidates[0]
   if (nearest?.delta === 0) return null
 
@@ -110,7 +126,7 @@ export const planReveal = (input: RevealInput): RevealPlan | null => {
   if (fitting !== undefined) return planOf(fitting.index, fitting.delta)
 
   if (input.canScrollDocument) {
-    const delta = deltaWithin(field, { top: input.topBarBottom, bottom: keyboardTop })
+    const delta = deltaWithin(target, { top: input.topBarBottom, bottom: keyboardTop })
     return delta === null ? null : planOf("document", delta)
   }
   return nearest === undefined ? null : planOf(nearest.index, nearest.delta)

@@ -4,12 +4,14 @@ import { planReveal, topInset } from "~/platform/keyboardReveal"
 import type { Box, RevealInput, ScrollBox } from "~/platform/keyboardReveal"
 
 const VIEWPORT_HEIGHT = 800
+const STATUS_BAR = 24
 const KEYBOARD_HEIGHT = 300
 const TOP_BAR_BOTTOM = 80
 
 const revealInput = (overrides: Partial<RevealInput> = {}): RevealInput => ({
   field: { top: 600, bottom: 648 },
   hints: [],
+  trailing: [],
   ancestors: [],
   viewportHeight: VIEWPORT_HEIGHT,
   keyboardHeight: KEYBOARD_HEIGHT,
@@ -80,6 +82,20 @@ describe("planReveal", () => {
     expect(planReveal(revealInput({ hints }))).toEqual({ scroller: "document", delta: 186 })
   })
 
+  it("reveals the form's submit button with its last field when both fit above the keyboard", () => {
+    expect(planReveal(revealInput({ trailing: [{ top: 700, bottom: 748 }] }))).toEqual({
+      scroller: "document",
+      delta: 264,
+    })
+  })
+
+  it("reveals the last field alone when it and the submit button do not fit together", () => {
+    expect(planReveal(revealInput({ trailing: [{ top: 1000, bottom: 1048 }] }))).toEqual({
+      scroller: "document",
+      delta: 164,
+    })
+  })
+
   it("brings a field hidden under the top bar down to 16 px below it", () => {
     expect(planReveal(revealInput({ field: { top: 40, bottom: 88 } }))).toEqual({
       scroller: "document",
@@ -141,6 +157,11 @@ describe("topInset", () => {
       { top: 744, bottom: 800, left: 0, right: 1280 },
       { top: 0, bottom: 0, left: 0, right: 1280 },
     ]
-    expect(topInset(bars, field, VIEWPORT_HEIGHT)).toBe(112)
+    expect(topInset(bars, field, VIEWPORT_HEIGHT, STATUS_BAR)).toBe(112)
+  })
+
+  it("keeps the status bar as the floor on a page with no top bar", () => {
+    const field: Box = { top: 10, bottom: 58, left: 0, right: 400 }
+    expect(topInset([], field, VIEWPORT_HEIGHT, STATUS_BAR)).toBe(24)
   })
 })
