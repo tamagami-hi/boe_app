@@ -124,10 +124,10 @@ const LinkProbe = (): React.ReactElement => {
     <>
       <output aria-label="Address search">{search}</output>
       <button type="button" onClick={() => void navigate(`/?userId=${OTHER_USER_ID}`)}>
-        Link to the other investor
+        link to another investor
       </button>
       <button type="button" onClick={() => void navigate("/")}>
-        Bare link
+        link with no investor
       </button>
     </>
   )
@@ -219,7 +219,7 @@ describe("appending one investor's growth after a success", () => {
 
 describe("following a link to this screen while it is open", () => {
   it("opens the investor a later link names, and adjusts that investor", () => {
-    fireEvent.click(screen.getByRole("button", { name: "Link to the other investor" }))
+    fireEvent.click(screen.getByRole("button", { name: "link to another investor" }))
 
     expect(addressSearch()).toBe(`?userId=${OTHER_USER_ID}`)
     expect(screen.getByLabelText<HTMLInputElement>(/Rate in basis points/u).value).toBe("")
@@ -231,17 +231,20 @@ describe("following a link to this screen while it is open", () => {
     expect(sent[0]?.body).toMatchObject({ userId: OTHER_USER_ID, fundId: FUND_ID })
   })
 
-  it("keeps a held adjustment, its investor and its key when a link names no investor", () => {
-    nextFailure = new TransportError("timeout", "The request timed out.")
-    submit()
-    fireEvent.click(screen.getByRole("button", { name: "Bare link" }))
+  it.each(["link to another investor", "link with no investor"])(
+    "keeps a held adjustment, its investor and its key after a %s",
+    (linkName) => {
+      nextFailure = new TransportError("timeout", "The request timed out.")
+      submit()
+      fireEvent.click(screen.getByRole("button", { name: linkName }))
 
-    expect(addressSearch()).toBe(`?userId=${USER_ID}&fundId=${FUND_ID}`)
-    expect(screen.getByText("Not confirmed")).toBeTruthy()
-    fireEvent.click(screen.getByRole("button", { name: "Check again" }))
+      expect(screen.getByText("Not confirmed")).toBeTruthy()
+      expect(addressSearch()).toBe(`?userId=${USER_ID}&fundId=${FUND_ID}`)
+      fireEvent.click(screen.getByRole("button", { name: "Check again" }))
 
-    expect(sent).toHaveLength(2)
-    expect(sent[1]).toEqual(sent[0])
-    expect(sent[0]?.body).toMatchObject({ userId: USER_ID, fundId: FUND_ID })
-  })
+      expect(sent).toHaveLength(2)
+      expect(sent[1]).toEqual(sent[0])
+      expect(sent[0]?.body).toMatchObject({ userId: USER_ID, fundId: FUND_ID })
+    },
+  )
 })
