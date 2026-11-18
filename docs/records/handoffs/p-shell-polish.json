@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "track": "p-shell-polish",
+  "current": {
+    "task": "P-shell-polish",
+    "from": "claude-opus-5-5 builder p-shell-polish",
+    "track": "p-shell-polish",
+    "at": "2026-11-18T06:57:31.039Z",
+    "lines": [
+      "P-shell-polish built and reviewed (LAND, .temp/p-shell-polish/review.md); 5 commits on track/p-shell-polish over f50bc56, not landed:",
+      "- f82419c fix(shell): mark the owning tab and separate the admin section groups (U1, U6, U10, U11, tab-root chevron)",
+      "- 4c5eefc fix(ui): take each side's padding from its own safe-area inset (coordinator addition)",
+      "- 13fec73 fix(ui): settle the emulator Low list on Activity, SIP, FAQ and Profile (U8, item 13)",
+      "- be2c22d fix(ui): hide phone contacts on Support and finish the coordinator notes (follow-ups 1-3)",
+      "- adf05be fix(support): harden the phone filter and pin it with a test (review follow-up)",
+      "What: app/routing/navOwner.ts resolveNavOwner walks back parents to the first nav route, stopping at home; used by both bottom bars, client pill bar, admin sidebar, More sheet, More button. Account and Notifications light no tab (parent is home). Admin Account link current on /account and /account/whats-new.",
+      "All sections: pills 8 px apart; each group after the first has a hairline + 12 px; sidebar same rule and scrolls (max-h 100dvh-3rem). Admin top bar: Sign out pill removed (Account keeps it); title line-clamp-2. Client tab roots: no back chevron.",
+      "Padding: PAGE_BASE, CLIENT_HEADER, ADMIN_TOPBAR (base and lg), ADMIN_DOMAIN_STRIP, CONNECTIVITY_BANNER, NOTICE_BANNER take pl from safe-left and pr from safe-right, same minimums.",
+      "Small: Activity Receipts own row under PageHeader; SIP day chips min 44 px (SIP_DAY_CHOICES, sip.recipe.ts); FAQ key REFERENCE_TEXT + question cell min 14rem (faq.recipe.ts); Profile Investing says Available.",
+      "Support phone: features/support/phoneContact.ts isPhoneContact. Phone when href is tel:, sms:, wa.me or api.whatsapp.com; label (any case) has the word phone/telephone/tel/mobile/helpline/whatsapp/call; or value holds a digit-and-punctuation run with >= 10 digits that is not time ranges (time ranges = run with a dot, no plus, no 10 consecutive digits). SupportScreen and useSupportContacts(pick) use it; hasContacts too. Fallback copy: \"No contact details are listed here yet. Requests you send here reach the BeOnEdge team.\" Legal, charter, grievance, LoginHelp unchanged.",
+      "Compat (rule 11): frontend layout/copy only; no API, contract, route, storage or schema change.",
+      "Tests: navOwner.test.ts (18): red 873cfaf1, 87a1fa90. phoneContact.test.ts (21): red 957ae0c7 (reverted to be2c22d rule, 12 fail). Files restored, cmp identical.",
+      "Green on adf05be clean: frontend npm ci && npm run check 025e82f6 (60 files, 550 tests); build:admin+android+android:admin+client b622af9b (client 72 assets 985097 B, admin 104 assets 1352796 B, boots 61/92 chunks, PhonePe target ok). Contracts unchanged, last green 53815aca.",
+      "CSS check: after build:client, dist/assets/app-*.css contains .[&_button]:min-w-target button{min-width:var(--be-target-min)} (44 px).",
+      "Left: PRESET_BASE (ui/recipes/field.ts) could take min-w-target for all PresetChoice; ADMIN_CODE (52 uses) overflow-wrap:anywhere; admin domain strip could use the owner's domain on child pages; aria-current=page on owner tabs (ARIA-exact would be true); admin sidebar lg:ml-6 ignores safe-left; auth.ts/overlay.ts padding is the keyboard lane's.",
+      "Emulator steps are in the lane reports to the coordinator (items 1-10 plus Support, Account link, banners in landscape)."
+    ]
+  },
+  "history": [
+    {
+      "task": "P-shell-polish",
+      "from": "claude-opus-5-5 builder p-shell-polish",
+      "track": "p-shell-polish",
+      "at": "2026-11-18T06:44:18.770Z",
+      "lines": [
+        "P-shell-polish built; 3 commits on track/p-shell-polish over f50bc56, not landed:",
+        "- f82419c fix(shell): mark the owning tab and separate the admin section groups (U1, U6, U10, U11, tab-root chevron)",
+        "- 4c5eefc fix(ui): take each side's padding from its own safe-area inset (coordinator addition)",
+        "- 13fec73 fix(ui): settle the emulator Low list on Activity, SIP, FAQ and Profile (U8, item 13)",
+        "What: new app/routing/navOwner.ts resolveNavOwner walks back parents to the first nav route, stopping at home; used by both bottom bars, client pill bar, admin sidebar, More sheet, More button. Account and Notifications deliberately light no tab (their parent is home; reached from the header). Coordinator: say if you want Home/Overview lit there instead (drop the home stop).",
+        "All sections: pills 8 px apart; every group after the first has a hairline + 12 px; sidebar same rule (gap 8, hairline, pt 8) and now scrolls (max-h 100dvh-3rem) since it grew. Admin top bar: Sign out pill removed (Account keeps it); title line-clamp-2 + balance instead of truncate. Client tab roots: no back chevron.",
+        "Padding: PAGE_BASE, CLIENT_HEADER, ADMIN_TOPBAR (base and lg), ADMIN_DOMAIN_STRIP now pl from safe-left, pr from safe-right, same minimums.",
+        "Small: Activity Receipts moved to its own row under PageHeader; SIP day chips min 44 px via SIP_DAY_CHOICES in sip.recipe.ts; FAQ key uses REFERENCE_TEXT (breaks after hyphens only) and question cell min 14rem via new features/admin/content/faq.recipe.ts; Profile Investing says Available.",
+        "Files beyond the literal allowed list: features/sip/sip.recipe.ts (one constant) and new features/admin/content/faq.recipe.ts; no other lane owns them.",
+        "Compat (rule 11): frontend layout/copy only; no API, contract, route, storage or schema change; released APKs unaffected.",
+        "Tests: app/routing/navOwner.test.ts (18). Red: 873cfaf1 (owner walk reverted to exact match, 14 fail), 87a1fa90 (depth bound removed, cycle case stack overflow). File restored, cmp identical.",
+        "Green on 13fec73 clean: contracts 53815aca; frontend npm ci && npm run check 340736b7 (59 files, 529 tests); build:client+admin+android+android:admin 7f881a97 (client 72 assets 984526 B, admin 104 assets 1352654 B, boots 61/92 chunks).",
+        "Left for other lanes / follow-ups:",
+        "- same px-[max(..safe-left)] fault in ui/recipes/feedbackShell.ts CONNECTIVITY_BANNER and NOTICE_BANNER (offline lane area) and auth.ts/overlay.ts (keyboard lane).",
+        "- class fix for chips: PRESET_BASE in ui/recipes/field.ts could take min-w-target for every PresetChoice.",
+        "- ADMIN_CODE (ui/recipes/admin.ts) uses overflow-wrap:anywhere in 52 places; other admin tables with ids may wrap per character the same way.",
+        "- admin sidebar lg:ml-6 ignores safe-left; Account link is current only on /account, not /account/whats-new.",
+        "Emulator steps (412 px, before = 0.18.2, after = this build) are in the lane report to the coordinator."
+      ]
+    },
+    {
+      "task": "P-shell-polish",
+      "from": "claude-opus-5-5 builder p-shell-polish",
+      "track": "p-shell-polish",
+      "at": "2026-11-18T06:50:09.387Z",
+      "lines": [
+        "P-shell-polish built; 4 commits on track/p-shell-polish over f50bc56, not landed:",
+        "- f82419c fix(shell): mark the owning tab and separate the admin section groups (U1, U6, U10, U11, tab-root chevron)",
+        "- 4c5eefc fix(ui): take each side's padding from its own safe-area inset (coordinator addition)",
+        "- 13fec73 fix(ui): settle the emulator Low list on Activity, SIP, FAQ and Profile (U8, item 13)",
+        "- be2c22d fix(ui): hide phone contacts on Support and finish the coordinator notes (follow-ups 1-3)",
+        "What: new app/routing/navOwner.ts resolveNavOwner walks back parents to the first nav route, stopping at home; used by both bottom bars, client pill bar, admin sidebar, More sheet, More button. Account and Notifications deliberately light no tab (parent is home; reached from the header). Coordinator: say if you want Home/Overview lit there instead (drop the home stop).",
+        "All sections: pills 8 px apart; every group after the first has a hairline + 12 px; sidebar same rule and now scrolls (max-h 100dvh-3rem). Admin top bar: Sign out pill removed (Account keeps it); title line-clamp-2 + balance. Admin Account link current on /account and /account/whats-new. Client tab roots: no back chevron.",
+        "Padding: PAGE_BASE, CLIENT_HEADER, ADMIN_TOPBAR (base and lg), ADMIN_DOMAIN_STRIP, CONNECTIVITY_BANNER, NOTICE_BANNER now pl from safe-left, pr from safe-right, same minimums.",
+        "Small: Activity Receipts own row under PageHeader; SIP day chips min 44 px (SIP_DAY_CHOICES in sip.recipe.ts); FAQ key REFERENCE_TEXT (breaks after hyphens) + question cell min 14rem (new faq.recipe.ts); Profile Investing says Available.",
+        "Support phone: SupportScreen passes pick isNotPhone to SupportContacts and useSupportContacts (now takes an optional pick). Dropped: href tel:, label exactly \"Phone\" (charter contact block), or value of only phone characters with >= 10 digits (catches numbers the parser could not link; hours like 10.00 - 18.00 have 8 digits and stay). hasContacts uses the same pick. Fallback copy now \"No contact details are listed here yet. Requests you send here reach the BeOnEdge team.\" (was \"...not published yet\", false when only a phone exists). Legal, Investor charter, Grievance, LoginHelp unchanged.",
+        "Files beyond the literal list: features/sip/sip.recipe.ts (one constant), new features/admin/content/faq.recipe.ts.",
+        "Compat (rule 11): frontend layout/copy only; no API, contract, route, storage or schema change.",
+        "Tests: app/routing/navOwner.test.ts (18). Red: 873cfaf1 (owner walk reverted to exact match, 14 fail), 87a1fa90 (depth bound removed, cycle case stack overflow); file restored, cmp identical. No test for the phone filter (copy/rendering, rule 10).",
+        "Green on be2c22d clean: frontend npm ci && npm run check 9e5f9983 (59 files, 529 tests); build:client+admin+android+android:admin 24692c85 (client 72 assets 984846 B, admin 104 assets 1352796 B, boots 61/92 chunks, PhonePe target ok). Contracts unchanged since 53815aca (green on 13fec73).",
+        "Left: PRESET_BASE (ui/recipes/field.ts) could take min-w-target for every PresetChoice; ADMIN_CODE (ui/recipes/admin.ts, 52 uses) overflow-wrap:anywhere may wrap other admin id columns per character; admin sidebar lg:ml-6 ignores safe-left; auth.ts/overlay.ts padding fault is the keyboard lane's.",
+        "Emulator steps are in the lane report to the coordinator, including Support (no phone) and landscape both rotations."
+      ]
+    }
+  ]
+}

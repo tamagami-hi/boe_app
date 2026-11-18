@@ -1053,6 +1053,338 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       }
+    },
+    {
+      "name": "p-keyboard-fields",
+      "branch": "track/p-keyboard-fields",
+      "worktree": ".temp/worktrees/p-keyboard-fields",
+      "purpose": "0.18.3: every focused field scrolls above the on-screen keyboard (app-wide, sheets included), shell stays still",
+      "paths": [
+        "frontend_stack_ts/src"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-18T06:21:01.088Z",
+      "closedAt": "2026-11-18T08:24:34.215Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T07:24:32.427Z"
+    },
+    {
+      "name": "p-safe-area-native",
+      "branch": "track/p-safe-area-native",
+      "worktree": ".temp/worktrees/p-safe-area-native",
+      "purpose": "0.18.3: MainActivity publishes the safe-area insets its decor-view listener took from Capacitor SystemBars (bottom inset 0 on WebView below 140)",
+      "paths": [
+        "frontend_stack_ts/android"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-18T06:21:01.492Z",
+      "closedAt": "2026-11-18T07:48:37.177Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T06:48:36.893Z"
+    },
+    {
+      "name": "p-shell-polish",
+      "branch": "track/p-shell-polish",
+      "worktree": ".temp/worktrees/p-shell-polish",
+      "purpose": "0.18.3: All sections spacing and grouping, active tab on child pages, one Sign out, top-bar titles, small client and admin layout fixes",
+      "paths": [
+        "frontend_stack_ts/src"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-18T06:21:01.938Z",
+      "closedAt": "2026-11-18T08:16:32.105Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T07:16:31.781Z"
+    },
+    {
+      "name": "p-offline-recovery",
+      "branch": "track/p-offline-recovery",
+      "worktree": ".temp/worktrees/p-offline-recovery",
+      "purpose": "0.18.3: offline banner clears and screens refetch when the connection returns; Try again refetches everything that failed",
+      "paths": [
+        "frontend_stack_ts/src"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-18T06:21:02.380Z",
+      "closedAt": "2026-11-18T08:05:27.663Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T07:05:27.322Z"
+    },
+    {
+      "name": "p-admin-copy",
+      "branch": "track/p-admin-copy",
+      "worktree": ".temp/worktrees/p-admin-copy",
+      "purpose": "0.18.3: admin copy without jargon or raw values; App config shows the real API address",
+      "paths": [
+        "frontend_stack_ts/src"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-18T06:21:02.743Z",
+      "closedAt": "2026-11-18T07:52:53.318Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T06:52:53.102Z"
+    },
+    {
+      "name": "p-growth-emails",
+      "branch": "track/p-growth-emails",
+      "worktree": ".temp/worktrees/p-growth-emails",
+      "purpose": "0.18.3 (DEC-72): email the client when growth changes their recorded value (one-investor, collective, monthly value update)",
+      "paths": [
+        "backend_controller",
+        "packages/contracts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-18T06:34:10.615Z",
+      "closedAt": "2026-11-18T08:56:24.924Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T07:56:24.358Z"
+    },
+    {
+      "name": "p-whatsnew-history",
+      "branch": "track/p-whatsnew-history",
+      "worktree": ".temp/worktrees/p-whatsnew-history",
+      "purpose": "0.18.3 (DEC-73): append-only What's new history 0.16.0 to 0.18.3, unseen-since-last-seen, every version listed",
+      "paths": [
+        "frontend_stack_ts/src/features/whats-new"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-18T06:39:31.807Z",
+      "closedAt": "2026-11-18T08:42:46.555Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T07:42:45.545Z"
+    },
+    {
+      "name": "p-invest-fixes",
+      "branch": "track/p-invest-fixes",
+      "worktree": ".temp/worktrees/p-invest-fixes",
+      "purpose": "0.18.3: investment display and integrity fixes from the emulator investment test (statement card, early-exit reversal, payout list, withdrawals, counts, email money format)",
+      "paths": [
+        "frontend_stack_ts/src",
+        "backend_controller"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-18T07:11:20.047Z",
+      "closedAt": "2026-11-18T09:23:21.544Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T08:23:21.225Z"
+    },
+    {
+      "name": "p-web-version",
+      "branch": "track/p-web-version",
+      "worktree": ".temp/worktrees/p-web-version",
+      "purpose": "0.18.3: web builds never run stale after a deploy (index.html no-cache, hashed assets immutable, reload prompt when a newer version is deployed)",
+      "paths": [
+        "frontend_stack_ts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-18T07:22:39.845Z",
+      "closedAt": "2026-11-18T09:28:15.658Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T08:28:14.552Z"
+    },
+    {
+      "name": "p-config-form",
+      "branch": "track/p-config-form",
+      "worktree": ".temp/worktrees/p-config-form",
+      "purpose": "0.18.3 (DEC-74): App config as a form with switches and validated fields; publish needs a server-checked admin password confirmation",
+      "paths": [
+        "frontend_stack_ts/src",
+        "backend_controller",
+        "packages/contracts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-18T07:22:40.475Z",
+      "closedAt": "2026-11-18T12:20:27.824Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T11:20:26.425Z"
+    },
+    {
+      "name": "p-admin-nav",
+      "branch": "track/p-admin-nav",
+      "worktree": ".temp/worktrees/p-admin-nav",
+      "purpose": "0.18.3: admin desktop sidebar category headings stand out from page links",
+      "paths": [
+        "frontend_stack_ts/src/shells/admin",
+        "frontend_stack_ts/src/ui/recipes/shellAdmin.ts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T07:59:19.499Z",
+      "closedAt": "2026-11-18T09:31:03.731Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "closedWhy": "landed, and idle since 2026-11-18T08:31:02.024Z"
+    },
+    {
+      "name": "p-invest-categories",
+      "branch": "track/p-invest-categories",
+      "worktree": ".temp/worktrees/p-invest-categories",
+      "purpose": "0.18.3 DEC-75: bring existing clients into SIP schedules, categorise earlier recordings as SIP or one-time, category emails",
+      "paths": [
+        "backend_controller",
+        "packages/contracts",
+        "frontend_stack_ts/src/features/admin/users",
+        "frontend_stack_ts/src/features/admin/client-values",
+        "frontend_stack_ts/src/features/admin/payment-sheet",
+        "frontend_stack_ts/src/features/admin/emails",
+        "frontend_stack_ts/src/features/receipts",
+        "frontend_stack_ts/src/features/activity",
+        "frontend_stack_ts/src/features/sip",
+        "frontend_stack_ts/src/features/portfolio"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T08:23:21.552Z",
+      "closedAt": "2026-11-18T08:23:42.516Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
+    },
+    {
+      "name": "p-invest-cats",
+      "branch": "track/p-invest-cats",
+      "worktree": ".temp/worktrees/p-invest-cats",
+      "purpose": "0.18.3 DEC-75: bring existing clients into SIP schedules, categorise earlier recordings as SIP or one-time, category emails",
+      "paths": [
+        "backend_controller",
+        "packages/contracts",
+        "frontend_stack_ts/src/api/generated",
+        "frontend_stack_ts/src/features/admin/users",
+        "frontend_stack_ts/src/features/admin/client-values",
+        "frontend_stack_ts/src/features/admin/payment-sheet",
+        "frontend_stack_ts/src/features/admin/emails",
+        "frontend_stack_ts/src/features/receipts",
+        "frontend_stack_ts/src/features/activity",
+        "frontend_stack_ts/src/features/sip",
+        "frontend_stack_ts/src/features/portfolio"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T08:23:49.259Z",
+      "closedAt": "2026-11-18T12:27:38.201Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
+    },
+    {
+      "name": "p-release-0183",
+      "branch": "track/p-release-0183",
+      "worktree": ".temp/worktrees/p-release-0183",
+      "purpose": "0.18.3 release prep: What's new check and freeze rows, deploy and workflow notes, nginx maintenance header, admin title, plan section",
+      "paths": [
+        "DEPLOY.md",
+        "WORKFLOW.md",
+        "plans/admin-improvements.md",
+        "release_manager/nginx",
+        "frontend_stack_ts/src/app/routing/adminRoutes.ts",
+        "frontend_stack_ts/src/features/whats-new",
+        "frontend_stack_ts/src/features/admin/emails"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T08:31:42.096Z",
+      "closedAt": "2026-11-18T11:48:00.674Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
+    },
+    {
+      "name": "p-release-0183b",
+      "branch": "track/p-release-0183b",
+      "worktree": ".temp/worktrees/p-release-0183b",
+      "purpose": "0.18.3 release prep, part 2: What's new final text and freeze rows, deploy notes for 076/077, erasure record, plan 0.18.3 section",
+      "paths": [
+        "DEPLOY.md",
+        "WORKFLOW.md",
+        "plans/admin-improvements.md",
+        "release_manager/nginx",
+        "release_manager/docs/client-erasure.md",
+        "frontend_stack_ts/src/features/whats-new",
+        "frontend_stack_ts/src/features/admin/emails"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T11:56:29.853Z",
+      "closedAt": "2026-11-18T12:27:39.560Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     }
   ]
 }

@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "track": "p-admin-nav",
+  "current": {
+    "task": "P-admin-nav",
+    "from": "claude-opus-5-5 builder p-admin-nav",
+    "track": "p-admin-nav",
+    "at": "2026-11-18T08:16:51.259Z",
+    "lines": [
+      "Commit 452865a fix(admin-ui): set sidebar headings apart from their page links (track/p-admin-nav, one commit on d897f91). Files: shells/admin/AdminFrame.tsx, ui/recipes/shellAdmin.ts only.",
+      "What changed: a group heading (ADMIN_SIDEBAR_GROUP_LABEL) is now text-gold-lift in the same eyebrow style (2xs, semibold, uppercase, tracking-eyebrow). Before, heading and links were both nav-fg-muted.",
+      "A headed group's links sit in a new ADMIN_SIDEBAR_LIST: a ul, ml-3 pl-1.5, with a border-l nav-hairline guide line. Headed groups get mt-2 and mb-1 on top of the nav's gap-2. The per-group border-t hairlines from 3566bee are gone, because the guide line now ends each group.",
+      "Link recipe (ADMIN_SIDEBAR_LINK), current-page pill, hover, focus ring and the phone All sections sheet (ADMIN_MORE_*) are untouched.",
+      "Single-entry groups (Overview, Applications, Funds, AUM): no heading, because the heading would only repeat the link text. The link sits flush with the headings, outside any guide line, in ADMIN_SIDEBAR_SINGLE, so it reads as its own top-level item and not as part of the group above.",
+      "Semantics: each headed group is a span#id heading plus ul aria-labelledby=id, with li > the same Link (same aria-current). Ids come from one useId() in AdminFrame plus the domain. The lone link stays a bare Link in a div, so it is not a one-item list. Headings are spans with no tabindex.",
+      "Tab order (measured): Overview, Applications, Users, Nominee requests, Funds, AUM, Client values ... App config. Same as before.",
+      "Contrast, computed on the composited nav: espresso at 92% over page bg #f4f1e9 gives rgb(36,34,32).",
+      "Contrast values: heading gold-lift #c79a53 6.17:1 (6.09 over white); links nav-fg-muted 7.31:1; current nav-fg on surface-strong 8.56:1; hover 11.19:1. The guide line is decorative (1.54:1). Computed styles were read in the browser.",
+      "Themes: the token layer has no dark theme (no prefers-color-scheme or data-theme anywhere in src). With a dark colour-scheme emulated, the sidebar screenshots are byte-identical to light, before and after. The sidebar is always the dark espresso panel.",
+      "Visual check (RUNTIME, mock session, no backend, no credentials): the admin build used a scratch vite config that aliases ~/shells/admin/adminRuntime to a mock superadmin with all permissions, served locally and driven by Playwright at 1280 and 1024 px wide, light and dark-emulated, plus a focus+hover shot.",
+      "Screenshots are scratch (transient) in the worktree: .temp/p-admin-nav/shots/{before,after}-{1280,1024}-{light,dark}[-sidebar].png and after-1280-focus-hover.png. The preview servers are stopped.",
+      "Checks on 452865a, clean tree, Node 24 container, all green: contracts npm ci+build 3d973467; frontend npm ci+check 6b30878b (64 files, 581 tests passed); build:client 6623ba81; build:admin 44e9d16f; build:android ba8abc8c; build:android:admin 666ab855.",
+      "Tests (rule 10): none added or changed; this is styling. AdminShellRoot.test.tsx grants no permissions, renders no groups, and still passes. No red control applies.",
+      "Compatibility (rule 11): frontend markup and classes only. No API, contract, storage or route change; released APKs are unaffected.",
+      "Left/doubtful: (1) Sidebar links are 35.5 px tall, as before; this change did not touch them. That passes WCAG 2.2 2.5.8 (24 px) but is under the 44 px target. The sidebar shows only at lg (1024 px) and up; raising it to min-h-target lengthens the sidebar by about 200 px and is a separate decision.",
+      "Left/doubtful: (2) Three headings repeat their first link (Users/Users, Client values/Client values, Support/Support). These are manifest labels and out of scope. (3) The All sections sheet keeps its STAT_LABEL headings; a matching treatment there is optional.",
+      "Maintainer/coordinator steps (browser, not emulator): sign in to admin web on the dev stack at a desktop width of 1280 px, then resize to 1024 px. On the left sidebar, see USERS, CLIENT VALUES, SUPPORT, MONEY and SYSTEM in gold small caps, each with its links indented under a thin vertical line.",
+      "Then check: Overview, Applications, Funds and AUM sit flush left with no heading and no line. The current page keeps its pale pill. Hovering a link shows a fainter pill. Tab moves through links in the same order with a visible white ring. The OS dark mode changes nothing."
+    ]
+  },
+  "history": []
+}

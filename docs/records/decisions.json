@@ -710,6 +710,46 @@
       "state": "built",
       "by": "operator",
       "on": "2026-11-17T15:20:42.884Z"
+    },
+    {
+      "id": "DEC-72",
+      "group": "admin-improvements",
+      "text": "Clients get an email when their recorded value changes through growth: a one-investor growth adjustment, a collective growth commit, or a monthly value update. One email per client per committed operation and fund, from the amounts the ledger recorded (no invented figures): the fund, the change, the value after it, and the as-of date, with the market-risk line. It is queued in the same transaction as the ledger write (outbox, sealed payload), has its own template version and a send guard (active, not erased or closed), and adds no email for reversals, payouts, maturity settlement or early exit, which have their own records. Released apps and the previous release keep working (rule 11): any template-key constraint is widened expand-only, and the API and email worker deploy together. Payments stay off (DEC-14, DEC-22).",
+      "since": "2026-11-18",
+      "status": "decided, not built",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-18T06:34:01.533Z"
+    },
+    {
+      "id": "DEC-73",
+      "group": "admin-improvements",
+      "text": "What's new keeps the whole release history, append-only: each release adds its entry on top, and a released entry is never edited or removed (a check fails if one changes). The app shows every entry newer than the last one this user saw on this device, newest first. Production users upgrading from 0.15.4 therefore see every release from 0.16.0 to 0.18.3, while dev testers who saw 0.18.1 see only 0.18.3. Releases with nothing a user would notice (0.18.2) get no entry. Profile > What's new (client) and Account > What's new (admin) list every release with its version and month. Client and admin notes stay separate (DEC-68).",
+      "since": "2026-11-18",
+      "status": "decided, not built",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-18T06:39:16.242Z"
+    },
+    {
+      "id": "DEC-74",
+      "group": "admin-improvements",
+      "text": "App config is edited as a form instead of raw JSON: switches for on/off values (feature flags such as onlinePayments, maintenance on/off), validated fields for values (minimum app version per platform in X.Y.Z form, https download links, messages up to their limits, a date-time picker for scheduled maintenance, typed presentation entries), with raw JSON kept only under an Advanced fold. Publishing asks the admin to re-enter their password; the server checks it through a short-lived, single-use confirmation bound to the admin session, rate-limited and audited, and refuses a publish without one. Admin apps released before this cannot publish config until updated (a plain refusal, no corruption); everything else they do keeps working (rule 11).",
+      "since": "2026-11-18",
+      "status": "decided, not built",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-18T07:22:23.507Z"
+    },
+    {
+      "id": "DEC-75",
+      "group": "admin-improvements",
+      "text": "Recorded investments get a clear SIP or one-time category from the admin side, building on DEC-9 admin-tracked SIP schedules. (1) For existing clients, an admin can start a SIP schedule with a past start month and link the client's earlier monthly recordings to its months: the app proposes links in month order, the admin previews, adjusts and confirms. (2) Any unlinked earlier recording can be marked SIP (with schedule and month) or one-time. (3) Recording earlier principal asks for SIP or one-time up front. Links and categories are stored beside the ledger entries; amounts and entries are never edited (append-only), and every change is audited. (4) New recordings send a SIP-specific email (fund, month N of M, amount, next month due) or a one-time email (fund, amount, date) instead of the shared investment-added email; categorising or linking history sends no email. Released apps keep working (rule 11): no response field or enum they read changes meaning.",
+      "since": "2026-11-18",
+      "status": "decided, not built",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-18T07:22:24.582Z"
     }
   ],
   "replaced": [

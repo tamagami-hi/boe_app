@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 131,
+  "nextNumber": 143,
   "notes": [
     {
       "id": "note-1",
@@ -2135,6 +2135,177 @@
       "kind": "heads-up",
       "text": "track p-docs-0181 was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-docs-0181.",
       "at": "2026-11-17T20:32:31.552Z",
+      "replies": []
+    },
+    {
+      "id": "note-131",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-safe-area-native was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-safe-area-native.",
+      "at": "2026-11-18T07:48:37.177Z",
+      "replies": []
+    },
+    {
+      "id": "note-132",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-admin-copy was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-admin-copy.",
+      "at": "2026-11-18T07:52:53.318Z",
+      "replies": []
+    },
+    {
+      "id": "note-133",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-offline-recovery was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-offline-recovery.",
+      "at": "2026-11-18T08:05:27.663Z",
+      "replies": []
+    },
+    {
+      "id": "note-134",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-shell-polish was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-shell-polish.",
+      "at": "2026-11-18T08:16:32.105Z",
+      "replies": []
+    },
+    {
+      "id": "note-135",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-keyboard-fields was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-keyboard-fields.",
+      "at": "2026-11-18T08:24:34.215Z",
+      "replies": []
+    },
+    {
+      "id": "note-136",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-whatsnew-history was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-whatsnew-history.",
+      "at": "2026-11-18T08:42:46.555Z",
+      "replies": []
+    },
+    {
+      "id": "note-137",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-growth-emails was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-growth-emails.",
+      "at": "2026-11-18T08:56:24.924Z",
+      "replies": []
+    },
+    {
+      "id": "note-138",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-invest-fixes was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-invest-fixes.",
+      "at": "2026-11-18T09:23:21.544Z",
+      "replies": []
+    },
+    {
+      "id": "note-139",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-web-version was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-web-version.",
+      "at": "2026-11-18T09:28:15.658Z",
+      "replies": []
+    },
+    {
+      "id": "note-140",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-admin-nav was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-admin-nav.",
+      "at": "2026-11-18T09:31:03.731Z",
+      "replies": []
+    },
+    {
+      "id": "note-141",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "track p-config-form was closed: its work is on main and it sat idle for 60 minutes. Its notes are in .temp/closed/p-config-form.",
+      "at": "2026-11-18T12:20:27.824Z",
+      "replies": []
+    },
+    {
+      "id": "note-142",
+      "from": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "to": "all",
+      "kind": "finding",
+      "text": "Flaky test, 2 failures on 2026-11-18 under load (p-invest-fixes builder run; p-release-0183b landing 96c74c2a on a JSON-only commit, passed on the previous commit in the same run). guards.test.tsx 'restores once the browser is online' waits for 'Users directory' with findByText's default 1000 ms after the online event; the test took 1268 ms. Fix in a later patch: an explicit timeout on that findByText (test only). Not a regression.",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/src/app/routing/guards.test.tsx"
+        ]
+      },
+      "at": "2026-11-18T12:23:30.291Z",
       "replies": []
     }
   ]

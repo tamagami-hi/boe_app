@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "track": "p-invest-fixes",
+  "current": {
+    "task": "P-invest-fixes",
+    "from": "claude-opus-5-5 builder p-invest-fixes",
+    "track": "p-invest-fixes",
+    "at": "2026-11-18T07:52:21.707Z",
+    "lines": [
+      "Commits on track/p-invest-fixes (base c1fe13a): bde4e78 fix(ledger) refuse reversing final entries; 5b8a968 fix(client-api) counts, statement page, notification dates; f25502e fix(email) wider card; bce93dd fix(invest-ui) client and admin screens.",
+      "U2/DEC-41/DEC-54: ledger rows carry finalOwner (sip_early_exits.ledger_entry_id, client_position_maturities.settlement_entry_id, withdrawal_operations.ledger_entry_id; ownership, not reason codes, since maturity reasons are free text). Reversal refuses them with 409 STATE_CONFLICT and a 'which is final. It cannot be reversed.' message; both ledger reads return reversible:false.",
+      "U6: a reversed contribution notifies 'Investment record corrected' + the existing correction body; kind stays client_value_updated; growth reversals keep 'Investment value updated'.",
+      "U5: contributionCount (and older apps' lumpSumCount/sipInstallmentCount) skip contributions a reversal points at; totals unchanged; a fully withdrawn fund still counts the payments that went in.",
+      "U4/U11: month card gains Corrections line; statement card, /statements/print and the server statement page show paise (rupee rounding left the Nov card a rupee off even with corrections). Under 768px on screen the print table and the Custom Tab page stack into labelled rows; print keeps the table.",
+      "U3: invested-fund page shows Withdrawn in its summary and a Withdrawals list (Early exit or Withdrawal, as Activity labels them), walking /v1/client/transactions at 100 per page only when the pool reports a withdrawn amount; portfolio card adds '· ₹X withdrawn'.",
+      "U1: payout empty state now 'No maturity payout ... Early-exit payouts are shown with their early exits.' U14: empty holdings are not offered in the Mark matured position select. U13: ledger Reason column uses labels (ledgerReasons.ts), unknown codes become a sentence.",
+      "U7: payout-paid and SIP-closed-early notifications are badged Activity (NotificationsScreen, from the link); in-app early-exit and maturity-options bodies use '18 Nov 2026' (emails keep the long form). U9: Home counts active or paused plans only; Manage SIPs shows while any plan exists. U10: ended plans say 'This plan has ended. Nothing more is collected or recorded for it.'",
+      "Email (coordinator add-on): card max-width 560px -> 720px (still width:100%); side padding 28px -> 40px at min-width:760px via a <style> media query and class hooks, inline 28px stays as phone/fallback. Text column 504px -> 640px; body 16px/24px. Text part unchanged. Render check: text parts byte-identical, 375px Chromium screenshot byte-identical before/after, 1280px card 720px.",
+      "Item 7 (Investment added ₹1000.00): NOT reproduced. investmentRecordedEmail uses formatRupeesFromPaise for both parts; rendering gives '₹1,000.00' in text and HTML; unchanged since v0.18.2. Please check the raw text/plain MIME part on dev; if it really reads 1000.00 the sending worker image differs from the code. All other templates use the same helpers; no ungrouped amounts found. No change made.",
+      "emailLayout.test.ts has no width expectations; no styling test added (rule 10).",
+      "Rule 11: no migration, no new endpoint, no new key or enum value. reversible is an existing boolean; released admin 0.17.0 and 0.18.x already hide Reverse when it is false, so they stop offering it once the backend ships; a stale screen gets the 409 and nothing is written. Counts only drop for reversed recordings. Notification kinds unchanged. Previous release runs on the same schema; this frontend on the previous backend uses only existing endpoints.",
+      "Tests: unit cases (3 owners) in recordContribution.test.ts; new test/integration/finalEntryReversal.integration.test.ts (early exit, maturity withdrawal, maturity reinvestment, payout-only withdrawal: reversible false, 409, ledger/payouts/maturities/schedules/notifications/audit/idempotency unchanged; growth stays reversible).",
+      "Red control 148efc5e: guard removed from reverseLedgerEntry.ts -> 3 unit + 4 integration failures; restored, cmp identical, tree clean.",
+      "Green on bce93dd (clean): contracts build 4bced039; backend check a2ebacd3 (102 files, 1212 tests); backend integration 1f27ade9 (80 files, 631 tests, coverage off); frontend check 136110ff (60 files, 516 tests); build:client 708e40a9, build:admin 0f7cd999, build:android da14491a, build:android:admin d2c92d82.",
+      "Flake: first frontend check a774cde7 failed only app/routing/guards.test.tsx (outage restore) while the backend check ran in parallel; it passed 3/3 alone and in the rerun. Not my file.",
+      "Needs other owners: app/routing/adminRoutes.ts:291 top-bar title 'One investor's position' -> 'One investor's record' (app/** not allowed). plans/admin-improvements.md ~line 1106 says statement figures are whole rupees; now paise.",
+      "Emulator (Rahul Kumar, dev, after deploy): 1) Client Statements, Nov 2026 card: Corrections -₹2,550.00 line, no 'includes a correction'; Opening + Contributions + Growth + Corrections + Withdrawals = Closing ₹61,202.41 to the paisa (Opening about ₹55,691.95, Growth +₹2,075.66, Withdrawals -₹1,015.20). Months without corrections show no Corrections line.",
+      "2) APK Statements > Open statement: Custom Tab at 412px shows each month as labelled rows (Opening..Invested to date), all visible without sideways scroll, with paise. Browser /statements/print at 412px: same stacked rows; at >=768px and in print: the table.",
+      "3) Client Portfolio: BOE_ARBITRAGE card reads '2 payments' (was 3; API pools contributionCount 2). BOE Test Funds card reads '12 payments · ₹1,015 withdrawn'; its detail shows Withdrawn ₹1,015 and a Withdrawals section 'Early exit · 18 Nov 2026 · -₹1,015.20 change in value'.",
+      "4) Client Notifications: 'SIP closed early' and 'Withdrawal payout recorded as paid' badged Activity; Open still goes to Activity. Stored bodies keep their old text; the short date and the correction wording only show on new events (no write needed for this pass).",
+      "5) Client Home: no 'SIP plans' row (both of Rahul's plans are cancelled), Manage SIPs still shown. /sips/<cancelled plan>: 'This plan has ended...' instead of the PhonePe reminder.",
+      "6) Admin hub > Ledger and investor record ledger: the BOE Test Funds early-exit row (Entry 'Early exit', -₹1,015.20) has no Reverse; Reason shows labels (Earlier investment, Monthly investment, Admin correction, SIP early exit, Monthly value update). Do not press Reverse anywhere; the refusal is covered by the integration test.",
+      "7) Admin Maturity tab and investor record: payouts empty state reads 'No maturity payout' with the early-exit pointer, above the paid early-exit payout card; the Position select no longer lists BOE Test Funds (₹0).",
+      "8) Email width: any email in Gmail web shows a 720px card with wider side padding; on a phone it looks exactly as before. Needs a real send; not in this lane's scope.",
+      "Doubtful/left: U9 counts active+paused as running (conservative reading of 'active'). Statement paise everywhere is a presentation change beyond the literal brief, needed for the sum to be exact. The withdrawal list loads the whole client ledger when a fund has withdrawals (paged 100)."
+    ]
+  },
+  "history": []
+}

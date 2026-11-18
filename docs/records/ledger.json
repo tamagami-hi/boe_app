@@ -2256,6 +2256,224 @@
             "emu/boe_update.sh"
           ],
           "landedAt": "2026-11-18T00:07:06.411Z"
+        },
+        {
+          "id": "P-keyboard-fields",
+          "track": "p-keyboard-fields",
+          "status": "landed",
+          "commit": "1a161b1",
+          "also": [
+            "1a161b1",
+            "97a7b32",
+            "fbff18b"
+          ],
+          "brief": "Maintainer request (2026-11-18): every entry field appears above the on-screen keyboard. Generalise AuthLayout's be:keyboard handler into one app-wide behaviour (focused editable scrolls above the keyboard inside its scroll container, sheets included; scroll areas get keyboard-height bottom padding); web uses navigator.virtualKeyboard / visualViewport. Shell and bottom nav stay still (4c42c9a decision kept).",
+          "paths": [
+            "frontend_stack_ts/src"
+          ],
+          "landedAt": "2026-11-18T07:23:52.342Z"
+        },
+        {
+          "id": "P-safe-area-native",
+          "track": "p-safe-area-native",
+          "status": "landed",
+          "commit": "db1fe1c",
+          "also": [
+            "0ad08cc",
+            "db1fe1c"
+          ],
+          "brief": "Emulator U2: MainActivity's decor-view setOnApplyWindowInsetsListener replaces Capacitor SystemBars' listener (SystemBars.java:191-193), so injectSafeAreaCSS never runs and --safe-area-inset-* stays empty; on WebView < 140 the bottom inset is 0 and the gesture bar overlaps the bottom nav (also landscape top bar U4). Publish the system-bar and cutout insets as --safe-area-inset-* from MainActivity's listener.",
+          "paths": [
+            "frontend_stack_ts/android/app/src/main/java/com/beonedge/app/MainActivity.java"
+          ],
+          "landedAt": "2026-11-18T06:48:24.335Z"
+        },
+        {
+          "id": "P-shell-polish",
+          "track": "p-shell-polish",
+          "status": "landed",
+          "commit": "3566bee",
+          "also": [
+            "2a9ced8",
+            "324c332",
+            "3566bee",
+            "3c225b3",
+            "9d89471"
+          ],
+          "brief": "Emulator U1, U6, U8, U10, U11 and the Low list: All sections pill spacing and group separation; active bottom-nav tab on child pages (both apps); Sign out only on Account (top bar keeps Account), which also stops titles truncating; back chevron off on tab roots; client Activity Receipts pill placement; SIP collection-day chips 44 px; admin FAQ key column wrapping; one word for Investing state on Home and Profile.",
+          "paths": [
+            "frontend_stack_ts/src"
+          ],
+          "landedAt": "2026-11-18T07:16:16.144Z"
+        },
+        {
+          "id": "P-offline-recovery",
+          "track": "p-offline-recovery",
+          "status": "landed",
+          "commit": "2800a80",
+          "also": [
+            "2800a80",
+            "c1fe13a"
+          ],
+          "brief": "Emulator U3 and U9: degraded = !online || lastOutcome offline (NetworkStatusProvider.tsx:51) keeps the offline banner after reconnecting and nothing refetches; the banner promises a retry. Clear the offline state and refetch active queries when the connection returns; Try again on a screen refetches every failed query on it (SIP detail heading stayed 'Fund').",
+          "paths": [
+            "frontend_stack_ts/src"
+          ],
+          "landedAt": "2026-11-18T07:05:11.954Z"
+        },
+        {
+          "id": "P-admin-copy",
+          "track": "p-admin-copy",
+          "status": "landed",
+          "commit": "c36906e",
+          "also": [
+            "6b4aea6",
+            "c36906e"
+          ],
+          "brief": "Emulator U7 and U12: admin copy without jargon ('backend', 'app_config_versions row', 'Folded from this client's value ledger on every read') or raw values (roles 'superadmin', lowercase statuses, template ids, 'Version 1/4'); App config 'API origin' shows the configured API address instead of the WebView origin https://localhost.",
+          "paths": [
+            "frontend_stack_ts/src"
+          ],
+          "landedAt": "2026-11-18T06:52:32.473Z"
+        },
+        {
+          "id": "P-growth-emails",
+          "track": "p-growth-emails",
+          "status": "landed",
+          "commit": "80ab7c7",
+          "also": [
+            "80ab7c7",
+            "bb89a74",
+            "d897f91"
+          ],
+          "brief": "DEC-72: queue a growth email (new template, v1, send guard) in the same transaction as each growth ledger write: one-investor adjustment, collective growth commit, monthly value update; one email per client per committed operation and fund; expand-only template-key migration if constrained; integration tests with red controls.",
+          "paths": [
+            "backend_controller"
+          ],
+          "landedAt": "2026-11-18T07:53:23.508Z"
+        },
+        {
+          "id": "P-whatsnew-history",
+          "track": "p-whatsnew-history",
+          "status": "landed",
+          "commit": "f289dae",
+          "also": [
+            "cf754e8",
+            "d0d5124",
+            "f289dae"
+          ],
+          "brief": "DEC-73: client and admin What's new notes gain entries for every user-facing release since 0.15.4 (0.16.0 to 0.18.1 from git and the plan, plus a 0.18.3 draft from the six 0.18.3 lanes; no 0.18.2 entry); entries carry version and month; released entries are frozen by a check; the history screens list every version; the unseen sheet stays readable with many entries.",
+          "paths": [
+            "frontend_stack_ts/src/features/whats-new"
+          ],
+          "landedAt": "2026-11-18T07:41:40.864Z"
+        },
+        {
+          "id": "P-invest-fixes",
+          "track": "p-invest-fixes",
+          "status": "landed",
+          "commit": "00a4606",
+          "also": [
+            "00a4606",
+            "797f13d",
+            "9a78f6b",
+            "cd8292e"
+          ],
+          "brief": "Emulator investment test (emu-test-0182-invest.md): statement month card adds up with reversals; early-exit/maturity/payout withdrawal entries cannot be reversed (DEC-41: no undo), server and UI; admin payout list no longer says no withdrawal above an early-exit payout; invested-fund detail shows withdrawals; payment counts exclude reversed recordings; investment-added email money uses Indian grouping; reversal notification reads as a correction; smaller U7/U9/U10/U11/U13/U14 items.",
+          "paths": [
+            "frontend_stack_ts/src",
+            "backend_controller"
+          ],
+          "landedAt": "2026-11-18T08:23:00.296Z"
+        },
+        {
+          "id": "P-web-version",
+          "track": "p-web-version",
+          "status": "landed",
+          "commit": "4385573",
+          "also": [
+            "4385573",
+            "8043895"
+          ],
+          "brief": "Maintainer saw admin web at 0.18.1 while the dev bundle is 0.18.2 (stale open tab or cached index.html: the frontend nginx sends no cache headers). index.html no-cache, /assets immutable; build emits version.json; web (not native) checks it on focus/visibility and offers Reload when a newer version is deployed.",
+          "paths": [
+            "frontend_stack_ts"
+          ],
+          "deferred": [
+            {
+              "what": "review-82 M2: webVersion.ts calls globalThis.fetch instead of plain fetch with an explicit eslint override for that file; the maintainer's config-protection hook blocks agent edits to eslint.config.mjs",
+              "parked": {
+                "why": "Maintainer decides: make the 2-line eslint.config.mjs edit, or carry it to 0.19.0. Lint passes and there is no runtime defect.",
+                "owner": "maintainer"
+              }
+            }
+          ],
+          "landedAt": "2026-11-18T08:27:54.369Z"
+        },
+        {
+          "id": "P-config-form",
+          "track": "p-config-form",
+          "status": "landed",
+          "commit": "92e03c6",
+          "also": [
+            "6570ea1",
+            "8e0f850",
+            "92e03c6",
+            "a330f38"
+          ],
+          "brief": "DEC-74: App config builder becomes a form (switches, validated version/URL/message/date fields, typed presentation entries, Advanced JSON fold); publish requires a short-lived single-use password confirmation checked by the server (new step-up endpoint, rate-limited, audited); old admin apps get a plain refusal; security review.",
+          "paths": [
+            "frontend_stack_ts/src/features/admin/app-config",
+            "backend_controller",
+            "packages/contracts"
+          ],
+          "landedAt": "2026-11-18T11:20:14.524Z"
+        },
+        {
+          "id": "P-admin-nav",
+          "track": "p-admin-nav",
+          "status": "landed",
+          "commit": "b75c778",
+          "also": [],
+          "brief": "Admin desktop sidebar: make category headings visually distinct from page links (maintainer 2026-11-18); decide single-entry groups; AA contrast both themes; styling only.",
+          "paths": [
+            "frontend_stack_ts/src/shells/admin/AdminFrame.tsx",
+            "frontend_stack_ts/src/ui/recipes/shellAdmin.ts"
+          ],
+          "landedAt": "2026-11-18T08:30:52.404Z"
+        },
+        {
+          "id": "P-invest-categories",
+          "track": "p-invest-cats",
+          "status": "landed",
+          "commit": "79a0b70",
+          "also": [
+            "03095bd",
+            "2bc0013",
+            "79a0b70",
+            "bea7a8b",
+            "cbe2462"
+          ],
+          "brief": "DEC-75: past-dated SIP schedules for existing clients with month-order linking of earlier monthly recordings (preview, idempotent audited write); categorise earlier unlinked recordings as SIP or one-time (stored beside the entry); category on EarlierInvestmentForm; SIP-payment and one-time emails (new keys v1, guards, migration 077 expand-only, old investment_recorded still sends); delivery filter labels incl. investment_growth.",
+          "paths": [
+            "backend_controller",
+            "packages/contracts",
+            "frontend_stack_ts/src/api/generated",
+            "frontend_stack_ts/src/features/admin"
+          ],
+          "landedAt": "2026-11-18T11:56:17.411Z"
+        },
+        {
+          "id": "P-release-0183",
+          "track": "p-release-0183",
+          "status": "landed",
+          "commit": "3c6ed09",
+          "also": [
+            "8e4859d",
+            "a87ee4f"
+          ],
+          "brief": "Release prep per .temp/main/release-prep-0183.md: What's new 0.18.3 checked against what landed and frozen in releasedNotes.json before VERSION moves; WORKFLOW freeze step; DEPLOY notes (076/077, step-up password, version.json, nginx maintenance header); admin top-bar title; plan 0.18.3 section.",
+          "landedAt": "2026-11-18T12:27:07.221Z"
         }
       ]
     }

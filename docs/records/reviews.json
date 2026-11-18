@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextId": 75,
+  "nextId": 90,
   "reviews": [
     {
       "id": "review-1",
@@ -1585,6 +1585,366 @@
         "agent": "claude-opus-5-5"
       },
       "at": "2026-11-18T00:02:31.486Z"
+    },
+    {
+      "id": "review-75",
+      "milestone": "M19-patches-0-18",
+      "task": "P-safe-area-native",
+      "track": "p-safe-area-native",
+      "commit": "db1fe1c",
+      "reviewer": "ecc:code-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 4
+      },
+      "summary": "Values match SystemBars.injectSafeAreaCSS; publishing on every WebView version is correct; the page-commit requestApplyInsets hook still re-dispatches to the decor listener; IME strip and keyboard height unchanged; UI-thread safe. N1 (safe-area bottom 0 only when the keyboard has a bottom inset) and N2 (comment wording) applied in 0ad08cc; N3 skipped; N4: runtime check on WebView 133 and 140+.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-safe-area-native/.temp/p-safe-area-native/review.md",
+        "sha256": "4f9443e5b1ed7f4f66690712cd699d6c3c01fbad63ddc6f310feae00f9f8836d",
+        "bytes": 4165
+      },
+      "by": {
+        "track": "p-safe-area-native",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-18T06:43:54.387Z"
+    },
+    {
+      "id": "review-76",
+      "milestone": "M19-patches-0-18",
+      "task": "P-admin-copy",
+      "track": "p-admin-copy",
+      "commit": "e198f4b",
+      "reviewer": "ecc:code-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 3
+      },
+      "summary": "Every rewritten line checked against the running code. API address uses the same resolveApiBase as api/http.ts with a safe fallback; removed Version rows had no dependants; status and role maps cover the contract enums. Taken in 816adb1: App config hint now says publish replaces the whole configuration (the backend stores it verbatim, no defaults), freshness copy softened to 'up to date when you open' (15 s staleTime), label maps fall back to the raw value.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-copy/.temp/p-admin-copy/review.md",
+        "sha256": "e8f4bc4f89303f9e1f7bc28a016a07c77a3791e6380931793d6dec2559867844",
+        "bytes": 4357
+      },
+      "by": {
+        "track": "p-admin-copy",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-18T06:46:19.763Z"
+    },
+    {
+      "id": "review-77",
+      "milestone": "M19-patches-0-18",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "commit": "981ff23",
+      "reviewer": "ecc:code-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "precondition": 1,
+        "low": 3
+      },
+      "summary": "Only errored queries are refetched; no held write is resent; the probe is bounded and cleaned up; no global onError side effects. Precondition for ACCESS_NETWORK_STATE (mutations defaulting to networkMode 'online' resend paused writes on reconnect, already true in the browser) fixed in 7f08114 with networkMode 'always' and a red-controlled held-write test; also probe whenever degraded, shared refetchFailedReads helper, banner copy true for unconfirmed saves.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/.temp/p-offline-recovery/review.md",
+        "sha256": "dfb3cc5eba1e6c828d743978cdf6c5eb5351b6061984f1edeb9853e176efb10c",
+        "bytes": 4847
+      },
+      "by": {
+        "track": "p-offline-recovery",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-18T06:55:01.370Z"
+    },
+    {
+      "id": "review-78",
+      "milestone": "M19-patches-0-18",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "commit": "be2c22d",
+      "reviewer": "ecc:react-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 4
+      },
+      "summary": "navOwner resolves every client and admin route to the right tab with a sound loop guard and one aria-current per nav; Sign out stays on Account for every admin; header and nav[aria-label=Sections] kept for the keyboard lane; per-side safe-area padding correct with lg: winning; 44 px targets hold. Phone-filter false negatives (label case, helpline/whatsapp, wa.me/sms) and the hour-range false positive fixed in adf05be with a 21-case red-controlled test; min-w-target confirmed in the built CSS.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/.temp/p-shell-polish/review.md",
+        "sha256": "78e098c3dbe56b140ca91a3f45f3f70134ce6398cfad6a6edc21752637dce817",
+        "bytes": 5834
+      },
+      "by": {
+        "track": "p-shell-polish",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-18T06:58:07.060Z"
+    },
+    {
+      "id": "review-79",
+      "milestone": "M19-patches-0-18",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "commit": "cb26208",
+      "reviewer": "ecc:react-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 6
+      },
+      "summary": "Shell stillness holds (main margin only lengthens the document; header and nav sticky; overlaysContent equals the existing meta); keyboardReveal sound and tested with credible red controls; wiring clean; inset split correct. Taken in e11db3e: re-plan after a sheet's entry animation, eased sheet padding, status-bar floor on header-less pages, submit button revealed with the last field, MainActivity comment corrected. Left: a late error line under an open keyboard is not revealed.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/.temp/p-keyboard-fields/review.md",
+        "sha256": "6f4ac566d92487affee6b5c04227af5fde3fc829bf2f7ca1e5f720aca090bbb7",
+        "bytes": 5466
+      },
+      "by": {
+        "track": "p-keyboard-fields",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-18T07:07:17.940Z"
+    },
+    {
+      "id": "review-80",
+      "milestone": "M19-patches-0-18",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "commit": "e6c46f9",
+      "reviewer": "ecc:code-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 5
+      },
+      "summary": "Every 0.16.0/0.16.2/0.17.0/0.18.0 line maps to code in that tag; no-entry releases correct; copy rules hold; nine frozen hashes recomputed independently; UI accessible. Follow-up 34f2cce: 0.18.1 trimmed to its own lines (maintainer approved 'Yes, trim 0.18.1'), client 0.17.0 gains early exits, real-notes DEC-73 test with red control; LLP line left out as unverifiable (rule 7). Release-cut trap noted: 0.18.3 rows must be locked before VERSION moves.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/.temp/p-whatsnew-history/review.md",
+        "sha256": "a18ed37aaa56edf149b6294a7415e9e196c1b023157a53e04c84efd397f773d2",
+        "bytes": 7453
+      },
+      "by": {
+        "track": "p-whatsnew-history",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-18T07:19:03.414Z"
+    },
+    {
+      "id": "review-81",
+      "milestone": "M19-patches-0-18",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "commit": "06c3261",
+      "reviewer": "node-backend-engineer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 1,
+        "low": 5
+      },
+      "summary": "One email per client, operation and fund; replay and rollback queue none; figures equal the ledger delta and the same-lock ledger sum; no network I/O in the transaction; growth and erasure lock order cannot deadlock; guard cancels correctly; migration 075 expand-only and safe for 0.18.2; released admin apps show an unknown template key as raw text. Taken in c406c9d: value line says 'now' (N1), investment_growth filterable in backend and contracts (N2; frontend label added in the release-prep commit), two-fund and erasure tests with red controls (N4), DEPLOY.md and client-erasure.md notes (N5).",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/.temp/p-growth-emails/review.md",
+        "sha256": "a245c0ae7d9f39812dc2e863989dc14fbfde4e32e53c3008c74ca59e146ac53c",
+        "bytes": 11654
+      },
+      "by": {
+        "track": "p-growth-emails",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-18T07:35:52.182Z"
+    },
+    {
+      "id": "review-82",
+      "milestone": "M19-patches-0-18",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "commit": "3dcc4e3",
+      "reviewer": "ecc:typescript-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "fix",
+      "blocking": 2,
+      "findings": {
+        "medium": 2,
+        "low": 6
+      },
+      "summary": "nginx headers, version.json and the watcher are sound and match the brief; curl evidence proves the headers. The coordinator makes both mediums blocking: M1 the version banner and the maintenance notice banner can show together, both sticky at top 0 and both owning --be-chrome-offset, so one overlaps content or clears the other's offset; M2 globalThis.fetch evades the fetch lint rule instead of an explicit override. Lows: no minimum gap between focus checks, no .catch on the watcher promise, version.json has no Cache-Control, rollback wording, untested timeout/in-flight paths, app/ imports an admin helper.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/.temp/p-web-version/review.md",
+        "sha256": "61176dedb759524287e7c6161284380256b8d7f739c1de43dec3650ce3e96da6",
+        "bytes": 7100
+      },
+      "by": {
+        "track": "p-web-version",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T07:55:51.656Z"
+    },
+    {
+      "id": "review-83",
+      "milestone": "M19-patches-0-18",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "commit": "bce93dd",
+      "reviewer": "ecc:code-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 5
+      },
+      "summary": "Reversal refusal resolves final entries from the three owning tables, runs after the position and entry locks in the same transaction, returns 409 with nothing written, and both admin reads share isEntryReversible. Counts skip reversed contributions with totals and shape unchanged; statement figures are integer paise end to end so the card adds up by construction; correction wording only for contribution reversals, kind unchanged; no migration or new keys. Red controls real. Lows: no tests for counts or notification text (rule 10), a pre-fix reversed early exit would list without a marker, Withdrawn on cards drops paise, Home counts paused plans, a shared query key with a different page size.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/.temp/p-invest-fixes/review.md",
+        "sha256": "69495dd2070f118911144164904cbe2d9ccf047d95facdb0c8d6460be97d002d",
+        "bytes": 6712
+      },
+      "by": {
+        "track": "p-invest-fixes",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T07:56:24.033Z"
+    },
+    {
+      "id": "review-84",
+      "milestone": "M19-patches-0-18",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "commit": "fccf097",
+      "reviewer": "ecc:typescript-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 3,
+        "carried": 1
+      },
+      "summary": "M1 fixed and correct: the version banner reads the cached app-config data with AppNoticeGate's condition, shows when the query has not loaded or errored, and returns as soon as the notice clears. L1 30 s wake gap, L3 version.json no-cache and L4 catch/finally done; the test clock handling is sound (13/13 three times). M2, the globalThis.fetch lint-form gap, is carried, not blocking: the maintainer's config-protection hook blocks eslint.config.mjs edits. Lows: no red control for the gap, lastCheckedAt set in finally, a backwards clock delays wakes.",
+      "follows": "review-82",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/.temp/p-web-version/review.md",
+        "sha256": "e03abfd3c5d03874b735272f182aefc5c02168826e506403bd7d696f4fd053c1",
+        "bytes": 10842
+      },
+      "by": {
+        "track": "p-web-version",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T08:05:47.456Z"
+    },
+    {
+      "id": "review-85",
+      "milestone": "M19-patches-0-18",
+      "task": "P-admin-nav",
+      "track": "p-admin-nav",
+      "commit": "452865a",
+      "reviewer": "ecc:react-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 3
+      },
+      "summary": "Headings now read as non-interactive gold-lift eyebrows over indented, guide-lined links; links stay clickable and the current page keeps its pill; gold marks no state. ul aria-labelledby via useId, lone links not in a list, Link and aria-current and tab order unchanged; every class resolves to an existing token; the phone All sections sheet is untouched; gold-lift about 6.1:1 on the composited nav. Lows: list-none may drop list semantics in Safari (optional role=list), USERS heading repeats its first link (manifest label, outside lane), slightly uneven spacing around lone links.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-nav/.temp/p-admin-nav/review.md",
+        "sha256": "80d4afcd01185785e59fe4c18dd4a37ecac36dcf093efb2b19973a883a6815b7",
+        "bytes": 3365
+      },
+      "by": {
+        "track": "p-admin-nav",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T08:20:01.091Z"
+    },
+    {
+      "id": "review-86",
+      "milestone": "M19-patches-0-18",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "commit": "38e1642",
+      "reviewer": "ecc:security-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "fix",
+      "blocking": 3,
+      "findings": {
+        "medium": 3,
+        "low": 6
+      },
+      "summary": "Reviewer verdict land, no blocking: password never logged or stored, Argon2 off the transaction with a dummy hash, 256-bit token stored as HMAC, single-use conditional update, replay before consume, permission before limiter, 403 AUTHORIZATION_DENIED for old apps, 076 expand-only. The coordinator makes all three mediums blocking for a security feature: M1 token not bound to the config body, so a failed publish leaves a token usable for any body; M2 throttle counts successful confirmations, so repeated legitimate republishes lock the admin out; M3 key guards untested (permission on confirm-password, different-body replay, nothing written on stale refusal).",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/.temp/p-config-form/review.md",
+        "sha256": "51641e2fef6831c64e5669ca158456b75a4d6a9c4d77396daac61e554169c037",
+        "bytes": 10039
+      },
+      "by": {
+        "track": "p-config-form",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T08:22:35.099Z"
+    },
+    {
+      "id": "review-87",
+      "milestone": "M19-patches-0-18",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "commit": "5b62b7b",
+      "reviewer": "ecc:security-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 5
+      },
+      "summary": "M1 resolved: confirm and publish hash through one function over one schema with key-sorted canonical JSON, matched inside the same conditional UPDATE as session, admin, action, unused and unexpired, so no bypass; mismatch consumes nothing; reason unbound accepted (audit text only). M2 resolved: synchronous reserve before the hash, wrong guesses always keep their slot, non-password errors give no free guess. M3 resolved with new tests. Lows: release at a window boundary may allow one extra guess, per-process limiter, unswept map, no concurrent-publish test, 076 edited before it ever landed (no stack applied it).",
+      "follows": "review-86",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/.temp/p-config-form/review.md",
+        "sha256": "d59f6bd5d24341a945c3544e09a7a9a92c5b59582fc227b6302f25a7c39f052e",
+        "bytes": 16047
+      },
+      "by": {
+        "track": "p-config-form",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T11:12:56.710Z"
+    },
+    {
+      "id": "review-88",
+      "milestone": "M19-patches-0-18",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "commit": "e8ea6b6",
+      "reviewer": "ecc:code-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 2,
+        "low": 3
+      },
+      "summary": "No ledger entry edited; the category table is append-only with triggers, composite FK and unique entry_id. The link write takes the position lock then the schedule lock like recordContribution, refuses every conflict before the first insert in one idempotent transaction, audits each link; replay and key reuse correct; DB constraints back the race test. Path userId scopes every lookup; same permissions as the SIP routes. Emails queued in the recording transaction with per-entry dedup, one guard for all three keys, worker registers all three; 077 mirrors 075. No new response keys. Mediums: new-key mail queued before an images-only rollback dead-letters (as 075; deploy note), no mutation control for no-email-on-history. Lows: a leftover recording can be proposed for an earlier month, a stale one-time row after linking, panel shows one-time rows beside a month picker. Coordinator reran 5 touched integration files on the rebased head: 33/33.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/.temp/p-invest-cats/review.md",
+        "sha256": "a82526ee19cd368aea68971f1e6e76ff6c8183d21cb4142ff8e015af67f6eccf",
+        "bytes": 8257
+      },
+      "by": {
+        "track": "p-invest-cats",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T11:47:36.057Z"
+    },
+    {
+      "id": "review-89",
+      "milestone": "M19-patches-0-18",
+      "task": "P-release-0183",
+      "track": "p-release-0183",
+      "commit": "8e4859d",
+      "reviewer": "maintainer (What's new text approved 2026-11-18) and coordinator",
+      "verdict": "waived",
+      "blocking": 0,
+      "summary": "Operator release prep: docs, plan, nginx maintenance header (one header name added to an existing list), the admin top-bar title string, the delivery-filter labels, and the 0.18.3 What's new text the maintainer approved as written, frozen with its rows. No application logic; What's new tests 23/23 at VERSION 0.18.2 and 0.18.3; landing checks passed.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T12:27:06.855Z"
     }
   ]
 }

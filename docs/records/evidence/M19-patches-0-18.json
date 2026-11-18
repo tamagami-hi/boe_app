@@ -7395,6 +7395,5284 @@
         "largestChunkBytes": 310053
       },
       "note": "Admin app chunk 646 kB -> 310 kB, client 356 kB -> 236 kB; no Vite 500 kB warning; static back-edge control and zero-edge control both fail the dist check."
+    },
+    {
+      "id": "7e67a708-b021-4569-a696-d4d46d84f5c9",
+      "task": "P-safe-area-native",
+      "track": "p-safe-area-native",
+      "agent": "claude-opus-5-5 builder p-safe-area-native",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-safe-area-native/packages/contracts",
+      "started": "2026-11-18T06:33:08Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-safe-area-native/20261118T063308Z-2830875-green.log",
+        "sha256": "b6fcdda1ea913b363993ded2ae721699d79799ee0033f42342c6442449664b96",
+        "bytes": 898
+      },
+      "head": "db1fe1c1160d25ca8fe50ed86e214258be76e254",
+      "dirty": false
+    },
+    {
+      "id": "11722a3d-7cf8-4562-8eec-a518f206a28d",
+      "task": "P-safe-area-native",
+      "track": "p-safe-area-native",
+      "agent": "claude-opus-5-5 builder p-safe-area-native",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-safe-area-native/frontend_stack_ts",
+      "started": "2026-11-18T06:33:24Z",
+      "seconds": 48,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-safe-area-native/20261118T063324Z-2836921-green.log",
+        "sha256": "91190944223720ea4c966bf32d1cdec0f46b595079560165960ddad0d6b600c0",
+        "bytes": 17053
+      },
+      "summary": {
+        "passed": 511,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "db1fe1c1160d25ca8fe50ed86e214258be76e254",
+      "dirty": false
+    },
+    {
+      "id": "15d81bc6-6868-45df-a6a7-5991b3436fb7",
+      "task": "P-safe-area-native",
+      "track": "p-safe-area-native",
+      "agent": "claude-opus-5-5 builder p-safe-area-native",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client && npm run build:admin && npm run build:android && npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-safe-area-native/frontend_stack_ts",
+      "started": "2026-11-18T06:34:19Z",
+      "seconds": 15,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-safe-area-native/20261118T063419Z-2867714-green.log",
+        "sha256": "ab30b2cc0f129ea9d7f5ac5ba2f2f430dfc9f23e8413e7a68cb6b122afbd5f48",
+        "bytes": 35644
+      },
+      "head": "db1fe1c1160d25ca8fe50ed86e214258be76e254",
+      "dirty": false
+    },
+    {
+      "id": "a371df84-b4b7-49e3-8d1b-2421ea46541f",
+      "task": "P-safe-area-native",
+      "track": "p-safe-area-native",
+      "agent": "claude-opus-5-5 builder p-safe-area-native",
+      "kind": "green",
+      "command": [
+        "env",
+        "ANDROID_HOME=/home/nethunter07/Android/Sdk",
+        "JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && BOE_CAPACITOR_VARIANT=client npx --no-install cap sync android && cd android && ./gradlew :app:compileDebugJavaWithJavac --no-daemon --console=plain"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-safe-area-native/frontend_stack_ts",
+      "started": "2026-11-18T06:34:45Z",
+      "seconds": 17,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-safe-area-native/20261118T063445Z-2881949-green.log",
+        "sha256": "a3a381279b29b68561cd2b9beeb6cf0087f5667882c5e73ded96443b238b8817",
+        "bytes": 9628
+      },
+      "note": "host: npm ci, cap sync android (client), gradle :app:compileDebugJavaWithJavac",
+      "head": "db1fe1c1160d25ca8fe50ed86e214258be76e254",
+      "dirty": false
+    },
+    {
+      "id": "d6a60d36-6a6c-47a7-a614-e0013df737d8",
+      "task": "P-safe-area-native",
+      "track": "p-safe-area-native",
+      "agent": "claude-opus-5-5 builder p-safe-area-native",
+      "kind": "green",
+      "command": [
+        "env",
+        "ANDROID_HOME=/home/nethunter07/Android/Sdk",
+        "JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64",
+        "./gradlew",
+        ":app:compileDebugJavaWithJavac",
+        "--rerun",
+        "--no-daemon",
+        "--console=plain"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-safe-area-native/frontend_stack_ts/android",
+      "started": "2026-11-18T06:35:13Z",
+      "seconds": 11,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-safe-area-native/20261118T063513Z-2893789-green.log",
+        "sha256": "ed50e2ff30ef656c81e6b64baaa0e53688c62f11879998a9b490aac3e432d460",
+        "bytes": 8320
+      },
+      "note": "host: forced recompile of MainActivity sources (--rerun) after cap sync",
+      "head": "db1fe1c1160d25ca8fe50ed86e214258be76e254",
+      "dirty": false
+    },
+    {
+      "id": "6da16395-b37c-46a2-8b60-56c5be6bbf0d",
+      "task": "P-admin-copy",
+      "track": "p-admin-copy",
+      "agent": "claude-opus-5-5 builder p-admin-copy",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-copy/packages/contracts",
+      "started": "2026-11-18T06:36:52Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-copy/20261118T063652Z-2935657-green.log",
+        "sha256": "884f68410746b24eaf377af54fd80244514be32a72256791d9a64d2d19afbdf8",
+        "bytes": 898
+      },
+      "head": "e198f4bd602d1dea955c91aa4f175e24cfb54529",
+      "dirty": false
+    },
+    {
+      "id": "bf65c749-5404-4f96-aaa7-66d6cef4ae6a",
+      "task": "P-admin-copy",
+      "track": "p-admin-copy",
+      "agent": "claude-opus-5-5 builder p-admin-copy",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-copy/frontend_stack_ts",
+      "started": "2026-11-18T06:37:04Z",
+      "seconds": 51,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-copy/20261118T063704Z-2941088-green.log",
+        "sha256": "5ce75f900411b5172a5048e8f2a8b06ada80630970f0cd337a86f8188a20c940",
+        "bytes": 17694
+      },
+      "summary": {
+        "passed": 511,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "e198f4bd602d1dea955c91aa4f175e24cfb54529",
+      "dirty": false
+    },
+    {
+      "id": "3a0b1806-1b82-4537-b213-1e4b0efead27",
+      "task": "P-admin-copy",
+      "track": "p-admin-copy",
+      "agent": "claude-opus-5-5 builder p-admin-copy",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-copy/frontend_stack_ts",
+      "started": "2026-11-18T06:38:03Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-copy/20261118T063803Z-2962478-green.log",
+        "sha256": "c162fc30296eff81cb860e5e431a30592f535a9aea9e33911dda1d343122ae02",
+        "bytes": 7360
+      },
+      "head": "e198f4bd602d1dea955c91aa4f175e24cfb54529",
+      "dirty": false
+    },
+    {
+      "id": "22192ded-d72e-4854-b7b4-1a84a3a0a9ee",
+      "task": "P-admin-copy",
+      "track": "p-admin-copy",
+      "agent": "claude-opus-5-5 builder p-admin-copy",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-copy/frontend_stack_ts",
+      "started": "2026-11-18T06:38:11Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-copy/20261118T063811Z-2965567-green.log",
+        "sha256": "3ec546039a37d6e292fcedce206a37cd761986346a2612953e8d438a052383d5",
+        "bytes": 10284
+      },
+      "head": "e198f4bd602d1dea955c91aa4f175e24cfb54529",
+      "dirty": false
+    },
+    {
+      "id": "a9c3ce88-a7db-4a13-820c-5892d1f8c578",
+      "task": "P-admin-copy",
+      "track": "p-admin-copy",
+      "agent": "claude-opus-5-5 builder p-admin-copy",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-copy/frontend_stack_ts",
+      "started": "2026-11-18T06:38:16Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-copy/20261118T063816Z-2966825-green.log",
+        "sha256": "9e3ea67044d15e8de23d27470aac69eeb3b89f9665ae55e47656e36090843147",
+        "bytes": 7525
+      },
+      "head": "e198f4bd602d1dea955c91aa4f175e24cfb54529",
+      "dirty": false
+    },
+    {
+      "id": "4e8f44bc-1519-4b7b-8ac4-c6148f9d4393",
+      "task": "P-admin-copy",
+      "track": "p-admin-copy",
+      "agent": "claude-opus-5-5 builder p-admin-copy",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-copy/frontend_stack_ts",
+      "started": "2026-11-18T06:38:20Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-copy/20261118T063820Z-2972181-green.log",
+        "sha256": "76ea953dae2410d6ce02d51cd6bb542d62339e178708a86f2dd4dfc0b13cabfc",
+        "bytes": 10665
+      },
+      "head": "e198f4bd602d1dea955c91aa4f175e24cfb54529",
+      "dirty": false
+    },
+    {
+      "id": "873cfaf1-6a69-45df-90f6-e4e9248a92df",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "agent": "claude-opus-5-5 builder p-shell-polish",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/app/routing/navOwner.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/frontend_stack_ts",
+      "started": "2026-11-18T06:41:05Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-shell-polish/20261118T064105Z-3065203-red.log",
+        "sha256": "0044407f20d39c430da720134585fe2325179b566d9ca0ae5646b1065bbe8db3",
+        "bytes": 10731
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 14,
+        "ignored": 0
+      },
+      "note": "red control: resolveNavOwner reduced to the pre-change exact match (route itself if it has nav, else null)",
+      "head": "13fec73bd2f91c417630e23da882e7467c2162db",
+      "dirty": true
+    },
+    {
+      "id": "87a1fa90-013b-45c8-aba4-40726901ebcb",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "agent": "claude-opus-5-5 builder p-shell-polish",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/app/routing/navOwner.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/frontend_stack_ts",
+      "started": "2026-11-18T06:41:16Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-shell-polish/20261118T064116Z-3070683-red.log",
+        "sha256": "556fc69dc164b739ab6ce265d4518cf902a9726c41dc4f7a9bd9341ab6d5bc04",
+        "bytes": 3497
+      },
+      "summary": {
+        "passed": 17,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: depth bound removed from the owner walk; the back-cycle case must fail",
+      "head": "13fec73bd2f91c417630e23da882e7467c2162db",
+      "dirty": true
+    },
+    {
+      "id": "a94b4415-1380-4da4-aea4-54f711a1b7ec",
+      "task": "P-safe-area-native",
+      "track": "p-safe-area-native",
+      "agent": "claude-opus-5-5 builder p-safe-area-native",
+      "kind": "green",
+      "command": [
+        "env",
+        "ANDROID_HOME=/home/nethunter07/Android/Sdk",
+        "./gradlew",
+        ":app:compileDebugJavaWithJavac",
+        "--rerun",
+        "--no-daemon",
+        "--console=plain"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-safe-area-native/frontend_stack_ts/android",
+      "started": "2026-11-18T06:41:17Z",
+      "seconds": 11,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-safe-area-native/20261118T064117Z-3071678-green.log",
+        "sha256": "ed50e2ff30ef656c81e6b64baaa0e53688c62f11879998a9b490aac3e432d460",
+        "bytes": 8320
+      },
+      "note": "host: forced recompile of the app Java sources (--rerun) at 0ad08cc",
+      "head": "0ad08ccac9055944e4aefa550033269afd532a7c",
+      "dirty": false
+    },
+    {
+      "id": "53815aca-03c8-4a38-b883-684d6c4c8ec2",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "agent": "claude-opus-5-5 builder p-shell-polish",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/packages/contracts",
+      "started": "2026-11-18T06:41:27Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-shell-polish/20261118T064127Z-3076464-green.log",
+        "sha256": "884f68410746b24eaf377af54fd80244514be32a72256791d9a64d2d19afbdf8",
+        "bytes": 898
+      },
+      "head": "13fec73bd2f91c417630e23da882e7467c2162db",
+      "dirty": false
+    },
+    {
+      "id": "3f3a8ecb-d51a-4188-bbd3-88928ccbf1a5",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/packages/contracts",
+      "started": "2026-11-18T06:41:32Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T064132Z-3079349-green.log",
+        "sha256": "884f68410746b24eaf377af54fd80244514be32a72256791d9a64d2d19afbdf8",
+        "bytes": 898
+      },
+      "head": "981ff23d463689d324a041aaacd9f7fe5ac09f65",
+      "dirty": false
+    },
+    {
+      "id": "0671774a-4bc0-4142-a28c-e6ca20abc4ee",
+      "task": "P-safe-area-native",
+      "track": "p-safe-area-native",
+      "agent": "claude-opus-5-5 builder p-safe-area-native",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-safe-area-native/frontend_stack_ts",
+      "started": "2026-11-18T06:41:34Z",
+      "seconds": 67,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-safe-area-native/20261118T064134Z-3080344-green.log",
+        "sha256": "8216164548501aa740ee2ea96d628fcabef8d0fd5ee8f9c02415391e099b955a",
+        "bytes": 18589
+      },
+      "summary": {
+        "passed": 511,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "0ad08ccac9055944e4aefa550033269afd532a7c",
+      "dirty": false
+    },
+    {
+      "id": "340736b7-f46c-49f0-9c23-2093d9dae1b1",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "agent": "claude-opus-5-5 builder p-shell-polish",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/frontend_stack_ts",
+      "started": "2026-11-18T06:41:41Z",
+      "seconds": 79,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-shell-polish/20261118T064141Z-3084049-green.log",
+        "sha256": "18c0bb0ffb0405ec98b5f0e59a9035772ec95eb16682f82ea970d4f94fa6dd59",
+        "bytes": 20014
+      },
+      "summary": {
+        "passed": 529,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "13fec73bd2f91c417630e23da882e7467c2162db",
+      "dirty": false
+    },
+    {
+      "id": "bd9d85aa-2f37-41e9-9462-3821190d9456",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:41:46Z",
+      "seconds": 78,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T064146Z-3085992-green.log",
+        "sha256": "10901aa25a3273c4dd834c58bb2672e3b3d02ad8dec63384dfd7cca6d7b52abe",
+        "bytes": 18953
+      },
+      "summary": {
+        "passed": 514,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "981ff23d463689d324a041aaacd9f7fe5ac09f65",
+      "dirty": false
+    },
+    {
+      "id": "4f258a1a-c016-4a1c-a468-1a77a3606080",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:43:11Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T064311Z-3114888-green.log",
+        "sha256": "ac8a4770407d50d6b032e09cac756c76bb3f0f65669c931b5271821faf2b6bef",
+        "bytes": 7360
+      },
+      "head": "981ff23d463689d324a041aaacd9f7fe5ac09f65",
+      "dirty": false
+    },
+    {
+      "id": "7a6fe276-1489-459a-8b61-08090867a819",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:43:16Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T064316Z-3116337-green.log",
+        "sha256": "9ddc9c38e99ff0d68b4372eb40c277bdefaa7edd98521f20d643573e75695705",
+        "bytes": 10189
+      },
+      "head": "981ff23d463689d324a041aaacd9f7fe5ac09f65",
+      "dirty": false
+    },
+    {
+      "id": "7f881a97-b86d-4fa3-abda-448738b67272",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "agent": "claude-opus-5-5 builder p-shell-polish",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client && npm run build:admin && npm run build:android && npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/frontend_stack_ts",
+      "started": "2026-11-18T06:43:07Z",
+      "seconds": 20,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-shell-polish/20261118T064307Z-3112724-green.log",
+        "sha256": "69022f6111679045af31b91085ed2ed16d4603dff20beb5b108980ea359fe352",
+        "bytes": 35644
+      },
+      "head": "13fec73bd2f91c417630e23da882e7467c2162db",
+      "dirty": false
+    },
+    {
+      "id": "03c82294-39fb-41dc-b73c-3d4f9fa48e31",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:43:22Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T064322Z-3119798-green.log",
+        "sha256": "3b54bdfb5713a60b1b3e2fee2dec7442e5683431bbbee212145242ce21bfece4",
+        "bytes": 7525
+      },
+      "head": "981ff23d463689d324a041aaacd9f7fe5ac09f65",
+      "dirty": false
+    },
+    {
+      "id": "0334055a-df4b-40b0-adc3-40228f8c1616",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:43:27Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T064327Z-3123033-green.log",
+        "sha256": "253591b8c911f0d61e8178cda4b1414ed552874fd405066a54917b8bab49235d",
+        "bytes": 10570
+      },
+      "head": "981ff23d463689d324a041aaacd9f7fe5ac09f65",
+      "dirty": false
+    },
+    {
+      "id": "23f00256-70ec-48ef-bac0-ce4e8bb2e08d",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/app/providers/NetworkStatusProvider.test.tsx -t 'clears the offline state as soon as the browser reports the connection back'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:43:41Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T064341Z-3129526-red.log",
+        "sha256": "8a53242949351e3f06b53f85265d71b8fdf6f9225d1159bf615b760e86a93871",
+        "bytes": 1701
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 2
+      },
+      "head": "981ff23d463689d324a041aaacd9f7fe5ac09f65",
+      "dirty": true
+    },
+    {
+      "id": "dfae3aa8-6aee-40a9-84f0-5c3ae53a15de",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/app/providers/NetworkStatusProvider.test.tsx -t 're-reads the failed queries when the connection returns'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:43:44Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T064344Z-3131329-red.log",
+        "sha256": "4858e2c8ef392b12a4c3edd3c134acb263aed7076ddeca017bf4e21616d6fb0b",
+        "bytes": 2604
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 2
+      },
+      "head": "981ff23d463689d324a041aaacd9f7fe5ac09f65",
+      "dirty": true
+    },
+    {
+      "id": "6d5166bb-30ea-4170-a000-81249ade6e20",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/app/providers/NetworkStatusProvider.test.tsx -t 'keeps checking every 10 s while the device still reports online'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:43:48Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T064348Z-3134071-red.log",
+        "sha256": "c9914f82384729d5df39e89d568211d7daa17854481c1f9ab816af3f09c899c2",
+        "bytes": 1870
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 2
+      },
+      "head": "981ff23d463689d324a041aaacd9f7fe5ac09f65",
+      "dirty": true
+    },
+    {
+      "id": "b51659f6-3ab3-4b8e-968f-0ae468501c2f",
+      "task": "P-admin-copy",
+      "track": "p-admin-copy",
+      "agent": "claude-opus-5-5 builder p-admin-copy",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-copy/frontend_stack_ts",
+      "started": "2026-11-18T06:43:42Z",
+      "seconds": 69,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-copy/20261118T064342Z-3130418-green.log",
+        "sha256": "beda2ba08e0befce30ea697439c0565baf90d5669a186d9e80b35d5020eee289",
+        "bytes": 18700
+      },
+      "summary": {
+        "passed": 511,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "816adb1ad5d829b93e754ef17ca825609332b0c9",
+      "dirty": false
+    },
+    {
+      "id": "53d5a1e6-73e9-4314-8e3e-97c36fd5c776",
+      "task": "P-admin-copy",
+      "track": "p-admin-copy",
+      "agent": "claude-opus-5-5 builder p-admin-copy",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-copy/frontend_stack_ts",
+      "started": "2026-11-18T06:44:57Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-copy/20261118T064457Z-3168405-green.log",
+        "sha256": "6f432718469d01f4c206a4c5c172fff42e3a7d0422880581d1a0734efa5d7f9f",
+        "bytes": 7525
+      },
+      "head": "816adb1ad5d829b93e754ef17ca825609332b0c9",
+      "dirty": false
+    },
+    {
+      "id": "90dbabdd-e56a-40b0-ab3a-f4d52754dc13",
+      "task": "P-admin-copy",
+      "track": "p-admin-copy",
+      "agent": "claude-opus-5-5 builder p-admin-copy",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-copy/frontend_stack_ts",
+      "started": "2026-11-18T06:45:06Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-copy/20261118T064506Z-3172754-green.log",
+        "sha256": "f6b5623be55f362eb40c64d98dfd0018ef058ddc9ed2b013368ce33a986aacd2",
+        "bytes": 10665
+      },
+      "head": "816adb1ad5d829b93e754ef17ca825609332b0c9",
+      "dirty": false
+    },
+    {
+      "id": "5137cf33-8cd9-4275-9039-b1f817821e8d",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/packages/contracts",
+      "started": "2026-11-18T06:46:01Z",
+      "seconds": 15,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T064601Z-3198538-green.log",
+        "sha256": "86e422c45b60a332428e8ecdefb182d3a6994dabeb4e09aab5179d88409efb84",
+        "bytes": 568
+      },
+      "head": "cb26208aa0b7031eab17590babd9f073543073b5",
+      "dirty": false
+    },
+    {
+      "id": "34a12c01-c1cf-4b53-95a7-281a60417306",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T06:46:22Z",
+      "seconds": 60,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T064622Z-3211258-green.log",
+        "sha256": "c5551767a1dc5af6c6652e5253e4ccf4cebd56eff63aca254167fe03f793ea1c",
+        "bytes": 18640
+      },
+      "summary": {
+        "passed": 524,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "cb26208aa0b7031eab17590babd9f073543073b5",
+      "dirty": false
+    },
+    {
+      "id": "7d92380e-a050-4d5c-bd0b-b3a1789eb4f6",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T06:47:29Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T064728Z-3238060-green.log",
+        "sha256": "09992d86bf1cc4b29067da4b6de5e25d22ec83c308a5f18b6d3872ce61ea781d",
+        "bytes": 7525
+      },
+      "head": "cb26208aa0b7031eab17590babd9f073543073b5",
+      "dirty": false
+    },
+    {
+      "id": "c0c93d2c-8e7d-474b-be0e-0af5d022f62c",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T06:47:34Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T064734Z-3239544-green.log",
+        "sha256": "49cda54ceefb2000af50b025ba56bd52a36974057118a6a05cb0e3bf92c16b10",
+        "bytes": 10570
+      },
+      "head": "cb26208aa0b7031eab17590babd9f073543073b5",
+      "dirty": false
+    },
+    {
+      "id": "34aa1ab7-8f53-4656-b11a-a821ce84cfe2",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T06:47:52Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T064752Z-3249661-green.log",
+        "sha256": "870d5e38b2b9fb6a54dc88c01547640e10face64aa37fc67b72a4d3cec1ee030",
+        "bytes": 7360
+      },
+      "head": "cb26208aa0b7031eab17590babd9f073543073b5",
+      "dirty": false
+    },
+    {
+      "id": "503e4bc7-d706-473d-86d6-bce385d4d6da",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T06:47:56Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T064756Z-3251568-green.log",
+        "sha256": "dc7db518a8bb67cd3f691b98e0e19126081de0f0fe3f46e82b71178fddd59254",
+        "bytes": 10189
+      },
+      "head": "cb26208aa0b7031eab17590babd9f073543073b5",
+      "dirty": false
+    },
+    {
+      "id": "85a3af7f-aa1a-45fc-b855-32edb31834a6",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/platform/keyboardReveal.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T06:48:10Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T064810Z-3257841-red.log",
+        "sha256": "6c3d52a11765dfede38d3a262b02bbd712520b179ca93e8e4604c7439662b127",
+        "bytes": 2504
+      },
+      "summary": {
+        "passed": 12,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "mutation: drop the no-keyboard guard in planReveal",
+      "head": "cb26208aa0b7031eab17590babd9f073543073b5",
+      "dirty": true
+    },
+    {
+      "id": "9ef1a948-6280-4a76-be77-67c23b2981ef",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/platform/keyboardReveal.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T06:48:25Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T064825Z-3265198-red.log",
+        "sha256": "d4959cfb9bd30c0eba6787d233d56f5865a2437b4130727c6f8ddc2a48b6ccdd",
+        "bytes": 2544
+      },
+      "summary": {
+        "passed": 12,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "mutation: hasRoom always true, so a scroller without room keeps the delta",
+      "head": "cb26208aa0b7031eab17590babd9f073543073b5",
+      "dirty": true
+    },
+    {
+      "id": "24b447ae-f5fd-4aea-9ffc-6b9cac258d99",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/platform/keyboardReveal.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T06:48:41Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T064841Z-3275895-red.log",
+        "sha256": "2c62522b6a6625bb40c2d7cd24783b08ca0accc59ecd286f0c8f3d3cee9527dc",
+        "bytes": 4295
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "mutation: ignore scroll ancestors, always scroll the document",
+      "head": "cb26208aa0b7031eab17590babd9f073543073b5",
+      "dirty": true
+    },
+    {
+      "id": "83de0c24-6faf-488e-b200-2253b1bd5cb3",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/platform/keyboardReveal.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T06:48:43Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T064843Z-3277827-red.log",
+        "sha256": "612236f7415d236e8178803077f759ebd121f9505514212b5412836c6b416e31",
+        "bytes": 3266
+      },
+      "summary": {
+        "passed": 11,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "mutation: never bring a field down from under the top bar",
+      "head": "cb26208aa0b7031eab17590babd9f073543073b5",
+      "dirty": true
+    },
+    {
+      "id": "9e5f9983-0077-4078-bef5-d28c72eb737b",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/frontend_stack_ts",
+      "started": "2026-11-18T06:48:05Z",
+      "seconds": 64,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-shell-polish/20261118T064805Z-3256061-green.log",
+        "sha256": "85ef5e4166df540b933914c0e36fd2fbb55fa7012b624c537d7c9af082ed7e3c",
+        "bytes": 19175
+      },
+      "summary": {
+        "passed": 529,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "be2c22d7ddc8b49363fa1c678f5b4d7d4194407c",
+      "dirty": false
+    },
+    {
+      "id": "24692c85-2a31-4d14-b2eb-82d8937917ff",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client && npm run build:admin && npm run build:android && npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/frontend_stack_ts",
+      "started": "2026-11-18T06:49:15Z",
+      "seconds": 16,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-shell-polish/20261118T064915Z-3292358-green.log",
+        "sha256": "e8b46df48feaeba42a4881eabf75900121af59cf80df046db4dec987a22fbe98",
+        "bytes": 35644
+      },
+      "head": "be2c22d7ddc8b49363fa1c678f5b4d7d4194407c",
+      "dirty": false
+    },
+    {
+      "id": "c11fd155-105b-446b-ab8d-3133dbfeb63c",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:51:53Z",
+      "seconds": 63,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T065153Z-3358402-green.log",
+        "sha256": "817e1caad1049b5a8c598d1781fbe92979a609222148b161c433638ced2261c1",
+        "bytes": 18098
+      },
+      "summary": {
+        "passed": 516,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "7f08114bae88f8e1632c87ff834f7bf6d99467da",
+      "dirty": false
+    },
+    {
+      "id": "59652b31-aad3-4dde-9762-3ba740df4175",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:52:56Z",
+      "seconds": 3,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T065256Z-3386533-green.log",
+        "sha256": "e0383f95ddf05e79a44ca8fb3acf7b1c05a9bcd084cad81f0caacd5c91a0843c",
+        "bytes": 7360
+      },
+      "head": "7f08114bae88f8e1632c87ff834f7bf6d99467da",
+      "dirty": false
+    },
+    {
+      "id": "4efbe680-7b45-42dd-897f-38b557c70c01",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:52:59Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T065259Z-3388105-green.log",
+        "sha256": "916fae868a9f9d028b519d698543ad5ad0d2dc56e55f606a3a2a21fe09e6d670",
+        "bytes": 10189
+      },
+      "head": "7f08114bae88f8e1632c87ff834f7bf6d99467da",
+      "dirty": false
+    },
+    {
+      "id": "c6bd0a0b-d671-4cc9-a1b0-01cf37fcb537",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:53:04Z",
+      "seconds": 3,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T065304Z-3391104-green.log",
+        "sha256": "46db79b947aa4a70329220cee828705212f7fe0dafb51d0744c55a24609229eb",
+        "bytes": 7525
+      },
+      "head": "7f08114bae88f8e1632c87ff834f7bf6d99467da",
+      "dirty": false
+    },
+    {
+      "id": "1d392bcc-4b7b-4733-b03b-a29897d2132d",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:53:07Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T065307Z-3393216-green.log",
+        "sha256": "d2f251f197d22ef4b5909ba7cd04ac936dfd0eb70cc5ad3b60bcc91588577349",
+        "bytes": 10570
+      },
+      "head": "7f08114bae88f8e1632c87ff834f7bf6d99467da",
+      "dirty": false
+    },
+    {
+      "id": "4529fc31-9f3f-4e1f-a461-181ff548ea63",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/app/providers/QueryProvider.test.tsx src/app/providers/NetworkStatusProvider.test.tsx -t 'is held as not confirmed, is not sent again when the connection returns'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:53:23Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T065323Z-3398628-red.log",
+        "sha256": "3038e738cb1f36ef45073fbec4bdce6297ba3433b50aaf72ab8fc1baff610114",
+        "bytes": 2079
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 4
+      },
+      "head": "7f08114bae88f8e1632c87ff834f7bf6d99467da",
+      "dirty": true
+    },
+    {
+      "id": "696a8fb9-7d05-46d4-94c8-c55dd1ef8b67",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/app/providers/QueryProvider.test.tsx src/app/providers/NetworkStatusProvider.test.tsx -t 'after the browser reported offline and its online event never came'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:53:27Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T065327Z-3400709-red.log",
+        "sha256": "40f022a1c7f5c6e828365c902771bac0cdfeac2b0123219c041d007da58499bc",
+        "bytes": 2156
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 4
+      },
+      "head": "7f08114bae88f8e1632c87ff834f7bf6d99467da",
+      "dirty": true
+    },
+    {
+      "id": "e8a43c96-4af7-47da-a184-8a83a88fc825",
+      "task": "P-offline-recovery",
+      "track": "p-offline-recovery",
+      "agent": "claude-opus-5-5 builder p-offline-recovery",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/app/providers/QueryProvider.test.tsx src/app/providers/NetworkStatusProvider.test.tsx -t 'after the browser reported offline and its online event never came'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-offline-recovery/frontend_stack_ts",
+      "started": "2026-11-18T06:53:30Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-offline-recovery/20261118T065330Z-3402097-red.log",
+        "sha256": "66f221c0a77b4d90559a47c49801ab83ea87498cccb7bf2246d34427da66298d",
+        "bytes": 2156
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 4
+      },
+      "head": "7f08114bae88f8e1632c87ff834f7bf6d99467da",
+      "dirty": true
+    },
+    {
+      "id": "957ae0c7-b6e7-4b35-b20b-fa9025b10bea",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/support/phoneContact.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/frontend_stack_ts",
+      "started": "2026-11-18T06:54:46Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-shell-polish/20261118T065446Z-3435091-red.log",
+        "sha256": "ffdfeebb1327084cdd2b2fbb27aa14e3dd7373d64a90512fae5318f84b691bf6",
+        "bytes": 5634
+      },
+      "summary": {
+        "passed": 9,
+        "failed": 12,
+        "ignored": 0
+      },
+      "note": "red control: isPhoneContact reverted to the be2c22d rule (tel: href, label exactly Phone, whole value of phone characters with >= 10 digits)",
+      "head": "adf05beb2f0be9d52c353784cecfe5f764cac566",
+      "dirty": true
+    },
+    {
+      "id": "8a59b14f-b472-4bde-b774-f1b06c2f688a",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/packages/contracts",
+      "started": "2026-11-18T06:55:08Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T065508Z-3445519-green.log",
+        "sha256": "5343dd4bc902ff6732147a0d64aa59b698cb7ef5395b8af3b1cbb7dc0b04796a",
+        "bytes": 568
+      },
+      "note": "contracts build at e360683",
+      "head": "e36068377ccf081047ad520703872a2bd5e7aa0a",
+      "dirty": false
+    },
+    {
+      "id": "025e82f6-375a-4035-ba5f-264ae9e7cf49",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/frontend_stack_ts",
+      "started": "2026-11-18T06:54:55Z",
+      "seconds": 76,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-shell-polish/20261118T065455Z-3439346-green.log",
+        "sha256": "e20c6b377654beeb7fe7124f6ef131c452a8b0e7e6e6522a128083b6faa7a6bb",
+        "bytes": 24393
+      },
+      "summary": {
+        "passed": 550,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "adf05beb2f0be9d52c353784cecfe5f764cac566",
+      "dirty": false
+    },
+    {
+      "id": "b622af9b-c3f2-44be-80b0-f29d91dfcda4",
+      "task": "P-shell-polish",
+      "track": "p-shell-polish",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin && npm run build:android && npm run build:android:admin && npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-shell-polish/frontend_stack_ts",
+      "started": "2026-11-18T06:56:19Z",
+      "seconds": 43,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-shell-polish/20261118T065619Z-3462500-green.log",
+        "sha256": "3f1c50a6323ab68e71277f7865708ecdc20ccea47e70921f9bdd33a4ae0d827f",
+        "bytes": 35645
+      },
+      "head": "adf05beb2f0be9d52c353784cecfe5f764cac566",
+      "dirty": false
+    },
+    {
+      "id": "38e6583e-8f7e-4037-a6cb-61e8718bffa9",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T06:55:21Z",
+      "seconds": 113,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T065521Z-3450228-green.log",
+        "sha256": "15c61054c8b158b19f684d0bc121fb57036e2b629ea2666a0125145962d4f16b",
+        "bytes": 18449
+      },
+      "summary": {
+        "passed": 1223,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend npm ci && npm run check at e360683",
+      "head": "e36068377ccf081047ad520703872a2bd5e7aa0a",
+      "dirty": false
+    },
+    {
+      "id": "a4f22ba3-d60d-48e4-8aee-a2c89dc6eaf1",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/whats-new/releasedNotes.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T06:58:57Z",
+      "seconds": 12,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T065857Z-3556234-red.log",
+        "sha256": "d3892c16d47121f6dbd04674a8931c8f390cb1c5831ba71077f66aabb9468f3e",
+        "bytes": 1609
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: one word removed from a released client 0.18.1 line fails the freeze test",
+      "head": "e6c46f9794616d4daf8ab12d67ceaea462484e8a",
+      "dirty": true
+    },
+    {
+      "id": "2a39855a-b817-40d8-88fe-358c51cef4de",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T06:57:21Z",
+      "seconds": 114,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T065721Z-3480717-green.log",
+        "sha256": "2a5e9a681b25ef008374073047fcafc890fa2916a93d3e3f8216c445bd66db7f",
+        "bytes": 51748
+      },
+      "summary": {
+        "passed": 634,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "recorded as other, not green: it exited 1; backend full integration suite (coverage off, finding-22) at e360683",
+      "head": "e36068377ccf081047ad520703872a2bd5e7aa0a",
+      "dirty": false
+    },
+    {
+      "id": "2de110f7-aac1-4989-a27d-ef368667376a",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/whats-new/releasedNotes.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T06:59:20Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T065920Z-3569648-red.log",
+        "sha256": "25e73273e07c6a0c71e2446d408c49fe3d819ea4d02eda779ec9b73d41368e8a",
+        "bytes": 1569
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: deleting the released admin 0.16.0 entry fails the freeze test",
+      "head": "e6c46f9794616d4daf8ab12d67ceaea462484e8a",
+      "dirty": true
+    },
+    {
+      "id": "b286d9b4-92e2-47ee-bf73-ca6673ccca2b",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/whats-new/releasedNotes.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T06:59:34Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T065934Z-3573802-red.log",
+        "sha256": "b61f1c22ecf96a2916451bf869d4e5f24d392d061e932d0ecee28fa4c8efc29a",
+        "bytes": 1949
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control: VERSION set to 0.18.3 with no 0.18.3 rows in releasedNotes.json fails the freeze test and prints the rows to add",
+      "head": "e6c46f9794616d4daf8ab12d67ceaea462484e8a",
+      "dirty": true
+    },
+    {
+      "id": "9d030521-f9e3-4e99-b02c-720b28d699d0",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/whats-new/WhatsNewPrompt.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T06:59:46Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T065946Z-3577341-red.log",
+        "sha256": "63c4216f60f0543ba5d191799a910275aa9fb9a247d4ba86e1cb2052ae1999c6",
+        "bytes": 40087
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 6,
+        "ignored": 0
+      },
+      "note": "red control: unseenEntries keeping the seen entry fails the dev tester case (saw 0.18.1, sees only 0.18.3)",
+      "head": "e6c46f9794616d4daf8ab12d67ceaea462484e8a",
+      "dirty": true
+    },
+    {
+      "id": "f11d6561-9fed-4034-9f0f-debde769340c",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/whats-new/WhatsNewPrompt.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T06:59:52Z",
+      "seconds": 9,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T065952Z-3579996-red.log",
+        "sha256": "83c6b7a222112e1918091a16154c354334e64ef7d6074af6723dd7e8d1a9b6f3",
+        "bytes": 13228
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: unseenEntries showing only the newest with no record fails the production upgrader case",
+      "head": "e6c46f9794616d4daf8ab12d67ceaea462484e8a",
+      "dirty": true
+    },
+    {
+      "id": "a89311f9-a0c9-4052-800a-dcd57151793c",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/whats-new/WhatsNewPrompt.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T07:00:01Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T070001Z-3582199-red.log",
+        "sha256": "0d7d9d4e3cfa4362713ce9d4a996315b3c6b8f60120902049f47a09894148f51",
+        "bytes": 16993
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: unseenEntries showing every entry for an unknown id fails the unknown-id case",
+      "head": "e6c46f9794616d4daf8ab12d67ceaea462484e8a",
+      "dirty": true
+    },
+    {
+      "id": "0d860d97-b6d2-4e88-ad70-edd10130cdbf",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/packages/contracts",
+      "started": "2026-11-18T07:00:26Z",
+      "seconds": 24,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T070026Z-3590259-green.log",
+        "sha256": "22f5f19ccaa35d4035d25cb7604b00fdc0484056bf5eee9b416ac88cba3ed129",
+        "bytes": 568
+      },
+      "note": "contracts build on e6c46f9",
+      "head": "e6c46f9794616d4daf8ab12d67ceaea462484e8a",
+      "dirty": false
+    },
+    {
+      "id": "4b1a5607-ca6f-4b18-8117-d588da76d091",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T07:00:49Z",
+      "seconds": 123,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T070049Z-3594628-green.log",
+        "sha256": "d2c6b038f19e8739e6ba6d1a56ad5c61f6140eab3ad46e0a678250fa9e524882",
+        "bytes": 18560
+      },
+      "summary": {
+        "passed": 1223,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "recorded as other, not green: it exited 1; backend npm ci && npm run check at 06c3261",
+      "head": "06c32615c87066276136db9b3488916fed8981ae",
+      "dirty": false
+    },
+    {
+      "id": "b300f7ad-f73c-450f-ac06-3e277c2f8546",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T07:00:55Z",
+      "seconds": 159,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T070055Z-3596272-green.log",
+        "sha256": "b7b705ea8a41368265e253fe35b2f6d7bc0d5e4abd36dfe601178b31924d7434",
+        "bytes": 25870
+      },
+      "summary": {
+        "passed": 517,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci and npm run check on e6c46f9",
+      "head": "e6c46f9794616d4daf8ab12d67ceaea462484e8a",
+      "dirty": false
+    },
+    {
+      "id": "a07f087d-d617-4beb-b1ca-f9a985059d84",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T07:02:52Z",
+      "seconds": 96,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T070252Z-3619779-green.log",
+        "sha256": "29343329ad19e1187a81abfb285f5fbd3a8fc544572bcd951fca2a091c2da966",
+        "bytes": 40538
+      },
+      "summary": {
+        "passed": 635,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend full integration suite (coverage off, finding-22) at 06c3261",
+      "head": "06c32615c87066276136db9b3488916fed8981ae",
+      "dirty": false
+    },
+    {
+      "id": "ac65cb93-77d6-4b70-80fc-b97462c423ca",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client && npm run build:admin && npm run build:android && npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T07:03:41Z",
+      "seconds": 52,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T070340Z-3645499-green.log",
+        "sha256": "18a1a1affb9b9fc0e6a059d937e42e6c2a374d0d0a25af86b3d73613d5dce637",
+        "bytes": 35646
+      },
+      "note": "build:client, build:admin, build:android and build:android:admin on e6c46f9",
+      "head": "e6c46f9794616d4daf8ab12d67ceaea462484e8a",
+      "dirty": false
+    },
+    {
+      "id": "f00726e3-9f6c-437d-8f11-fac42e9f34c8",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T07:02:46Z",
+      "seconds": 146,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T070246Z-3618779-green.log",
+        "sha256": "66c59064168926be26658092999af72528f9c4ad79e65f67da20996f74140582",
+        "bytes": 20517
+      },
+      "summary": {
+        "passed": 527,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "e11db3e04cd64041cc10948a5383e72c42598759",
+      "dirty": false
+    },
+    {
+      "id": "e58a532c-9664-45a9-bea8-7385ce925d7c",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T07:05:12Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T070512Z-3696136-green.log",
+        "sha256": "5b482f7bad87f7f4ddd5bd5a1ed2ddab1b97a6848d5f2c47c6cab5854273c32c",
+        "bytes": 7525
+      },
+      "head": "e11db3e04cd64041cc10948a5383e72c42598759",
+      "dirty": false
+    },
+    {
+      "id": "8a93430c-bec7-47cf-a58e-a499e9a56937",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T07:05:18Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T070518Z-3698739-green.log",
+        "sha256": "ff629e6aca6fa920b49ef6bf26c4a4b7da78d5c2f87dd8ebe645f069fac42452",
+        "bytes": 10570
+      },
+      "head": "e11db3e04cd64041cc10948a5383e72c42598759",
+      "dirty": false
+    },
+    {
+      "id": "41cd4e70-64b6-40d6-ae24-ecef24d0e6cc",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T07:05:25Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T070525Z-3702333-green.log",
+        "sha256": "f4d75561fe39f5e583a9fcfbe1cb456e603191724d69239a7974c63a96a72c01",
+        "bytes": 7360
+      },
+      "head": "e11db3e04cd64041cc10948a5383e72c42598759",
+      "dirty": false
+    },
+    {
+      "id": "e786d13f-f5e6-40e3-96f3-788433235168",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T07:05:31Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T070531Z-3706545-green.log",
+        "sha256": "9f5b93df06acd4cdb32bc196df47bb10a455682b49851695bf953d9c219efc99",
+        "bytes": 10189
+      },
+      "head": "e11db3e04cd64041cc10948a5383e72c42598759",
+      "dirty": false
+    },
+    {
+      "id": "e83ad5f5-7baa-4fd4-b476-85bee6fb93fd",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/platform/keyboardReveal.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T07:05:52Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T070552Z-3713893-red.log",
+        "sha256": "8bcde64909c9b4320f0569be4bce6a0e6de7af1abb353c6dce3da400d971e2d5",
+        "bytes": 2916
+      },
+      "summary": {
+        "passed": 15,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "mutation: submit buttons never join the reveal",
+      "head": "e11db3e04cd64041cc10948a5383e72c42598759",
+      "dirty": true
+    },
+    {
+      "id": "c3cf017b-19e0-4d0f-82fb-83cdd2f566da",
+      "task": "P-keyboard-fields",
+      "track": "p-keyboard-fields",
+      "agent": "claude-opus-5-5 builder p-keyboard-fields",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/platform/keyboardReveal.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-keyboard-fields/frontend_stack_ts",
+      "started": "2026-11-18T07:05:55Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-keyboard-fields/20261118T070555Z-3714909-red.log",
+        "sha256": "f50f2127a26e03a9d06a79f2bc066444f4f6437b7123a1259bb1d1f69d7cab15",
+        "bytes": 2691
+      },
+      "summary": {
+        "passed": 15,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "mutation: top floor ignores the status bar",
+      "head": "e11db3e04cd64041cc10948a5383e72c42598759",
+      "dirty": true
+    },
+    {
+      "id": "49213de1-7fa2-4633-a542-6511c2da5d33",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T07:05:17Z",
+      "seconds": 68,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T070517Z-3697787-green.log",
+        "sha256": "7bb4945069c175f8e9318fd046a36eb5e8149b526b3e1514abc2eaeeb34964b7",
+        "bytes": 17924
+      },
+      "summary": {
+        "passed": 1223,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend npm ci && npm run check at 06c3261, rerun after a smoke start timeout under host load 46",
+      "head": "06c32615c87066276136db9b3488916fed8981ae",
+      "dirty": false
+    },
+    {
+      "id": "11ee1b66-17cd-4351-8f6c-ae9825479ea8",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/growthEmails.integration.test.ts -t \"queues one email|emails each\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T07:06:35Z",
+      "seconds": 9,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T070635Z-3727131-red.log",
+        "sha256": "a21c8019e04db8db70c8087d5f16d60b26906ae0285c0089986a921798be3bb8",
+        "bytes": 6339
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 4,
+        "ignored": 5
+      },
+      "note": "red control: both queueInvestmentGrowthMail calls removed from adminClientGrowthRoutes.ts; queue-count tests",
+      "head": "06c32615c87066276136db9b3488916fed8981ae",
+      "dirty": true
+    },
+    {
+      "id": "3d26925c-b3fb-484d-9bb6-bcd3ee13e2d5",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/growthEmails.integration.test.ts -t \"one investor.s .* queues one email\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T07:06:58Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T070658Z-3735650-red.log",
+        "sha256": "153f3bb2622d9e7766c1f22e3367ad58082778ac2367a3f77dac2ba51394531a",
+        "bytes": 4345
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 2,
+        "ignored": 7
+      },
+      "note": "red control: one-investor mail queued after the idempotent commit in its own transaction, dedup key per request; replay test",
+      "head": "06c32615c87066276136db9b3488916fed8981ae",
+      "dirty": true
+    },
+    {
+      "id": "f021245d-9ab0-4748-a3e9-5030a39f5d1e",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/growthEmails.integration.test.ts -t \"deployed worker composition\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T07:07:17Z",
+      "seconds": 12,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T070717Z-3742115-red.log",
+        "sha256": "9a8ee81a424374b1a5073445b1b9f53bfc2626fc2a01b91cdb3dcc8aa108e988",
+        "bytes": 3264
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 8
+      },
+      "note": "red control: investment_growth guard removed from the email worker composition; composed-worker test",
+      "head": "06c32615c87066276136db9b3488916fed8981ae",
+      "dirty": true
+    },
+    {
+      "id": "3379aa1f-6834-49be-ae0c-3fa5cb749ae6",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/whats-new/releasedNotes.test.ts",
+        "-t",
+        "DEC-73"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T07:15:43Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T071543Z-3886210-red.log",
+        "sha256": "51872db025c7b3544704ae86ded86ffe57da7a8dcc23db90e20f016a3044ad2c",
+        "bytes": 3276
+      },
+      "summary": {
+        "passed": 2,
+        "failed": 2,
+        "ignored": 6
+      },
+      "note": "red control: a client 0.18.2 entry fails the DEC-73 shipped-notes test (dev tester at 0.18.1 would see 0.18.3 and 0.18.2)",
+      "head": "34f2cceecb3836779a77e978589da5fd024b44c4",
+      "dirty": true
+    },
+    {
+      "id": "e6da3630-95ac-40e2-b9a5-ced482b60353",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T07:15:52Z",
+      "seconds": 90,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T071552Z-3890380-green.log",
+        "sha256": "755914ef7ac567372c5cf007ee3ab13cf2752751e22ca83f60889bd833014bde",
+        "bytes": 18326
+      },
+      "summary": {
+        "passed": 521,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci and npm run check on 34f2cce",
+      "head": "34f2cceecb3836779a77e978589da5fd024b44c4",
+      "dirty": false
+    },
+    {
+      "id": "1d6dd67a-c5aa-4584-807e-bc4216b42517",
+      "task": "P-whatsnew-history",
+      "track": "p-whatsnew-history",
+      "agent": "claude-opus-5-5 builder p-whatsnew-history",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client && npm run build:admin && npm run build:android && npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-whatsnew-history/frontend_stack_ts",
+      "started": "2026-11-18T07:17:27Z",
+      "seconds": 29,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-whatsnew-history/20261118T071727Z-3918867-green.log",
+        "sha256": "576bf9bcf4e540515b731d2a0cb6388ba8071713d895a00bfacdd73e8f06e6ba",
+        "bytes": 35644
+      },
+      "note": "build:client, build:admin, build:android and build:android:admin on 34f2cce",
+      "head": "34f2cceecb3836779a77e978589da5fd024b44c4",
+      "dirty": false
+    },
+    {
+      "id": "47faa6c7-9d4f-48dc-bf97-40b507373bed",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/packages/contracts",
+      "started": "2026-11-18T07:29:59Z",
+      "seconds": 48,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T072959Z-4142465-green.log",
+        "sha256": "12527ceae6e29142c6ab376199880e9b4ae146983ca23024faa99a1e3043528e",
+        "bytes": 8330
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "contracts npm ci && npm run check at c406c9d",
+      "head": "c406c9db424c06e8453ea38072e3c8dcac3298a5",
+      "dirty": false
+    },
+    {
+      "id": "09367bc5-4e83-4bca-a98a-287292139df3",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T07:30:57Z",
+      "seconds": 82,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T073057Z-4157099-green.log",
+        "sha256": "eebf67c06db5be43b43c73f24af24d024d4b4e7ffc42dbc1dc0e13cca80afb60",
+        "bytes": 17798
+      },
+      "summary": {
+        "passed": 1223,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend npm ci && npm run check at c406c9d",
+      "head": "c406c9db424c06e8453ea38072e3c8dcac3298a5",
+      "dirty": false
+    },
+    {
+      "id": "2b84b61a-3dba-4adf-82ab-fc6f98960874",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T07:32:19Z",
+      "seconds": 77,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T073219Z-4182718-green.log",
+        "sha256": "24c9e32e2ab138a888e7745ae4525f62a4890bf8c19145f29da6f471cbe7a496",
+        "bytes": 33070
+      },
+      "summary": {
+        "passed": 636,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend full integration suite (coverage off, finding-22) at c406c9d",
+      "head": "c406c9db424c06e8453ea38072e3c8dcac3298a5",
+      "dirty": false
+    },
+    {
+      "id": "6d22c740-633f-49ec-aca6-7e868036d27d",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/growthEmails.integration.test.ts -t \"collective rate update emails each\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T07:34:01Z",
+      "seconds": 10,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T073401Z-73137-red.log",
+        "sha256": "aa5ec4f72c435cb163cd6ddcdff2d6bbbc56ae72b03cd341e0cfd7e2dacac83f",
+        "bytes": 3625
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 8
+      },
+      "note": "red control: fund filter dropped from listValues in clientGrowthMailRepository.ts; two-fund collective test",
+      "head": "c406c9db424c06e8453ea38072e3c8dcac3298a5",
+      "dirty": true
+    },
+    {
+      "id": "78906210-8aed-4a88-b53d-c4b4c2a7f431",
+      "task": "P-growth-emails",
+      "track": "p-growth-emails",
+      "agent": "claude-opus-5-5 builder p-growth-emails",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/growthEmails.integration.test.ts -t \"one investor write that rolls back\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-growth-emails/backend_controller",
+      "started": "2026-11-18T07:34:23Z",
+      "seconds": 11,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-growth-emails/20261118T073423Z-83053-red.log",
+        "sha256": "f2c8f17bbfa66a6c0a14bb510d4aa1fb4a910655a7a191be8eeebf7e0c2798b2",
+        "bytes": 3171
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 8
+      },
+      "note": "red control: one-investor mail queued in its own transaction inside execute, so it commits when the growth write rolls back; rollback test",
+      "head": "c406c9db424c06e8453ea38072e3c8dcac3298a5",
+      "dirty": true
+    },
+    {
+      "id": "4bced039-7055-4599-90e6-6185bc8e1061",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "agent": "claude-opus-5-5 builder p-invest-fixes",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/packages/contracts",
+      "started": "2026-11-18T07:42:13Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-fixes/20261118T074213Z-198085-green.log",
+        "sha256": "c8064694624569571498f752db919f8aaae8905d44d6767cf7684046779602c2",
+        "bytes": 568
+      },
+      "head": "bce93dd4fdf26b198190df49a0938cebeea25569",
+      "dirty": false
+    },
+    {
+      "id": "a774cde7-4fca-4c33-b38c-f4fce4519208",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "agent": "claude-opus-5-5 builder p-invest-fixes",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/frontend_stack_ts",
+      "started": "2026-11-18T07:42:31Z",
+      "seconds": 92,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-fixes/20261118T074231Z-205737-green.log",
+        "sha256": "9b1a8185be36ecdf3bb20901298e9ca74a583e49ac4a8ed2efd572e62961c57d",
+        "bytes": 21815
+      },
+      "summary": {
+        "passed": 515,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "recorded as other, not green: it exited 1",
+      "head": "bce93dd4fdf26b198190df49a0938cebeea25569",
+      "dirty": false
+    },
+    {
+      "id": "a2ebacd3-847a-4c6b-a470-5baf15058fab",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "agent": "claude-opus-5-5 builder p-invest-fixes",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/backend_controller",
+      "started": "2026-11-18T07:42:30Z",
+      "seconds": 98,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-fixes/20261118T074230Z-205164-green.log",
+        "sha256": "325a4f9f253a4d33032f8af49027b0746a7953a59d99a1100ca921f2ef6d7024",
+        "bytes": 18322
+      },
+      "summary": {
+        "passed": 1212,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "bce93dd4fdf26b198190df49a0938cebeea25569",
+      "dirty": false
+    },
+    {
+      "id": "136110ff-0239-4475-9775-695066ba041c",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "agent": "claude-opus-5-5 builder p-invest-fixes",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/frontend_stack_ts",
+      "started": "2026-11-18T07:44:43Z",
+      "seconds": 85,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-fixes/20261118T074443Z-250289-green.log",
+        "sha256": "091fe60752ce03732466356ee9162003496a299eb29c64f5d6eea94cab2928f3",
+        "bytes": 22135
+      },
+      "summary": {
+        "passed": 516,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "rerun alone: the first run failed only app/routing/guards.test.tsx while the backend check ran in parallel; that file passed 3 of 3 alone",
+      "head": "bce93dd4fdf26b198190df49a0938cebeea25569",
+      "dirty": false
+    },
+    {
+      "id": "708e40a9-34d2-4f07-814a-febe78765389",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "agent": "claude-opus-5-5 builder p-invest-fixes",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/frontend_stack_ts",
+      "started": "2026-11-18T07:46:29Z",
+      "seconds": 12,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-fixes/20261118T074629Z-274027-green.log",
+        "sha256": "94344d51ac5d59944feceadf61c6f090d69f2d4660370f8a4ec8bbb2af31e451",
+        "bytes": 7455
+      },
+      "head": "bce93dd4fdf26b198190df49a0938cebeea25569",
+      "dirty": false
+    },
+    {
+      "id": "0f7cd999-167f-4b9a-9d8c-d01cf69f004a",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "agent": "claude-opus-5-5 builder p-invest-fixes",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/frontend_stack_ts",
+      "started": "2026-11-18T07:46:41Z",
+      "seconds": 25,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-fixes/20261118T074641Z-281784-green.log",
+        "sha256": "434a20f5558747aa04bf0eeb353de45b1af5e6899dc5525a331ff9c2be4f9191",
+        "bytes": 10285
+      },
+      "head": "bce93dd4fdf26b198190df49a0938cebeea25569",
+      "dirty": false
+    },
+    {
+      "id": "da14491a-01ab-4971-83ba-db2834502f7b",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "agent": "claude-opus-5-5 builder p-invest-fixes",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/frontend_stack_ts",
+      "started": "2026-11-18T07:47:06Z",
+      "seconds": 21,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-fixes/20261118T074706Z-302045-green.log",
+        "sha256": "5593e5b841bf88752d34ccda08829b8d283ded68447b6302ac4adee9c267c23c",
+        "bytes": 7621
+      },
+      "head": "bce93dd4fdf26b198190df49a0938cebeea25569",
+      "dirty": false
+    },
+    {
+      "id": "d2c92d82-e279-40c3-9eeb-5179e9e83191",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "agent": "claude-opus-5-5 builder p-invest-fixes",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/frontend_stack_ts",
+      "started": "2026-11-18T07:47:27Z",
+      "seconds": 26,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-fixes/20261118T074727Z-319486-green.log",
+        "sha256": "1183b13b0b34401830340ba6c2692e16975e83fd5d777e5efb4d9e66967a48df",
+        "bytes": 10666
+      },
+      "head": "bce93dd4fdf26b198190df49a0938cebeea25569",
+      "dirty": false
+    },
+    {
+      "id": "1f27ade9-768a-415a-9704-4393f2776b60",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "agent": "claude-opus-5-5 builder p-invest-fixes",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/backend_controller",
+      "started": "2026-11-18T07:46:30Z",
+      "seconds": 91,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-fixes/20261118T074630Z-274544-green.log",
+        "sha256": "87b83db7843487ab13b0adc7266b385c26cb693ea35721d1125dffe47a408a8f",
+        "bytes": 36614
+      },
+      "summary": {
+        "passed": 631,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "bce93dd4fdf26b198190df49a0938cebeea25569",
+      "dirty": false
+    },
+    {
+      "id": "8d0c62aa-a263-4267-812d-ade020ebfbd6",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/platform/webVersion.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T07:48:14Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T074814Z-350556-red.log",
+        "sha256": "29a697d7b9d635c0e2d2a62761196b38f5e4920071e16413dca410c9d04bb580",
+        "bytes": 3812
+      },
+      "summary": {
+        "passed": 11,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control 1: compareDeployedBuild never reports replaced (the pre-fix state: a newer deploy goes unnoticed)",
+      "head": "3dcc4e3224f7a54f036e9670016270d74dbf473e",
+      "dirty": true
+    },
+    {
+      "id": "4e2ff829-1839-4b4d-a364-780665826302",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/platform/webVersion.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T07:48:28Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T074828Z-356264-red.log",
+        "sha256": "9af67da332f30c7f2f60a31008a744923f17720d2e714d6644dbc592c6c64348",
+        "bytes": 5549
+      },
+      "summary": {
+        "passed": 11,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control 2: watchWebVersion without the native skip (Capacitor bridge or https://localhost origin)",
+      "head": "3dcc4e3224f7a54f036e9670016270d74dbf473e",
+      "dirty": true
+    },
+    {
+      "id": "b0a2317a-4ccb-48f7-8d17-b0a9ecbe78c4",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/packages/contracts",
+      "started": "2026-11-18T07:48:41Z",
+      "seconds": 12,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T074841Z-360050-green.log",
+        "sha256": "c8064694624569571498f752db919f8aaae8905d44d6767cf7684046779602c2",
+        "bytes": 568
+      },
+      "note": "contracts npm ci && npm run build",
+      "head": "3dcc4e3224f7a54f036e9670016270d74dbf473e",
+      "dirty": false
+    },
+    {
+      "id": "400626ce-e027-4686-b748-9d903fd840a4",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T07:48:58Z",
+      "seconds": 100,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T074858Z-363315-green.log",
+        "sha256": "08631396ebc31f65e2c62307b79e6f80f33914a8c153f093ea8fa2228c99af9b",
+        "bytes": 22017
+      },
+      "summary": {
+        "passed": 568,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci && npm run check",
+      "head": "3dcc4e3224f7a54f036e9670016270d74dbf473e",
+      "dirty": false
+    },
+    {
+      "id": "f1aa7179-c7bd-429d-b503-fd9fe96fde86",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "timeout",
+        "1200",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T07:50:46Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T075046Z-386383-green.log",
+        "sha256": "699a1e29b60a59b6b16edc29651487f9e1667790881fb53b066ca67f1a0c7eb7",
+        "bytes": 7456
+      },
+      "note": "frontend npm run build:client",
+      "head": "3dcc4e3224f7a54f036e9670016270d74dbf473e",
+      "dirty": false
+    },
+    {
+      "id": "dd7e5dce-9361-4e0a-b90d-3553118ab774",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "timeout",
+        "1200",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T07:50:54Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T075054Z-388658-green.log",
+        "sha256": "0ffe4f5fbd0f91f5c0f608e2c71abc4911d37a383ef2075d4118807e0ca7bf0f",
+        "bytes": 10379
+      },
+      "note": "frontend npm run build:admin",
+      "head": "3dcc4e3224f7a54f036e9670016270d74dbf473e",
+      "dirty": false
+    },
+    {
+      "id": "d2caadfc-2a47-4ee8-b77a-5501f32c58c5",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "timeout",
+        "1200",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T07:51:04Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T075104Z-391279-green.log",
+        "sha256": "edebd3cb0d92b93d0a41b73a5ad4e6d267afc9b004ff367a3d0768203532d7c5",
+        "bytes": 7621
+      },
+      "note": "frontend npm run build:android",
+      "head": "3dcc4e3224f7a54f036e9670016270d74dbf473e",
+      "dirty": false
+    },
+    {
+      "id": "148efc5e-bb76-4a97-a547-c1d33896fac4",
+      "task": "P-invest-fixes",
+      "track": "p-invest-fixes",
+      "agent": "claude-opus-5-5 builder p-invest-fixes",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run --config vitest.config.ts src/domain/admin/recordContribution.test.ts; u=$?; npm run test:integration -- test/integration/finalEntryReversal.integration.test.ts --coverage.enabled=false; i=$?; echo \"unit exit $u, integration exit $i\"; [ $u -ne 0 ] && [ $i -ne 0 ] && exit 1; exit 0"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-fixes/backend_controller",
+      "started": "2026-11-18T07:51:04Z",
+      "seconds": 16,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-fixes/20261118T075104Z-391325-red.log",
+        "sha256": "e37ddb9ea1c2dfd0b0c1f59b61f0607535905fba0cedc97d73ef0922da7c1253",
+        "bytes": 7956
+      },
+      "summary": {
+        "passed": 20,
+        "failed": 7,
+        "ignored": 0
+      },
+      "note": "red control: the final-owner guard removed from reverseLedgerEntry.ts (assertReversible and isEntryReversible); the new integration test and unit cases must fail",
+      "head": "bce93dd4fdf26b198190df49a0938cebeea25569",
+      "dirty": true
+    },
+    {
+      "id": "cfab996d-cdc5-477f-8ee9-2329a5018043",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "timeout",
+        "1200",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T07:51:14Z",
+      "seconds": 13,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T075114Z-395074-green.log",
+        "sha256": "22b03ec3716b16b2d20479cd4b64f3d008f0e568718837f86d6958f483a211d1",
+        "bytes": 10760
+      },
+      "note": "frontend npm run build:android:admin",
+      "head": "3dcc4e3224f7a54f036e9670016270d74dbf473e",
+      "dirty": false
+    },
+    {
+      "id": "153ebdca-ca9f-4240-806f-e10771baf770",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "evidence",
+      "command": [
+        "bash",
+        ".temp/p-web-version/nginx-headers.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version",
+      "started": "2026-11-18T07:49:33Z",
+      "seconds": 114,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T074933Z-368843-evidence.log",
+        "sha256": "b8631f4ec4696d5bdf819e1274fdf2cf16c8439a4ad1f18946ef2ab7bc7e6c83",
+        "bytes": 2288
+      },
+      "note": "frontend image (admin, 0.18.3-dev.1) built from the Dockerfile and run hardened as release_manager runs it; curl -I on index, SPA fallback, assets, version.json, health",
+      "head": "3dcc4e3224f7a54f036e9670016270d74dbf473e",
+      "dirty": false
+    },
+    {
+      "id": "1014f290-270c-41b9-8e08-f1f35bb4425e",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/platform/webVersion.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T08:00:24Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T080024Z-589373-red.log",
+        "sha256": "0a124276253c5998e7265878663cdf1f35d9d43c83dc853279f4d44e84e0c048",
+        "bytes": 3810
+      },
+      "summary": {
+        "passed": 11,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "fccf097 red control 1: compareDeployedBuild never reports replaced",
+      "head": "fccf0979356667c7e097cda252ae4fa3fb910616",
+      "dirty": true
+    },
+    {
+      "id": "fec407ab-10f5-4e1e-b239-0ccb02cfbce8",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/platform/webVersion.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T08:00:27Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T080027Z-590767-red.log",
+        "sha256": "83044175d80b8eaf88c49192dbbe17c2fedbd9ac241dcd4d178d8b3e47a78b88",
+        "bytes": 5550
+      },
+      "summary": {
+        "passed": 11,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "fccf097 red control 2: watchWebVersion without the native skip",
+      "head": "fccf0979356667c7e097cda252ae4fa3fb910616",
+      "dirty": true
+    },
+    {
+      "id": "9d1dde47-5929-4c5c-8942-85eef014d04f",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/packages/contracts",
+      "started": "2026-11-18T08:00:38Z",
+      "seconds": 14,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T080038Z-596472-green.log",
+        "sha256": "86e422c45b60a332428e8ecdefb182d3a6994dabeb4e09aab5179d88409efb84",
+        "bytes": 568
+      },
+      "note": "fccf097 contracts npm ci && npm run build",
+      "head": "fccf0979356667c7e097cda252ae4fa3fb910616",
+      "dirty": false
+    },
+    {
+      "id": "3c3b4db3-c29d-41bd-8e9d-98967cd58626",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T08:00:52Z",
+      "seconds": 110,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T080052Z-600127-green.log",
+        "sha256": "9f5ea75e6137b12b315194baca5c2cac84c725c0b907355ac1f69fed0d436b5f",
+        "bytes": 21121
+      },
+      "summary": {
+        "passed": 568,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "fccf097 frontend npm ci && npm run check",
+      "head": "fccf0979356667c7e097cda252ae4fa3fb910616",
+      "dirty": false
+    },
+    {
+      "id": "fd5e8499-5fc5-4567-bc0b-fc254052292e",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "timeout",
+        "1200",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T08:02:48Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T080248Z-621254-green.log",
+        "sha256": "fb1dc77d300f839198935683d728562540591409ed2669fd0cb86dc5d8d78090",
+        "bytes": 7456
+      },
+      "note": "fccf097 frontend npm run build:client",
+      "head": "fccf0979356667c7e097cda252ae4fa3fb910616",
+      "dirty": false
+    },
+    {
+      "id": "122513cc-0ab8-42f7-9f98-9ee0dae76d99",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "timeout",
+        "1200",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T08:02:57Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T080257Z-623620-green.log",
+        "sha256": "3b696186dc3639033101d0315ad912903d285d46e07e217023fd4b8c2e0358d9",
+        "bytes": 10379
+      },
+      "note": "fccf097 frontend npm run build:admin",
+      "head": "fccf0979356667c7e097cda252ae4fa3fb910616",
+      "dirty": false
+    },
+    {
+      "id": "2d1bcd36-64ac-4377-9f60-3f61802f6a1b",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "timeout",
+        "1200",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T08:03:07Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T080307Z-626108-green.log",
+        "sha256": "9ceef695fc5dad7d6b4417793a19f899c62d4f251fb67afa59dd4ea2d4218e1e",
+        "bytes": 7621
+      },
+      "note": "fccf097 frontend npm run build:android",
+      "head": "fccf0979356667c7e097cda252ae4fa3fb910616",
+      "dirty": false
+    },
+    {
+      "id": "0e57b775-a9d0-4e53-b6ed-2fb4e7ed0b96",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "timeout",
+        "1200",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version/frontend_stack_ts",
+      "started": "2026-11-18T08:03:14Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T080314Z-627960-green.log",
+        "sha256": "1c4abe997a6bd85e55f74be82ef005aaafb087f2ff5562c23e007a13df460b2c",
+        "bytes": 10760
+      },
+      "note": "fccf097 frontend npm run build:android:admin",
+      "head": "fccf0979356667c7e097cda252ae4fa3fb910616",
+      "dirty": false
+    },
+    {
+      "id": "757b4df3-503b-4e5f-be3b-932826a03e96",
+      "task": "P-web-version",
+      "track": "p-web-version",
+      "agent": "claude-opus-5-5 builder p-web-version",
+      "kind": "evidence",
+      "command": [
+        "bash",
+        ".temp/p-web-version/nginx-headers.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-web-version",
+      "started": "2026-11-18T08:03:29Z",
+      "seconds": 11,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-web-version/20261118T080329Z-631894-evidence.log",
+        "sha256": "d00844a97a117e95bef9ea7fb985c0b573d33f4d2c5136a1945cf94d174f700c",
+        "bytes": 2312
+      },
+      "note": "fccf097 frontend image (admin, 0.18.3-dev.1) run hardened; curl -I incl. /version.json no-cache",
+      "head": "fccf0979356667c7e097cda252ae4fa3fb910616",
+      "dirty": false
+    },
+    {
+      "id": "9490026e-ad6f-4820-8e28-9f8c5012ca9f",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/packages/contracts",
+      "started": "2026-11-18T08:04:56Z",
+      "seconds": 71,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T080456Z-658233-green.log",
+        "sha256": "f7ade6f6db576aa9a521b40f1beb7cb5c6982204aa59cdf36be2d1f5a5e461dc",
+        "bytes": 9009
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": false
+    },
+    {
+      "id": "923802f6-ba79-4799-b20f-668db8c95689",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:06:13Z",
+      "seconds": 96,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T080613Z-684457-green.log",
+        "sha256": "c38d709e4d829cec1d7f3e50ce126b43a69b0b3e1b92a27554433e82e63673b8",
+        "bytes": 21653
+      },
+      "summary": {
+        "passed": 557,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": false
+    },
+    {
+      "id": "8010876d-784f-462f-9f91-58e2b4a517df",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:07:54Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T080754Z-704218-green.log",
+        "sha256": "3bf78d692a315d1632fb8a30059d835ee73b5e67581d42f966426e5615068ebc",
+        "bytes": 7360
+      },
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": false
+    },
+    {
+      "id": "4c43f77b-db31-4527-a7fc-a71eddcd5aaf",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:08:01Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T080801Z-706001-green.log",
+        "sha256": "23d65650c557f7569c1cd8a1adcce87561db4305fd332f8c66ff7b6741245c4b",
+        "bytes": 10284
+      },
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": false
+    },
+    {
+      "id": "5a65fcba-8bd8-40aa-acb6-f300b19bb8fa",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:08:08Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T080808Z-711435-green.log",
+        "sha256": "644b849f72676a1c314f143e03487fd365c437818778cc4ef411a8866a03d2d4",
+        "bytes": 7525
+      },
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": false
+    },
+    {
+      "id": "1ecb4eb3-95bf-4bbd-9881-71c85b99a707",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:08:15Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T080815Z-714264-green.log",
+        "sha256": "6d39db73ac1421438dbc324904a523ff38a61444526c739d525e477a721b9755",
+        "bytes": 10665
+      },
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": false
+    },
+    {
+      "id": "f8695a63-0408-4f03-8e68-cb5de697c700",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:08:28Z",
+      "seconds": 94,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T080828Z-718272-green.log",
+        "sha256": "d20ba73a7a0017a3b771e281543dcac7a5486d930d1f25bd7a8cd41154117eef",
+        "bytes": 18683
+      },
+      "summary": {
+        "passed": 1209,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": false
+    },
+    {
+      "id": "6020e3fe-d1a6-4bae-864f-34954c3a3a5f",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:10:08Z",
+      "seconds": 72,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081008Z-737647-green.log",
+        "sha256": "29f7b824ef5bab7e64c4226dccf8818ca53430ec10dd9c81b024584b58431e63",
+        "bytes": 31991
+      },
+      "summary": {
+        "passed": 633,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": false
+    },
+    {
+      "id": "866b2de6-4d9c-430b-8a26-fee32bced84a",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:11:33Z",
+      "seconds": 10,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081133Z-809065-red.log",
+        "sha256": "fd1dfe4ccff13aaae4d70f15aea1d55493773ec66e690fd34c95895466ce4257",
+        "bytes": 6332
+      },
+      "summary": {
+        "passed": 2,
+        "failed": 5,
+        "ignored": 0
+      },
+      "note": "red control no-step-up",
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": true
+    },
+    {
+      "id": "bd217e99-e0f7-428f-9451-21cf24d74db5",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:11:43Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081143Z-814447-red.log",
+        "sha256": "ae479c5d479aee4e5b7d6facca03e27d9bbdc91e9d082a90317d8611530e8a32",
+        "bytes": 2718
+      },
+      "summary": {
+        "passed": 6,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control reusable",
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": true
+    },
+    {
+      "id": "21b502cf-2824-460a-ad70-efa3a35077aa",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:11:52Z",
+      "seconds": 9,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081152Z-818235-red.log",
+        "sha256": "a880ef94369c745f3145c05809bf9a86162ce9e5d4bfd7a1e3f90f4980bb40a0",
+        "bytes": 2848
+      },
+      "summary": {
+        "passed": 6,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control any-session",
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": true
+    },
+    {
+      "id": "99d547d4-2deb-40f6-aeea-28c0ebf0f685",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:12:01Z",
+      "seconds": 9,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081201Z-824550-red.log",
+        "sha256": "0aeeb5a4be1d2d1c40ed85fa3d64996f038973682b07d766729c2bd482cf8fbf",
+        "bytes": 2739
+      },
+      "summary": {
+        "passed": 6,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control no-expiry",
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": true
+    },
+    {
+      "id": "953ed9db-97af-48a1-9982-b26ffd4b1fb7",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:12:17Z",
+      "seconds": 11,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081217Z-832163-red.log",
+        "sha256": "c42a2ef23f780df08263c97e8d80f5493b6efcd0ab78f6551b743f3c4d8f7f79",
+        "bytes": 2830
+      },
+      "summary": {
+        "passed": 6,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control no-throttle",
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": true
+    },
+    {
+      "id": "72fa2269-8e97-4b61-968c-14c9d0466ca8",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:12:28Z",
+      "seconds": 11,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081228Z-837005-red.log",
+        "sha256": "2807e7df42fbfd3bf3fefbed894612b1b4079d22b0443c4fc20658f18f682c2c",
+        "bytes": 2704
+      },
+      "summary": {
+        "passed": 6,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control unaudited-refusal",
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": true
+    },
+    {
+      "id": "0ad62f04-57b5-4f75-89e5-f738beffa3b1",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:12:39Z",
+      "seconds": 11,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081239Z-841240-red.log",
+        "sha256": "5ffaf28aa9825c403a0c9d81f2d289dd1fabbb951c003818e1bd996943f85501",
+        "bytes": 3562
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control consume-before-receipt",
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": true
+    },
+    {
+      "id": "d3e404d4-0027-431e-8dab-2e51517ac6f5",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/app-config"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:12:57Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081257Z-845993-red.log",
+        "sha256": "a651701134c2398f2ac14e86b4b381b8591f0e507f8c45eb924c0bcbb199bd0b",
+        "bytes": 16269
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control no-version-warning",
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": true
+    },
+    {
+      "id": "3d973467-838c-4ff1-bd75-3e6a764472d0",
+      "task": "P-admin-nav",
+      "track": "p-admin-nav",
+      "agent": "claude-opus-5-5 builder p-admin-nav",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-nav/packages/contracts",
+      "started": "2026-11-18T08:12:46Z",
+      "seconds": 15,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-nav/20261118T081246Z-843651-green.log",
+        "sha256": "86e422c45b60a332428e8ecdefb182d3a6994dabeb4e09aab5179d88409efb84",
+        "bytes": 568
+      },
+      "head": "452865a088ad7819f4bfe86758d8f293e5692933",
+      "dirty": false
+    },
+    {
+      "id": "c72efaee-787b-42c9-96da-3a82888bd428",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/app-config"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:13:03Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081303Z-848082-red.log",
+        "sha256": "619567e0d92553784f865ef4ac864b89bd2fd5b94a21533240bacb3abd0383c7",
+        "bytes": 2188
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control utc-planned-start",
+      "head": "9317ba94ada665720a8013ee45b9cee9e3b0e7ad",
+      "dirty": true
+    },
+    {
+      "id": "6b30878b-b9f3-4a05-8004-7424d879a314",
+      "task": "P-admin-nav",
+      "track": "p-admin-nav",
+      "agent": "claude-opus-5-5 builder p-admin-nav",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-nav/frontend_stack_ts",
+      "started": "2026-11-18T08:13:07Z",
+      "seconds": 95,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-nav/20261118T081307Z-849718-green.log",
+        "sha256": "095471209510873a59858bfa6784fc1f8e64e267083b9ff6b8755d519b2a68f5",
+        "bytes": 20490
+      },
+      "summary": {
+        "passed": 581,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "452865a088ad7819f4bfe86758d8f293e5692933",
+      "dirty": false
+    },
+    {
+      "id": "6623ba81-c6ce-48e7-8b71-f3980842c362",
+      "task": "P-admin-nav",
+      "track": "p-admin-nav",
+      "agent": "claude-opus-5-5 builder p-admin-nav",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-nav/frontend_stack_ts",
+      "started": "2026-11-18T08:15:18Z",
+      "seconds": 14,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-nav/20261118T081518Z-870621-green.log",
+        "sha256": "fcc8af183851789e06031496ae24cb9c63561115fdc7425d1d163ab12c2c356c",
+        "bytes": 7360
+      },
+      "head": "452865a088ad7819f4bfe86758d8f293e5692933",
+      "dirty": false
+    },
+    {
+      "id": "5544108e-5dbc-474d-930d-a0f9fefc7f41",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:13:50Z",
+      "seconds": 112,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081350Z-859351-green.log",
+        "sha256": "d02d85007f7597fdc9030452568f0f5e4e888429ad1fa37407b53e08e4d9ee1b",
+        "bytes": 21832
+      },
+      "summary": {
+        "passed": 557,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "4135763a0dce24a73ec254f0b7c0f38e474511cc",
+      "dirty": false
+    },
+    {
+      "id": "44e9d16f-eedc-475e-9e8b-a866f9734a31",
+      "task": "P-admin-nav",
+      "track": "p-admin-nav",
+      "agent": "claude-opus-5-5 builder p-admin-nav",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-nav/frontend_stack_ts",
+      "started": "2026-11-18T08:15:32Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-nav/20261118T081532Z-872983-green.log",
+        "sha256": "2f13e4e3e676b55cf82f8a5957259125b6352d0cdfe8b0b11862d1b328b4dc00",
+        "bytes": 10284
+      },
+      "head": "452865a088ad7819f4bfe86758d8f293e5692933",
+      "dirty": false
+    },
+    {
+      "id": "6bedfcc1-93a6-4702-8130-97e14a785cb5",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:15:42Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081542Z-875144-green.log",
+        "sha256": "9a2d254490075a48d2d9f287772d3646376a7aacfa3ff251ebd78dd7d6d8aea3",
+        "bytes": 7360
+      },
+      "head": "4135763a0dce24a73ec254f0b7c0f38e474511cc",
+      "dirty": false
+    },
+    {
+      "id": "ba8abc8c-4616-4b40-b6f1-1477b36fcb2d",
+      "task": "P-admin-nav",
+      "track": "p-admin-nav",
+      "agent": "claude-opus-5-5 builder p-admin-nav",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-nav/frontend_stack_ts",
+      "started": "2026-11-18T08:15:42Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-nav/20261118T081542Z-874960-green.log",
+        "sha256": "0bb7dbecff7e2d15645d2289a00e57758a7422adcf0100d8ee6352a1c45ea7ac",
+        "bytes": 7525
+      },
+      "head": "452865a088ad7819f4bfe86758d8f293e5692933",
+      "dirty": false
+    },
+    {
+      "id": "666ab855-1656-4b5a-8022-002c7b24b099",
+      "task": "P-admin-nav",
+      "track": "p-admin-nav",
+      "agent": "claude-opus-5-5 builder p-admin-nav",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-nav/frontend_stack_ts",
+      "started": "2026-11-18T08:15:49Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-nav/20261118T081549Z-876772-green.log",
+        "sha256": "d1ba7c97b644db7aa340270179e2f4f722ebc22217d42173aa0d0c9d91ddc1d0",
+        "bytes": 10665
+      },
+      "head": "452865a088ad7819f4bfe86758d8f293e5692933",
+      "dirty": false
+    },
+    {
+      "id": "ab72af8a-491e-48d6-b392-976bf53278e8",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:15:49Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081549Z-876583-green.log",
+        "sha256": "12fd927555818358c9b2617c1ac59fad9eab8bf4ba839c40ccc74484a7770e91",
+        "bytes": 10284
+      },
+      "head": "4135763a0dce24a73ec254f0b7c0f38e474511cc",
+      "dirty": false
+    },
+    {
+      "id": "092bad61-e0dd-4e51-9ab5-f319f6ca0203",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:15:58Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081558Z-878839-green.log",
+        "sha256": "8eb79c6b3857eb1680f83477372a81fdbb36bb85e39f519977b475ddf426942b",
+        "bytes": 7525
+      },
+      "head": "4135763a0dce24a73ec254f0b7c0f38e474511cc",
+      "dirty": false
+    },
+    {
+      "id": "78c655c3-5e00-43d2-ad43-c2366fa6603a",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:16:06Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T081606Z-881176-green.log",
+        "sha256": "22c76990871c7a934a4ac13024ef62038ded3b0363ca757260e709b07d961330",
+        "bytes": 10665
+      },
+      "head": "4135763a0dce24a73ec254f0b7c0f38e474511cc",
+      "dirty": false
+    },
+    {
+      "id": "027351d1-3617-46ab-ae27-7e016fe235b4",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/packages/contracts",
+      "started": "2026-11-18T08:32:09Z",
+      "seconds": 42,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083209Z-1107418-green.log",
+        "sha256": "1d974d981483f7e3fc1b388580ecd1bf296082bd67c609e9d97029d5dafe9c1d",
+        "bytes": 8910
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": false
+    },
+    {
+      "id": "c1d3b4a6-dd48-4db2-b518-80e29c0cd91c",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:32:51Z",
+      "seconds": 64,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083251Z-1120071-green.log",
+        "sha256": "ffcc6ce569a6aef692e3206bf35215666812ec33b81aacfb2305d3037fbc4bd5",
+        "bytes": 18038
+      },
+      "summary": {
+        "passed": 1223,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": false
+    },
+    {
+      "id": "48bd4a30-0829-4f81-99d4-c6b8c455f558",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:34:02Z",
+      "seconds": 59,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083402Z-1138623-green.log",
+        "sha256": "ee4273b80a885d4959038b44803628898a7ff66502d35caa0a159d5b289a5e79",
+        "bytes": 26541
+      },
+      "summary": {
+        "passed": 647,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": false
+    },
+    {
+      "id": "86b01649-5fc5-49fc-b55d-555251739a63",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:35:23Z",
+      "seconds": 65,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083523Z-1195789-green.log",
+        "sha256": "fd8d731f9baae6c34acd621b3ea7a91e0d26b90996277724841072aacc437d6f",
+        "bytes": 18460
+      },
+      "summary": {
+        "passed": 583,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": false
+    },
+    {
+      "id": "08cea2f1-58b1-46b9-8473-5e0865376372",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:36:28Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083628Z-1206188-green.log",
+        "sha256": "14e2a20cae66dd84a609cd61cf09cd03a9871fe88c5b3928ed77f2f9a2b8c083",
+        "bytes": 7360
+      },
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": false
+    },
+    {
+      "id": "41ca4d69-ca77-4c6d-9ea5-a21aff4de23e",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:36:34Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083634Z-1207964-green.log",
+        "sha256": "cab80880d756943dadfa0490ac972ec52e9a4ad671afc799acf141c46291202d",
+        "bytes": 10284
+      },
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": false
+    },
+    {
+      "id": "d6a55fa2-c223-4f8b-88d7-bb540267a770",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:36:41Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083641Z-1210110-green.log",
+        "sha256": "f9c40f1ba5a9977ed69e9bf00ddc6147ab09f5c7bb815d31d8d4feae2ed0cbc1",
+        "bytes": 7525
+      },
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": false
+    },
+    {
+      "id": "942f33d8-6a9c-419c-a4ea-00bec65674a2",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:36:47Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083647Z-1211955-green.log",
+        "sha256": "88ef0655fca16211134dd9cede03712ef065cf9e5bbc2e7b93ad1a0e92e9c9d3",
+        "bytes": 10665
+      },
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": false
+    },
+    {
+      "id": "797e96b7-7ef9-49f2-acb6-8378efca601c",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:37:39Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083739Z-1220401-red.log",
+        "sha256": "214ab3a9983344ad7505fb20d602cb68c3dafeff7c45a171f8b583a13db01e5d",
+        "bytes": 3394
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control unbound-body (review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "d19fcabe-a74b-41d8-9730-54da997e02e0",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:37:46Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083746Z-1222921-red.log",
+        "sha256": "cdd699062b7e740124e3d2535f53f6c5029d14d2e98213777920526a43fd7e4d",
+        "bytes": 3550
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control successes-count (review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "bae53ece-fccf-4e1e-8eee-75d0b8256be7",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:37:53Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083753Z-1225284-red.log",
+        "sha256": "210ad5747f96aeea8c7b947a14db3d2210722aea604183b133424bf6c093beb4",
+        "bytes": 4340
+      },
+      "summary": {
+        "passed": 9,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control no-throttle (review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "1a4f8992-8cf3-4fa1-ae5a-785e57a271fa",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:38:00Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083800Z-1227797-red.log",
+        "sha256": "c8be5807faf79a1cf20be7f6ffd15000dc18673f6a87e832a352595e7cc5c610",
+        "bytes": 3437
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control no-permission-gate (review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "3901961e-8d7c-41a8-aaf2-31fea436dff0",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:38:08Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083808Z-1230242-red.log",
+        "sha256": "5cceee9b9c00a90d8f9156a207396af742a47b0c2d474d11d10f6bcc0c475f22",
+        "bytes": 3395
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control no-stale-check (review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "1208a746-3cd7-40ac-a9fa-28c90d7044b3",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:38:15Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083815Z-1233199-red.log",
+        "sha256": "2ea50fd6327d5765e7e906e46831a7c14320ba043f1aa3190a52547e1e3efddb",
+        "bytes": 5024
+      },
+      "summary": {
+        "passed": 8,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "red control consume-before-receipt (review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "cb3c8531-cf0d-405d-81b0-d0f79c81b28f",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:38:33Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083833Z-1238928-red.log",
+        "sha256": "a2bd48764c701f54c665306f43e7ef3293b116d29ecf8f63adc42246bb23dfd3",
+        "bytes": 9488
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 8,
+        "ignored": 0
+      },
+      "note": "red control no-step-up (rerun after review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "56a3d58f-e34b-4f97-9129-5e7c157f27b8",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:38:41Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083841Z-1241887-red.log",
+        "sha256": "1ab0ff7967797c50890d15ec9f383059b90f75b0d0efdb7b6cab075dba29e5dd",
+        "bytes": 3290
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control reusable (rerun after review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "9c044333-3c9c-427e-b093-1ca2b28b7e8f",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:38:48Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083848Z-1245393-red.log",
+        "sha256": "b9d205eb1497c74003e1c3d573adb277b29aee362c2428ab168441d213a60f42",
+        "bytes": 3388
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control any-session (rerun after review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "9b19818a-dff2-46a6-8310-bad91e6602e1",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:38:56Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083856Z-1248745-red.log",
+        "sha256": "0ccc565c0c6e0e492144a485198340dfca2fecfb88b73fcac8908020e204cf5c",
+        "bytes": 3290
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control no-expiry (rerun after review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "50a90d16-69a8-4490-bf5c-489e221ad843",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- test/integration/adminStepUp.integration.test.ts --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/backend_controller",
+      "started": "2026-11-18T08:39:04Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083904Z-1251649-red.log",
+        "sha256": "a9b635cfe9722a2d7c68beb3ba5862b1cd0df0fb5b29662a594146828da65fbf",
+        "bytes": 3338
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control unaudited-refusal (rerun after review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "3a6228d5-8252-44fd-bd84-9faf3fdb5b98",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/app-config"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:39:28Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083928Z-1259524-red.log",
+        "sha256": "fe1e852c7a26f9e9d119abd4d4326daf74146ef4509aa6b63fe73e7fe9cece5c",
+        "bytes": 2566
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control fe-unreviewed-body (after review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "40ea565a-cae5-4c52-a8b7-1ff7755e957a",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/app-config"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:39:31Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083931Z-1260619-red.log",
+        "sha256": "c728b41d7cd48e9e2f4f92ea381a82b7a31d5ece6bcf38310ca142a5408356ef",
+        "bytes": 16266
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control no-version-warning (after review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "b4ed0c66-ea10-4797-98d9-21181b3e1e9b",
+      "task": "P-config-form",
+      "track": "p-config-form",
+      "agent": "claude-opus-5-5 builder p-config-form",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/admin/app-config"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-config-form/frontend_stack_ts",
+      "started": "2026-11-18T08:39:35Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-config-form/20261118T083935Z-1262222-red.log",
+        "sha256": "de9e8f21f5b0fe32db9dc8f825f5b8e2292fd3c4b56c13159700f451b944821e",
+        "bytes": 2187
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control utc-planned-start (after review fix)",
+      "head": "5b62b7b13b9bb7c78da3e0b920162924190d689f",
+      "dirty": true
+    },
+    {
+      "id": "8f015b1c-f01f-4e5e-8deb-e6a994ee8cda",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/packages/contracts",
+      "started": "2026-11-18T11:32:43Z",
+      "seconds": 33,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113243Z-1786067-green.log",
+        "sha256": "ece0201c6e8e4420c16a06a5fa36aa900bce6d6a2cfbec87d63af423a9df0263",
+        "bytes": 8513
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "fc5fe08b546a15d3b8d260cd782939e6f7db581c",
+      "dirty": false
+    },
+    {
+      "id": "d69219a7-fc2a-4b68-b070-a8f18d7d33ce",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:33:21Z",
+      "seconds": 46,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113321Z-1789740-green.log",
+        "sha256": "92d84a7e147d789374b577af747e99040d6d6e9c09f2f174bb94f420a9a1cb41",
+        "bytes": 17759
+      },
+      "summary": {
+        "passed": 1238,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "fc5fe08b546a15d3b8d260cd782939e6f7db581c",
+      "dirty": false
+    },
+    {
+      "id": "7169a686-8724-434e-b65f-58180fdbdaec",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:34:13Z",
+      "seconds": 51,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113413Z-1795822-green.log",
+        "sha256": "ebf7e38cc889fe4f00ef86918390596a352fb482969969f0d63069fc24e66008",
+        "bytes": 23583
+      },
+      "summary": {
+        "passed": 655,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "fc5fe08b546a15d3b8d260cd782939e6f7db581c",
+      "dirty": false
+    },
+    {
+      "id": "cec6bd0b-ce7a-4dfc-81e7-3df863e99aca",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/frontend_stack_ts",
+      "started": "2026-11-18T11:34:19Z",
+      "seconds": 79,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113419Z-1801428-green.log",
+        "sha256": "24a0260c61923f8131fad05c05b9f175fc19266872b24bccbb255624875562ee",
+        "bytes": 16741
+      },
+      "summary": {
+        "passed": 581,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "fc5fe08b546a15d3b8d260cd782939e6f7db581c",
+      "dirty": false
+    },
+    {
+      "id": "36577a18-b5c5-4e6f-805d-b5d38d40d3ad",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/frontend_stack_ts",
+      "started": "2026-11-18T11:35:47Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113547Z-1854525-green.log",
+        "sha256": "687a45b8e13b32b014868ba9ceba1ad665ae2c116f33ce8a141792c63920778a",
+        "bytes": 7455
+      },
+      "head": "fc5fe08b546a15d3b8d260cd782939e6f7db581c",
+      "dirty": false
+    },
+    {
+      "id": "1858c65d-0dc8-454b-b3f5-86fd9cc2c12c",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/frontend_stack_ts",
+      "started": "2026-11-18T11:35:51Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113551Z-1854954-green.log",
+        "sha256": "723d726886771fd39583bfbcdc9941cbdcbc349d198d91b9983211e7b19310fe",
+        "bytes": 10284
+      },
+      "head": "fc5fe08b546a15d3b8d260cd782939e6f7db581c",
+      "dirty": false
+    },
+    {
+      "id": "51717a57-7ab0-47d9-b885-17cd55800418",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/frontend_stack_ts",
+      "started": "2026-11-18T11:35:55Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113555Z-1855953-green.log",
+        "sha256": "f308e35056e97510c46e5f78918bc25afc794363dc5b2eb0f1828391ee20cbda",
+        "bytes": 7620
+      },
+      "head": "fc5fe08b546a15d3b8d260cd782939e6f7db581c",
+      "dirty": false
+    },
+    {
+      "id": "05b9bda3-ba9c-4e03-ac6f-080bf8f2fc5b",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/frontend_stack_ts",
+      "started": "2026-11-18T11:35:59Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113559Z-1857234-green.log",
+        "sha256": "4b16d43e9ca231064ff8489ffeae7f380940fabbc05d6fed03a3c5ab002ff7a7",
+        "bytes": 10665
+      },
+      "head": "fc5fe08b546a15d3b8d260cd782939e6f7db581c",
+      "dirty": false
+    },
+    {
+      "id": "00d829fc-1be0-47f6-97cf-9b249db6e316",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "other",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategories.integration.test.ts",
+        "-t",
+        "proposes the oldest"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:36:34Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113634Z-1861502-red.log",
+        "sha256": "5d0bc6ed109c22aa39786c25583bec6bfd2e15024769b4393696a286f26070f8",
+        "bytes": 638
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 5
+      },
+      "note": "recorded as other, not red: it exited 0; r1-proposal-month-first",
+      "head": "fc5fe08b546a15d3b8d260cd782939e6f7db581c",
+      "dirty": true
+    },
+    {
+      "id": "9fd49d70-5b5e-405d-a2c0-89da4b2193a4",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategories.integration.test.ts",
+        "-t",
+        "refuses every conflicting row"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:36:40Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113640Z-1863669-red.log",
+        "sha256": "02990422f4a75bbe3a82d13a95826a6a0a848335b179070a4b94040838a30e9a",
+        "bytes": 2987
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "note": "r2-conflict-entry",
+      "head": "fc5fe08b546a15d3b8d260cd782939e6f7db581c",
+      "dirty": true
+    },
+    {
+      "id": "9303cb9d-5f61-40d7-872e-fe3b073be906",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategories.integration.test.ts",
+        "-t",
+        "proposes each monthly recording"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:37:28Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113728Z-1872400-red.log",
+        "sha256": "0a5028a63a9fd499e11eb41122d2ecdf1d341cb17f19904f4ac20f81f1d4292c",
+        "bytes": 3297
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "note": "r1b-proposal-month-first",
+      "head": "93ae8b95a66a450552fa6472da073132125be3a1",
+      "dirty": true
+    },
+    {
+      "id": "7a8be842-a31b-4bdb-b0b0-3cc498c44b86",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategories.integration.test.ts",
+        "-t",
+        "proposes each monthly recording"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:37:34Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113734Z-1874609-red.log",
+        "sha256": "e979b212a8f9b1b2e3c00b64782bfc1442309bd79107bb54f2c34b0bd69b5414",
+        "bytes": 3331
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "note": "r1c-proposal-start-filter",
+      "head": "93ae8b95a66a450552fa6472da073132125be3a1",
+      "dirty": true
+    },
+    {
+      "id": "3b7469d0-429b-4259-b434-7ff4ce89c6f2",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategories.integration.test.ts",
+        "-t",
+        "a replay with the same key"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:37:39Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113739Z-1876651-red.log",
+        "sha256": "96b1e89cdf6013c8bca9f45f628d1ee486bc6ee53c70e9b96451d06d7fccf8a4",
+        "bytes": 2599
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "note": "r3-replay-new-key",
+      "head": "93ae8b95a66a450552fa6472da073132125be3a1",
+      "dirty": true
+    },
+    {
+      "id": "36e8de33-e524-45a9-9bac-ec9006506543",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategories.integration.test.ts",
+        "-t",
+        "links the confirmed rows"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:37:44Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113744Z-1878688-red.log",
+        "sha256": "110647856d693399bc18b0a99a24834e627ba35250f23520f574688e73fb3c63",
+        "bytes": 3797
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "note": "r4-audit-source",
+      "head": "93ae8b95a66a450552fa6472da073132125be3a1",
+      "dirty": true
+    },
+    {
+      "id": "74d88ac3-e353-4c43-9424-ddf73869be6d",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategories.integration.test.ts",
+        "-t",
+        "stores the category beside the entry"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:38:05Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113805Z-1883175-red.log",
+        "sha256": "672094cf0074c062fe37c72fe82e820ba411431195a3e94fe485b9c2f8ec72ee",
+        "bytes": 3252
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "note": "r5-one-time-not-stored",
+      "head": "93ae8b95a66a450552fa6472da073132125be3a1",
+      "dirty": true
+    },
+    {
+      "id": "9c90b0fc-b50b-4877-ba84-8d7e230fc826",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategoryEmails.integration.test.ts",
+        "-t",
+        "a SIP payment queues one SIP email"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:38:10Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113810Z-1885328-red.log",
+        "sha256": "9fb733f8c9ed9f0800af036851db59ddbfdfdeb4e7bd772a46b60e51cec602bd",
+        "bytes": 2777
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 7
+      },
+      "note": "r6-sip-mail-legacy",
+      "head": "93ae8b95a66a450552fa6472da073132125be3a1",
+      "dirty": true
+    },
+    {
+      "id": "d9f6e7f2-bc52-41a5-be87-db7062a0857e",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategoryEmails.integration.test.ts",
+        "-t",
+        "a one-time investment queues one"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:38:16Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113816Z-1887437-red.log",
+        "sha256": "6c608afcc9d2346f111e82ad92ec9bfee1757241b1c2025bf0e55f792b1dc140",
+        "bytes": 2764
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 7
+      },
+      "note": "r7-one-time-mail-legacy",
+      "head": "93ae8b95a66a450552fa6472da073132125be3a1",
+      "dirty": true
+    },
+    {
+      "id": "fc6139b7-e0e6-42e0-9653-523860f59aae",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategoryEmails.integration.test.ts",
+        "-t",
+        "rolls back after the email was queued"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:38:21Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113821Z-1889537-red.log",
+        "sha256": "cb8d809fac2112c22a676ee831c91a6edfb5aa189a7eaffbda66805c03545168",
+        "bytes": 3051
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 2,
+        "ignored": 6
+      },
+      "note": "r8-rollback-not-forced",
+      "head": "93ae8b95a66a450552fa6472da073132125be3a1",
+      "dirty": true
+    },
+    {
+      "id": "8e6f2e1d-f0d5-479d-b4e7-6e530ac988bf",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "other",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategoryEmails.integration.test.ts",
+        "-t",
+        "the deployed worker guards and renders"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:38:27Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113827Z-1891659-red.log",
+        "sha256": "198ae55abd770eb149badf3a4a02093808afb7ce337ccf6e9057da4bfe4edec7",
+        "bytes": 665
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 7
+      },
+      "note": "recorded as other, not red: it exited 0; r10-worker-drops-legacy",
+      "head": "93ae8b95a66a450552fa6472da073132125be3a1",
+      "dirty": true
+    },
+    {
+      "id": "4a9c3833-89ed-41ba-bd78-483ee435b243",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategories.integration.test.ts",
+        "-t",
+        "links the confirmed rows"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:38:32Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113832Z-1893778-red.log",
+        "sha256": "3df48374f568e703ffba48caf887415b72364640e6bfa16cc6f3e996ce8cd712",
+        "bytes": 3214
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "note": "r11-link-only-first",
+      "head": "93ae8b95a66a450552fa6472da073132125be3a1",
+      "dirty": true
+    },
+    {
+      "id": "b0dd86db-bcd8-4160-bdc9-8a4072fb02ab",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategoryEmails.integration.test.ts",
+        "-t",
+        "the deployed worker guards and renders"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:39:25Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113925Z-1901818-red.log",
+        "sha256": "d41fdb6d75b8e4c27261ae05480f22b89a07b5bda1cce5d3e9b63e3d66427eb9",
+        "bytes": 3258
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 7
+      },
+      "note": "r10b-worker-drops-legacy-guard",
+      "head": "5648e7e1f069446fe73346effdca8d93db28fdf5",
+      "dirty": true
+    },
+    {
+      "id": "e3cdab58-bdc1-4546-bb1e-cdbb81626631",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategoryEmails.integration.test.ts",
+        "-t",
+        "the deployed worker guards and renders"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:39:31Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113931Z-1904085-red.log",
+        "sha256": "831f03991a98d083deac9fcde3bed76fa160f6ac3eb768bdbed921b21f5d9dbf",
+        "bytes": 3268
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 7
+      },
+      "note": "r10c-legacy-renderer-removed",
+      "head": "5648e7e1f069446fe73346effdca8d93db28fdf5",
+      "dirty": true
+    },
+    {
+      "id": "a5505525-f233-447e-80f5-5e8b49927529",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/recordingCategoryEmails.integration.test.ts",
+        "-t",
+        "the deployed worker guards and renders"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:39:37Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113937Z-1906205-red.log",
+        "sha256": "0c1b0dc9e399290a09cae3807c5373bbb73281639e79cadc6beb6b84f61cf24c",
+        "bytes": 3288
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 7
+      },
+      "note": "r10d-sip-guard-removed",
+      "head": "5648e7e1f069446fe73346effdca8d93db28fdf5",
+      "dirty": true
+    },
+    {
+      "id": "4126fdc8-540e-4d78-a647-329310b80165",
+      "task": "P-invest-categories",
+      "track": "p-invest-cats",
+      "agent": "claude-opus-5-5 builder p-invest-cats",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check && npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-invest-cats/backend_controller",
+      "started": "2026-11-18T11:39:56Z",
+      "seconds": 86,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-invest-cats/20261118T113956Z-1911422-green.log",
+        "sha256": "33a238c035b17ac857d9ac06b34e3e4b6259bc76edb909c525ab7d5dab2cae40",
+        "bytes": 38387
+      },
+      "summary": {
+        "passed": 1893,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "5648e7e1f069446fe73346effdca8d93db28fdf5",
+      "dirty": false
     }
   ]
 }

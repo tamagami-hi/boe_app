@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "track": "p-invest-cats",
+  "current": {
+    "task": "P-invest-categories",
+    "from": "claude-opus-5-5 builder p-invest-cats",
+    "track": "p-invest-cats",
+    "at": "2026-11-18T11:42:10.748Z",
+    "lines": [
+      "DEC-75 built on track/p-invest-cats, head 5648e7e. Commits: 79ee88d copy (coordinator extra), f87c1e8 backend+contracts+generated ops, 27ba539 admin UI, fc5fe08 docs, 93ae8b9 + 5648e7e test fixes after two weak red controls.",
+      "Migration 077_recording_categories.sql (076 is p-config-form): new append-only client_value_entry_categories (entry_id unique, category CHECK 'one_time', set_by, request_id, created_at; FK to client_value_entries) + email template CHECK re-added with sip_payment_recorded, one_time_investment_recorded. Expand-only, not a boundary.",
+      "MERGE NOTE: releaseUpgrade.integration.test.ts expects [...'075','077'] here; with p-config-form it must read [...'075','076','077'].",
+      "New ops (contracts recording-categories.ts): GET /v1/admin/clients/{userId}/recorded-contributions[?fundId], GET .../sip-schedules/{scheduleId}/link-proposal, POST .../sip-schedules/{scheduleId}/month-links (required key, durable), POST .../recorded-contributions/{entryId}/category {category:one_time}.",
+      "Recording POST gains optional request field category sip|one_time. sip needs sipScheduleLink + monthly reason; one_time refuses a link; a correction refuses any category (400 before writes).",
+      "Emails: linked recording -> sip_payment_recorded (month N of M, next unpaid month or 'Every month ... recorded'); category one_time -> one_time_investment_recorded; uncategorised (released admin apps) -> investment_recorded as before; corrections none; history link/category none. Same guard as investment_recorded for all three keys.",
+      "Compat (rule 11, finding-14): no response gains a field or enum value. Receipt and report categoryLabel are z.string text: now 'SIP payment' (linked) / 'One-time investment' (marked); receipt category stays reason-derived. Admin ledger reads the new list endpoint. AdminEmailTemplateKey additions are request-only. Request hash adds category only when sent, so held old-app requests replay.",
+      "Rollback: previous release ignores the new table (labels revert), its worker dead-letters the two new keys (finding-26 class, DEPLOY.md updated). Deploy worker with API.",
+      "Lane defaults (rule 16): past start month already accepted by create (no change, hint added); proposal = own month first, then leftovers dated on/after start fill open months oldest first; one-time-marked and non-monthly recordings are selectable but not proposed; linking needs an active schedule and a recordable client.",
+      "QUESTION for maintainer: SIP -> one-time is not offered. A month link is released only by reversal (064 trigger), so 'change later' is one-time -> SIP. Widening the 064 guard would be needed.",
+      "Not changed: in-app notification text for new SIP payments still says 'monthly investment'; client app code untouched (labels come from the server).",
+      "Docs outside the listed paths (rule 18): DEPLOY.md, release_manager/docs/client-erasure.md in fc5fe08; drop it if you prefer to write them.",
+      "Tests: recordingCategories.integration.test.ts (6), recordingCategoryEmails.integration.test.ts (8), recordedCategoryTemplates.test.ts (12 unit); erasure coverage + releaseUpgrade updated.",
+      "Red (all restored, cmp identical): r2 20261118T113640Z-1863669, r1b 20261118T113728Z-1872400, r1c 20261118T113734Z-1874609, r3 20261118T113739Z-1876651, r4 20261118T113744Z-1878688, r5 20261118T113805Z-1883175, r6 20261118T113810Z-1885328, r7 20261118T113816Z-1887437, r8 20261118T113821Z-1889537, r11 20261118T113832Z-1893778, r10b 20261118T113925Z-1901818, r10c 20261118T113931Z-1904085, r10d 20261118T113937Z-1906205.",
+      "Weak controls found and fixed: r1 20261118T113634Z-1861502 and r10 20261118T113827Z-1891659 exited 0 (tests did not catch); fixed in 93ae8b9 and 5648e7e, reruns r1b/r1c/r10b-d red. 'No email for history' has no mutation control: history writes have no mail dependency (STATIC).",
+      "Green: contracts check 20261118T113243Z-1786067 (98 tests); frontend check 20261118T113419Z-1801428 (581 tests); build:client 20261118T113547Z-1854525; build:admin 20261118T113551Z-1854954; build:android 20261118T113555Z-1855953; build:android:admin 20261118T113559Z-1857234; backend check + full integration at 5648e7e 20261118T113956Z-1911422 (1238 unit, 83 files/655 integration).",
+      "Emulator (dev stack, Rahul Kumar only, admin APK/web): 1) Users > Rahul Kumar > SIP schedules > Start a SIP schedule: a fund he holds, past start month (his first monthly recording's month), months to cover; Start. 2) In the success notice tap Link earlier recordings (or row > Link earlier recordings): table lists every month with a proposed recording; check own-month matches, amount badge 'Not the monthly amount' where it differs; change/clear one row; Link N month(s) > confirm. Expect 'N month(s) linked. The client now sees X of M months paid.' Touch targets 44 px on selects/buttons.",
+      "3) Client app as Rahul: Portfolio SIP schedules shows X of M paid; Activity > Receipts shows linked ones labelled SIP payment with SIP month. 4) Admin Ledger tab: 'Earlier recordings without a SIP month' list; Mark as one-time on one earlier recording > confirm; Reason column shows One-time investment; client receipt label One-time investment. No email for steps 2-4 (Emails > deliveries filter shows none new).",
+      "5) Record investment form: Category SIP payment (month required, no 'do not link') > record; expect delivery 'SIP payment recorded'. 6) Category One-time investment > record; expect 'One-time investment recorded'. Filter Email deliveries by both labels and by 'Value updated'.",
+      "Full rendered text of both templates is in the lane report to the coordinator for maintainer approval."
+    ]
+  },
+  "history": []
+}
