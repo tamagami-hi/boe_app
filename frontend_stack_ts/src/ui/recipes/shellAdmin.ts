@@ -55,16 +55,47 @@ export const ADMIN_BODY = "relative z-1 flex min-w-0 flex-1"
 export const ADMIN_CONTENT = "flex min-w-0 flex-1 flex-col"
 
 export const ADMIN_SIDEBAR = [
-  "hidden lg:sticky lg:top-6 lg:flex lg:flex-none lg:flex-col lg:gap-2 lg:self-start",
-  "lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:thin]",
-  "lg:w-sidebar lg:px-4 lg:py-8 lg:my-6 lg:ml-6",
-  "lg:rounded-squircle-xl",
+  "hidden lg:sticky lg:top-[var(--be-chrome-offset)] lg:flex lg:flex-none lg:flex-col lg:gap-2 lg:self-start",
+  "lg:h-[calc(100dvh-var(--be-chrome-offset))] lg:overflow-hidden lg:pt-8 lg:whitespace-nowrap",
   "lg:bg-nav-bg lg:backdrop-blur-[20px] lg:backdrop-saturate-150",
-  "lg:shadow-nav-hairline lg:inset-shadow-nav",
+  "lg:border-r lg:border-nav-hairline",
+  "motion-safe:transition-[width] duration-200 ease-out",
+].join(" ")
+
+export const ADMIN_SIDEBAR_SHOWN = "lg:w-sidebar"
+
+export const ADMIN_SIDEBAR_HIDDEN = "lg:w-14"
+
+export const ADMIN_SIDEBAR_HEAD = "mb-3 flex flex-none items-center gap-2"
+
+export const ADMIN_SIDEBAR_HEAD_SHOWN = "justify-between pl-4 pr-2"
+
+export const ADMIN_SIDEBAR_HEAD_HIDDEN = "justify-center"
+
+export const ADMIN_SIDEBAR_TOGGLE = [
+  "inline-flex min-h-target min-w-target flex-none items-center justify-center gap-1.5 rounded-full px-3",
+  "cursor-pointer border-0 bg-transparent no-tap-flash",
+  "font-ui text-xs font-semibold text-nav-fg-muted",
+  "transition-[color,background-color] duration-200 ease-out",
+  "hover:bg-nav-surface hover:text-nav-fg",
+  "focus-visible:outline-focus-inverse",
+].join(" ")
+
+export const ADMIN_SIDEBAR_TOGGLE_GLYPH =
+  "size-icon-sm flex-none motion-safe:transition-transform duration-200 ease-out"
+
+export const ADMIN_SIDEBAR_TOGGLE_GLYPH_HIDDEN = "rotate-180"
+
+export const ADMIN_SIDEBAR_TOGGLE_LABEL_HIDDEN = "sr-only"
+
+export const ADMIN_SIDEBAR_NAV = [
+  "flex min-h-0 flex-1 flex-col gap-2 px-4 pb-8",
+  "overflow-y-auto overscroll-contain",
+  "[scrollbar-width:thin] [scrollbar-color:var(--be-nav-surface-strong)_transparent]",
 ].join(" ")
 
 export const ADMIN_WORDMARK =
-  "mb-3 px-3 font-display text-md font-medium tracking-display text-nav-fg"
+  "pl-3 font-display text-md font-medium tracking-display text-nav-fg"
 
 export const ADMIN_SIDEBAR_GROUP =
   "flex flex-col gap-1.5 not-first-of-type:mt-2 not-last-of-type:mb-1"
