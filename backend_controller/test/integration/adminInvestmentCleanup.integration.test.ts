@@ -157,6 +157,43 @@ describe("admin investment clean-up", () => {
     expect(await waitingOf(client.id)).toMatchObject({ fundsNeedingSplit: 1 })
   })
 
+  test("accepts a zero part for an investment the proposal leaves out and stores only the non-zero parts", async () => {
+    const { client, fundId, g1 } = await seedTwoOneTimeWithGrowth()
+    const later = await harness.recordOk(client.id, { fundId, effectiveDate: "2025-03-10", reasonCode: EARLIER, amountPaise: "500000" })
+    expect((await harness.markOneTime(client.id, later)).statusCode).toBe(201)
+    const laterRef = { kind: "one_time" as const, allocationId: await allocationOf(harness.stack.pool, later) }
+    const opened = await investmentsOf(client.id, fundId)
+    expect(opened?.investments.map((row) => row.ref)).toContainEqual(laterRef)
+    const proposal = opened?.earlierGrowth?.proposal ?? []
+    expect(proposal.map((part) => part.ref)).not.toContainEqual(laterRef)
+    expect(proposal).toHaveLength(2)
+
+    const before = await writeCounts()
+    const confirmed = await confirm(client.id, fundId, { cutoffEntryId: g1, parts: [...proposal, { ref: laterRef, amountPaise: "0" }] })
+    expect(confirmed.statusCode).toBe(201)
+    expect(envelopeOf<{ split: { parts: Part[] } }>(confirmed).data.split.parts).toEqual(proposal)
+    const [splits, parts] = await writeCounts()
+    expect([splits, parts]).toEqual([(before[0] ?? 0) + 1, (before[1] ?? 0) + 2])
+    expect((await investmentsOf(client.id, fundId))?.earlierGrowth?.confirmed?.parts).toEqual(proposal)
+    expect(await waitingOf(client.id)).toBeUndefined()
+  })
+
+  test("the To categorise list and the client's funds agree on which funds need a split", async () => {
+    const { client, fundId } = await seedTwoOneTimeWithGrowth()
+    const waitingFund = await harness.seedFund("Cleanup Waiting Fund")
+    const first = await harness.recordOk(client.id, { fundId: waitingFund, effectiveDate: "2025-01-10", reasonCode: EARLIER, amountPaise: "1000000" })
+    const second = await harness.recordOk(client.id, { fundId: waitingFund, effectiveDate: "2025-02-10", reasonCode: EARLIER, amountPaise: "2000000" })
+    expect((await harness.markOneTime(client.id, first)).statusCode).toBe(201)
+    expect((await harness.markOneTime(client.id, second)).statusCode).toBe(201)
+    await seedGrowthEntry(harness.stack.pool, { userId: client.id, fundId: waitingFund, actorUserId: harness.finance.userId, valuePaise: 12_345n })
+    await harness.recordOk(client.id, { fundId: waitingFund, effectiveDate: "2025-03-10", reasonCode: CORRECTION })
+
+    const funds = (await adminGet<{ funds: InvestmentsFund[] }>(`/v1/admin/clients/${client.id}/investments`)).funds
+    expect(funds.find((fund) => fund.fundId === waitingFund)?.uncategorised).toHaveLength(1)
+    expect(funds.filter((fund) => fund.earlierGrowth?.needsConfirmation === true).map((fund) => fund.fundId)).toEqual([fundId])
+    expect(await waitingOf(client.id)).toMatchObject({ waitingRecordings: 1, fundsNeedingSplit: 1 })
+  })
+
   test("a correction can be marked one-time or linked to a SIP month, and a linked one cannot be marked one-time", async () => {
     const client = await harness.stack.seedUser()
     const fundId = await harness.seedFund("Correction Fund")

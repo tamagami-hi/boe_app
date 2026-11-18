@@ -65,7 +65,7 @@ export const SipEarlyExitList = ({ userId, investorLabel, canWrite }: SipEarlyEx
   return (
     <Section
       title="Early exits"
-      description="SIPs closed before their last month. Each one withdrew the full value of the holding as a payout. Recording it does not send money: record the bank transfer outcome here once the transfer is made."
+      description="SIPs closed before their last month. Each one withdrew the value of the client's SIP as a payout. Recording it does not send money: record the bank transfer outcome here once the transfer is made."
     >
       <AsyncBoundary
         query={exits}

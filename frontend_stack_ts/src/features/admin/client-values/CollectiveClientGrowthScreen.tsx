@@ -285,7 +285,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                 <Stat label="Investments adjusted">
                   <span className={ADMIN_FIGURE}>{String(partCount)}</span>
                 </Stat>
-                <Stat label="Categorise first" hint="Clients left out until their recordings are categorised.">
+                <Stat label="Categorise first" hint="Clients left out until their investments are sorted in the Ledger tab.">
                   <span className={ADMIN_FIGURE}>{String(categoriseFirstCount)}</span>
                 </Stat>
                 <Stat label="Total change">

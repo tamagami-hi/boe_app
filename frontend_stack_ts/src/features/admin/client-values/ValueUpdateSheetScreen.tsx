@@ -53,7 +53,7 @@ const VALUE_UPDATE_REASON = "monthly"
 const STALE_SUFFIX = "Reload the sheet, check the numbers and preview again."
 
 const flaggedNotice = (count: number): string =>
-  `${String(count)} client(s) in this preview must have their recordings categorised first, so their rows were taken out of the sheet. Preview again to continue without them.`
+  `${String(count)} client(s) in this preview must have their investments sorted first: categorise their recordings and confirm any earlier growth split in the Ledger tab. Their rows were taken out of the sheet. Preview again to continue without them.`
 
 const NO_FLAGS: ReadonlySet<string> = new Set()
 

@@ -1,6 +1,7 @@
 import { proposeEarlierGrowthSplit } from "../domain/admin/earlierGrowthSplit.js"
 import {
   foldFundBreakdown,
+  needsEarlierGrowthSplit,
   type BreakdownInput,
   type FundBreakdownFact,
   type HoldingFact,
@@ -71,7 +72,7 @@ const earlierGrowthOf = (input: BreakdownInput, fund: FundBreakdownFact): Record
   return {
     totalPaise: proposal.totalPaise.toString(),
     cutoffEntryId: proposal.cutoffEntryId,
-    needsConfirmation: fund.uncoveredEntryIds.length > 0,
+    needsConfirmation: needsEarlierGrowthSplit(fund),
     proposal: proposal.parts.map((part) => ({ ref: investmentRefBody(part.ref), amountPaise: part.amountPaise.toString() })),
     confirmed: confirmedOf(input.splits.get(fund.fundId)),
   }

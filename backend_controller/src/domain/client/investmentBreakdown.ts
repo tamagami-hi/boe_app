@@ -215,12 +215,16 @@ export const foldInvestmentBreakdown = (input: BreakdownInput, asOfDate: string)
 export const fundStatus = (input: BreakdownInput, fundId: string): FundStatus =>
   foldFundBreakdown(input, fundId, "1970-01-01").status
 
+export const needsEarlierGrowthSplit = (fund: Pick<FundBreakdownFact, "uncategorisedEntryIds" | "uncoveredEntryIds">): boolean =>
+  fund.uncategorisedEntryIds.length === 0 && fund.uncoveredEntryIds.length > 0
+
 export const toCategorise = (input: BreakdownInput): ToCategorise => ({
   recordings: uncategorisedRecordingIds(input),
-  fundsNeedingSplit: fundIdsOf(input).filter(
-    (fundId) =>
-      uncategorisedRecordingIds(input, fundId).length === 0 &&
-      runBreakdownPass(input, fundId, "settled").uncoveredEntryIds.length > 0,
+  fundsNeedingSplit: fundIdsOf(input).filter((fundId) =>
+    needsEarlierGrowthSplit({
+      uncategorisedEntryIds: uncategorisedRecordingIds(input, fundId),
+      uncoveredEntryIds: runBreakdownPass(input, fundId, "settled").uncoveredEntryIds,
+    }),
   ),
 })
 

@@ -30,8 +30,8 @@ export const cleanupCountsOf = (data: AdminClientInvestmentsData): CleanupCounts
   fundsNeedingSplit: data.funds.filter(needsSplit).length,
 })
 
-export const proposedAmountOf = (growth: AdminEarlierGrowth, ref: InvestmentRef): string | null =>
-  growth.proposal.find((part) => refKey(part.ref) === refKey(ref))?.amountPaise ?? null
+export const proposedAmountOf = (growth: AdminEarlierGrowth, ref: InvestmentRef): string =>
+  growth.proposal.find((part) => refKey(part.ref) === refKey(ref))?.amountPaise ?? "0"
 
 export const splitFormKeyOf = (fund: SplittableFund): string =>
   [fund.fundId, fund.earlierGrowth.cutoffEntryId, ...fund.investments.map((investment) => refKey(investment.ref))].join(":")

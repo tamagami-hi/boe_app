@@ -367,8 +367,8 @@ export const IndividualGrowthForm = ({
                 </ButtonLink>
               }
             >
-              This fund has recordings without a category, so growth cannot be targeted at one investment yet. Mark
-              each recording as SIP or one-time on the client&apos;s Ledger tab first.
+              Sort this client&apos;s investments first: categorise their recordings and confirm any earlier growth split in
+              the Ledger tab.
             </Alert>
           ) : (
             <div className={STACK_SM}>

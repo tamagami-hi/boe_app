@@ -12,15 +12,15 @@ import { FormField, Input } from "~/ui/primitives/FormField"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { META_TEXT } from "~/ui/recipes/text"
 
-import { signedRupeeText, splitBodyOf, tallySplit, type SplitBody } from "./earlierGrowthSplit"
+import { parseSignedRupees, signedRupeeText, splitBodyOf, tallySplit, type SplitBody } from "./earlierGrowthSplit"
 import { proposedAmountOf, refKey, type InvestmentRef, type SplittableFund } from "./investmentCleanup"
 
 const dated = (isoDate: string): string => formatDate(`${isoDate}T00:00:00Z`)
 
 const money = (paise: string): string => formatINR(toPaise(paise), { showDecimals: true })
 
-export const investmentLabelOf = ({ label, amountPaise, date, reversed }: AdminClientInvestment): string =>
-  [label, money(amountPaise), ...(date === null ? [] : [`from ${dated(date)}`]), ...(reversed ? ["reversed"] : [])].join(", ")
+export const investmentLabelOf = ({ label, amountPaise, date }: AdminClientInvestment): string =>
+  [label, money(amountPaise), ...(date === null ? [] : [`from ${dated(date)}`])].join(", ")
 
 const remainderLine = (remainingPaise: string | null): string => {
   if (remainingPaise === null) return "Enter an amount for every investment, in rupees with up to two decimal places."
@@ -45,10 +45,7 @@ export const EarlierGrowthFundForm = ({
 }: EarlierGrowthFundFormProps): React.ReactElement => {
   const growth = fund.earlierGrowth
   const [texts, setTexts] = useState<readonly string[]>(() =>
-    fund.investments.map((investment) => {
-      const proposed = proposedAmountOf(growth, investment.ref)
-      return proposed === null ? "" : signedRupeeText(proposed)
-    }),
+    fund.investments.map((investment) => signedRupeeText(proposedAmountOf(growth, investment.ref))),
   )
   const [reviewing, setReviewing] = useState(false)
   const tally = tallySplit(growth.totalPaise, texts)
@@ -125,7 +122,7 @@ export const EarlierGrowthFundForm = ({
           <DetailRow label="Fund">{fund.fundName}</DetailRow>
           {fund.investments.map((investment, index) => (
             <DetailRow key={refKey(investment.ref)} label={investmentLabelOf(investment)}>
-              <MoneyValue amount={toPaise(body?.parts[index]?.amountPaise ?? "0")} size="sm" showDecimals />
+              <MoneyValue amount={parseSignedRupees(texts[index] ?? "") ?? toPaise("0")} size="sm" showDecimals />
             </DetailRow>
           ))}
           <DetailRow label="Total" emphasis="lead">

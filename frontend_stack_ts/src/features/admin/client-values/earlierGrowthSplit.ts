@@ -50,6 +50,8 @@ export const splitBodyOf = <TRef>(
   if (refs.length !== texts.length || !tallySplit(totalPaise, texts).canConfirm) return null
   return {
     cutoffEntryId,
-    parts: refs.map((ref, index) => ({ ref, amountPaise: parseSignedRupees(texts[index] ?? "") ?? ZERO })),
+    parts: refs
+      .map((ref, index) => ({ ref, amountPaise: parseSignedRupees(texts[index] ?? "") ?? ZERO }))
+      .filter((part) => part.amountPaise !== ZERO),
   }
 }

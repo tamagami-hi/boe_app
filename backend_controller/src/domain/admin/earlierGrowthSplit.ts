@@ -65,25 +65,31 @@ const investmentKeysOf = (input: BreakdownInput, fundId: string): ReadonlySet<st
       .map((holding) => refKey(holding.ref)),
   )
 
-const validateParts = (input: BreakdownInput, command: ConfirmEarlierGrowthSplitCommand, totalPaise: bigint): void => {
+const validatedParts = (
+  input: BreakdownInput,
+  command: ConfirmEarlierGrowthSplitCommand,
+  totalPaise: bigint,
+): readonly SplitPartInput[] => {
   const known = investmentKeysOf(input, command.fundId)
   const seen = new Set<string>()
   command.parts.forEach((part, index) => {
+    if (part.amountPaise === 0n) return
     const key = refKey(part.ref)
     if (!known.has(key)) throw refusePart(index, "is not an investment of this client in this fund")
     if (seen.has(key)) throw refusePart(index, "names an investment that already has a part")
-    if (part.amountPaise === 0n) throw refusePart(index, "must not be zero; leave the investment out instead")
     seen.add(key)
   })
-  if (totalPaise === 0n && command.parts.length > 0) {
+  const parts = command.parts.filter((part) => part.amountPaise !== 0n)
+  if (totalPaise === 0n && parts.length > 0) {
     throw new AppError("VALIDATION_FAILED", { fields: { parts: ["must be empty, because the fund's earlier growth nets to zero"] } })
   }
-  const sum = command.parts.reduce((total, part) => total + part.amountPaise, 0n)
+  const sum = parts.reduce((total, part) => total + part.amountPaise, 0n)
   if (sum !== totalPaise) {
     throw new AppError("VALIDATION_FAILED", {
       fields: { parts: [`must add up to ${signedRupees(totalPaise)}, the fund's earlier growth`] },
     })
   }
+  return parts
 }
 
 export const confirmEarlierGrowthSplit = async (
@@ -101,7 +107,7 @@ export const confirmEarlierGrowthSplit = async (
   const proposal = proposeEarlierGrowthSplit(input, command.fundId)
   if (proposal === null) throw new AppError("STATE_CONFLICT", { message: NOTHING_TO_SPLIT_MESSAGE })
   if (proposal.cutoffEntryId !== command.cutoffEntryId) throw new AppError("STATE_CONFLICT", { message: STALE_MESSAGE })
-  validateParts(input, command, proposal.totalPaise)
+  const parts = validatedParts(input, command, proposal.totalPaise)
 
   const stored = await deps.investmentBreakdownRepository.insertSplit(tx, {
     userId: command.userId,
@@ -109,7 +115,7 @@ export const confirmEarlierGrowthSplit = async (
     cutoffEntryId: proposal.cutoffEntryId,
     totalPaise: proposal.totalPaise,
     coveredEntryIds: proposal.coveredEntryIds,
-    parts: command.parts,
+    parts,
     actorUserId: command.actorUserId,
     requestId: command.requestId,
   })
@@ -128,7 +134,7 @@ export const confirmEarlierGrowthSplit = async (
       cutoffEntryId: proposal.cutoffEntryId,
       totalPaise: proposal.totalPaise.toString(),
       coveredEntryCount: proposal.coveredEntryIds.length,
-      parts: command.parts.map((part) => ({ ref: refKey(part.ref), amountPaise: part.amountPaise.toString() })),
+      parts: parts.map((part) => ({ ref: refKey(part.ref), amountPaise: part.amountPaise.toString() })),
     },
   })
   return {
@@ -136,7 +142,7 @@ export const confirmEarlierGrowthSplit = async (
     fundId: command.fundId,
     cutoffEntryId: proposal.cutoffEntryId,
     totalPaise: proposal.totalPaise,
-    parts: command.parts,
+    parts,
     confirmedAt: stored.createdAt,
   }
 }

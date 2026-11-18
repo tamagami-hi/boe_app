@@ -21,6 +21,7 @@ import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
 const UNSENT = "The early exit could not be sent. Reload the schedules and try again."
+const PREPARING_REFUSAL = "This fund's investments are not sorted yet"
 
 const dateOf = (isoDate: string): string => formatDate(`${isoDate}T00:00:00Z`)
 
@@ -57,9 +58,11 @@ const confirmedFigures = (done: AdminSipEarlyExitItem): ExitFigureValues => ({
       : `The maturity date ${dateOf(done.cancelledMaturityDate)} on this holding was cancelled.`,
 })
 
-const ExitFigures = ({ values }: Readonly<{ values: ExitFigureValues }>): React.ReactElement => (
-  <DataList split>
-    <DetailRow label="Fund">{values.fundName}</DetailRow>
+const isValueUnknown = (refusal: AdminSipEarlyExitPreview["refusal"]): boolean =>
+  refusal !== null && refusal.code === "principal_below_zero" && refusal.message.startsWith(PREPARING_REFUSAL)
+
+const ExitAmounts = ({ values }: Readonly<{ values: ExitFigureValues }>): React.ReactElement => (
+  <>
     <DetailRow label="Returned to the client">
       <MoneyValue amount={toPaise(values.amountPaise)} size="sm" showDecimals />
     </DetailRow>
@@ -69,6 +72,16 @@ const ExitFigures = ({ values }: Readonly<{ values: ExitFigureValues }>): React.
     <DetailRow label="Of which growth">
       <MoneyValue amount={toPaise(values.growthPortionPaise)} size="sm" showDecimals />
     </DetailRow>
+  </>
+)
+
+const ExitFigures = ({
+  values,
+  showAmounts = true,
+}: Readonly<{ values: ExitFigureValues; showAmounts?: boolean }>): React.ReactElement => (
+  <DataList split>
+    <DetailRow label="Fund">{values.fundName}</DetailRow>
+    {showAmounts ? <ExitAmounts values={values} /> : null}
     <DetailRow label="Dated">{dateOf(values.effectiveDate)}</DetailRow>
     <DetailRow label="Maturity date">{values.maturityLine}</DetailRow>
   </DataList>
@@ -144,7 +157,7 @@ export const SipEarlyExitPanel = ({
               the amount the SIP invested, the invested amount it does not cover stays on record. The client is told in the app
               and by email, and it cannot be undone.
             </p>
-            <ExitFigures values={previewFigures(data)} />
+            <ExitFigures values={previewFigures(data)} showAmounts={!isValueUnknown(data.refusal)} />
             {data.refusal === null ? null : (
               <Alert tone="warning" title="Cannot close early">
                 {data.refusal.message}

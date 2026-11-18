@@ -38,4 +38,17 @@ describe("an earlier growth split can be confirmed only when it adds up to the t
     expect(splitBodyOf("cutoff-1", "1234567", [SIP, ONE_TIME], ["2345.67", "10000.01"])).toBeNull()
     expect(splitBodyOf("cutoff-1", "1234567", [SIP], ["2345.67", "10000"])).toBeNull()
   })
+
+  it("leaves zero parts out of the body, so an investment the proposal skipped is not sent", () => {
+    const REVERSED = { kind: "one_time", allocationId: "33333333-3333-4333-8333-333333333333" } as const
+    expect(splitBodyOf("cutoff-1", "52346", [SIP, REVERSED, ONE_TIME], ["480.33", "0", "43.13"])).toEqual({
+      cutoffEntryId: "cutoff-1",
+      parts: [
+        { ref: SIP, amountPaise: "48033" },
+        { ref: ONE_TIME, amountPaise: "4313" },
+      ],
+    })
+    expect(splitBodyOf("cutoff-1", "52346", [SIP, REVERSED, ONE_TIME], ["480.33", "-0.00", "43.13"])?.parts).toHaveLength(2)
+    expect(splitBodyOf("cutoff-1", "0", [SIP, ONE_TIME], ["0", "0"])).toEqual({ cutoffEntryId: "cutoff-1", parts: [] })
+  })
 })
