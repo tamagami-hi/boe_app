@@ -654,7 +654,7 @@ the authority; this section is the mechanics.
 
 Where a release cannot be made compatible with the previous one, the maintainer decides the
 cut (for example a schema-only release ahead of the behaviour release, as in
-`release_manager/docs/existing-client-impl/06-sequencing-and-migrations.md`) and states the
+`release_manager/docs/Completed/existing-client-impl/06-sequencing-and-migrations.md`) and states the
 rollback implication in the release notes.
 
 ## Scaling roadmap

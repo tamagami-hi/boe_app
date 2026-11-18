@@ -2,7 +2,7 @@
 
 Status: built on lane `g-erasure` (tally `M11-phase-g:G-L1-erasure`), reviewed three times and fixed, landed on local `main` at `e29ff37` (2026-11-14), and released from v0.16.0; v0.15.4 and earlier have no erase command. This document does not record whether any client has been erased in production; the re-scrub pre-flight below counts them.
 Decision: DEC-29 (behaviour) and DEC-33 (go-ahead), group `admin-improvements`.
-DEC-66 (national-form phones and the re-scrub of erased clients): built on lane `p-erasure-phones` (tally `M19-patches-0-18:P-erasure-phones`), not released.
+DEC-66 (national-form phones and the re-scrub of erased clients): built on lane `p-erasure-phones` (tally `M19-patches-0-18:P-erasure-phones`), released from v0.18.1 (commit `b69602d`); whether it is deployed is not recorded here.
 This is a destructive change under `RULES.md` rule 11: it deletes and overwrites existing
 production rows for the one client an administrator erases. It touches no other client.
 

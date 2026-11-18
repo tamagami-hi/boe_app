@@ -25,7 +25,8 @@ they do not define competing policies.
 | `packages/contracts/` | Zod operation descriptors and generated OpenAPI |
 | `release_manager/` | Maintainer-operated release tooling and deployment documentation |
 | `test_e2e/`, `emu/` | Runtime/browser and Android verification tooling |
-| `plans/` | Current proposals and handoffs |
+| `plans/` | The active plan |
+| `docs/` | tally records (`docs/records/`) and programme documents (`docs/<programme>/`) |
 
 Each code package has its own manifest and `npm run check`. Build contracts before
 frontend checks. The full verification boundary and permission requirements are
@@ -50,19 +51,18 @@ longer needs Node 22 checks.
 - [CLAUDE.md](CLAUDE.md): architecture, current state, commands, and task map.
 - [WORKFLOW.md](WORKFLOW.md): workspaces, integration, and operator release flow.
 - [DEPLOY.md](DEPLOY.md): deployment/configuration reference, not permission to deploy.
-- [Admin improvements plan](plans/admin-improvements.md): recording categories,
-  client receipts, value updates, returns dashboards, maturity management, nominee,
-  and admin fixes; approved, Phases A, B and C and Phase E steps E1-E2 complete
-  on local `main`; Phase D and E3 wait for the maintainer, Phases F (maturity
-  choices), G (client erasure) and H (experience gaps, APK statement link) are
-  complete on local `main`.
+- [Admin improvements plan](plans/admin-improvements.md): the active plan; its
+  status line and section 8 say what is built and released.
+- [UI overhaul](docs/ui-overhaul/): the UI overhaul programme's audits and plan.
 - [Migration 071](release_manager/docs/migration-071-company-name.md): the company-name
   correction in the published legal documents and its read-only production pre-check.
-- [Client erasure](release_manager/docs/client-erasure.md): what the Phase G erase
-  command touches, its read-only pre-flight query and the migration 069 notes; read it
-  before the first production erase.
-- [Previous app feature plan](plans/app-onboarding-contact-investment-email.md):
-  onboarding recovery, contacts, earlier investments, and email improvements;
-  implemented and released through v0.15.4; evidence is in section 8 of the plan.
-- [Prior implementation records](release_manager/docs/): topic-specific evidence;
-  completed/dated records are historical, not standing rulebooks.
+- [Client erasure](release_manager/docs/client-erasure.md): the erase procedure, its
+  read-only pre-flight queries and the migration notes; read it before an erase.
+- [Completed records](release_manager/docs/Completed/): historical evidence, not
+  standing rulebooks, including the
+  [previous app feature plan](release_manager/docs/Completed/app-onboarding-contact-investment-email.md),
+  the [existing-client implementation record](release_manager/docs/Completed/existing-client-impl/README.md)
+  and the [September 2026 client UI briefs](release_manager/docs/Completed/client-ui-2026-09/).
+
+Decisions, questions, progress, reviews and hand-offs are tally records in
+[`docs/records/`](docs/records/), read through the tally tools; plans cite them by ID.

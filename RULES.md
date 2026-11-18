@@ -15,12 +15,15 @@ verification, and documentation maintenance.** It consolidates the former
 
 - Rules and process live here. `README.md` is the entrypoint; `AGENTS.md`,
   `CLAUDE.md`, and `.kiro/steering/` must point here, not maintain competing rules.
-- Explicit maintainer decisions govern intended behavior. Record them in the
-  active plan; a proposal or conservative default is not an approved decision.
+- Explicit maintainer decisions govern intended behavior. Record them as tally
+  decisions (`docs/records/`) alone; a plan cites the decision ID with one line
+  and does not repeat it in a table. A proposal or conservative default is not
+  an approved decision.
 - Source, schema, contracts, and measured execution establish what is built.
   Commit bodies explain why. Check documentation claims against those sources.
-- `plans/` holds current proposals and handoffs. `release_manager/docs/` holds
-  topic-specific implementation records and operational documentation.
+- `plans/` holds the active plan. New programme plans and audits go under
+  `docs/<programme>/`. `release_manager/docs/` holds topic-specific
+  implementation records and operational documentation.
 - `release_manager/docs/Completed/` and `.resources.legacy.TLDR/` are historical
   evidence, not current instruction entrypoints. Preserve dated records; old
   quotations of retired rule paths do not restore those files' authority.
@@ -279,9 +282,10 @@ At session start and after compaction:
 
 ## Updating documents and plans
 
-- Record maintainer decisions with date, scope, and status in the active plan's
-  decision record. Replace a changed current decision and retain the old row under
-  `Replaced`, with its reason/date. Agents record decisions; they do not make them.
+- Record maintainer decisions with date, scope, and status as tally decisions,
+  not in plan tables; the plan cites the ID. A changed decision replaces the old
+  one in tally, which keeps the old one with its reason/date. Agents record
+  decisions; they do not make them.
 - Give nonblocking questions stable IDs in section `0a`; never reuse IDs. When
   answered, move the row to the decision record with the answer/date/reference.
 - Update a handoff/progress section with what changed, exact verification,
@@ -332,7 +336,9 @@ VPS, and deployment permissions remain separate under rules 1–3.
 | Need | Where |
 | --- | --- |
 | Repository overview and current documents | [README.md](README.md), [CLAUDE.md](CLAUDE.md) |
-| Active proposals and handoffs | [plans/](plans/) |
+| Active plan | [plans/](plans/) |
+| Programme plans and audits | [docs/](docs/) (`docs/<programme>/`) |
+| Decisions, questions, progress, reviews, hand-offs | tally records in [docs/records/](docs/records/) |
 | Git/workspace and operator release process | [WORKFLOW.md](WORKFLOW.md) |
 | Deployment/configuration reference | [DEPLOY.md](DEPLOY.md), [release_manager/README.md](release_manager/README.md) |
 | Prior implementation evidence | [release_manager/docs/](release_manager/docs/) |

@@ -4,7 +4,7 @@ Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
-Governing process: root [RULES.md](../RULES.md). The application is in production, so every schema change follows rule 11: expand first, nothing lost, released APKs and the previous release keep working. [The previous plan](app-onboarding-contact-investment-email.md) is complete through v0.15.4 and stays as history. Its Q-017 was answered here as DEC-11; its open Q-013 (the sole admin can suspend or close their own account) was carried as tally question Q-45 and is answered by DEC-65: the app refuses it (lane `p-self-lockout`, section 8, "November patches").
+Governing process: root [RULES.md](../RULES.md). The application is in production, so every schema change follows rule 11: expand first, nothing lost, released APKs and the previous release keep working. [The previous plan](../release_manager/docs/Completed/app-onboarding-contact-investment-email.md) is complete through v0.15.4 and stays as history. Its Q-017 was answered here as DEC-11; its open Q-013 (the sole admin can suspend or close their own account) was carried as tally question Q-45 and is answered by DEC-65: the app refuses it (lane `p-self-lockout`, section 8, "November patches").
 
 ## 0a. Open questions and conservative defaults
 
@@ -640,7 +640,7 @@ The maintainer asked on 2026-11-15 for a complete UI overhaul: check, fix and ne
 - **Settled:**
   - the visual direction (DEC-45);
   - the reference widths, and the order of the fixes, client phone first (DEC-56).
-- **Earlier client UI briefs:** `release_manager/docs/` holds four client UI-UX briefs from September 2026. They are inputs to the client audits, not decisions.
+- **Earlier client UI briefs:** `release_manager/docs/Completed/client-ui-2026-09/` holds four client UI-UX briefs from September 2026. They are inputs to the client audits, not decisions.
 
 ## 7. Plan changes and approval gate
 
