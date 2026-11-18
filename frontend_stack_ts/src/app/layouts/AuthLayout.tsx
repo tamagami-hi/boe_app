@@ -1,4 +1,3 @@
-import { useEffect } from "react"
 import type { ReactNode } from "react"
 
 import { Reveal } from "~/ui/motion/Reveal"
@@ -38,28 +37,6 @@ export const AuthLayout = ({
   markers = DEFAULT_MARKERS,
   children,
 }: AuthLayoutProps): React.ReactElement => {
-  useEffect(() => {
-    const onKeyboard = (event: Event): void => {
-      const height = (event as CustomEvent<{ height: number }>).detail.height
-      if (height <= 0) return
-
-      const active = document.activeElement
-      if (!(active instanceof HTMLElement)) return
-      if (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA") return
-
-      const visible = window.innerHeight - height
-      if (visible <= 0) return
-
-      const box = active.getBoundingClientRect()
-      window.scrollBy({ top: box.top + box.height / 2 - visible / 2, behavior: "smooth" })
-    }
-
-    window.addEventListener("be:keyboard", onKeyboard)
-    return () => {
-      window.removeEventListener("be:keyboard", onKeyboard)
-    }
-  }, [])
-
   return (
     <div className={AUTH_SHELL}>
       <div className={AUTH_MESH} aria-hidden="true" />

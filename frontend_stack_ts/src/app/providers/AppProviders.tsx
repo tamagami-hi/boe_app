@@ -8,6 +8,7 @@ import { NativeBackCoordinator } from "~/app/native/NativeBackCoordinator"
 import type { TransactionalBackHandler } from "~/app/native/NativeBackCoordinator"
 import { SystemBarsController } from "~/app/native/SystemBarsController"
 import type { BackPolicyResolver } from "~/app/native/backPolicy"
+import { KeyboardAvoidance } from "~/app/providers/KeyboardAvoidance"
 import { NetworkStatusProvider } from "~/app/providers/NetworkStatusProvider"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 import { QueryProvider } from "~/app/providers/QueryProvider"
@@ -43,6 +44,7 @@ export const AppProviders = ({
           <DeviceLockGate>
             <ToastProvider>
               <SystemBarsController />
+              <KeyboardAvoidance />
               <AppLinkRouter />
               <NativeBackCoordinator
                 resolvePolicy={backPolicy}

@@ -139,3 +139,9 @@
   --be-z-toast: 1000;
 
 }
+
+@layer base {
+  main {
+    margin-bottom: var(--be-keyboard-height);
+  }
+}
