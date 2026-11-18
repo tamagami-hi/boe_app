@@ -40,6 +40,14 @@ const CATEGORY_OPTIONS = RECORDING_CATEGORIES.map((category) => ({
   label: category.label,
 }))
 
+const CATEGORY_HINT: Readonly<Record<RecordingKind, string>> = {
+  one_time:
+    "A one-time investment is a single amount the client paid, not a month of a SIP. The client sees this label on their receipt.",
+  sip: "A SIP payment is linked to a month of the client's SIP schedule for this fund. The client sees this label on their receipt.",
+  correction:
+    "A correction adds an amount that is missing from the client's record. The client sees this label on their receipt.",
+}
+
 const NOTE_MAX_LENGTH = 2_000
 
 const UNSENT = "This investment could not be sent. Reload the page and try again."
@@ -276,11 +284,7 @@ export const EarlierInvestmentForm = ({
             )}
           </FormField>
 
-          <FormField
-            label="Category"
-            required
-            hint="A SIP payment is linked to a month of the client's SIP schedule for this fund. The client sees this label on their receipt."
-          >
+          <FormField label="Category" required hint={CATEGORY_HINT[kind]}>
             {({ id }) => (
               <Select
                 id={id}
