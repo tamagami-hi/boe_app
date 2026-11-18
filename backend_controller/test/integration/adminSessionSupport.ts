@@ -72,6 +72,10 @@ export const signInRoleAdmin = async (app: FastifyInstance, stack: PasswordMailS
     "insert into user_roles (user_id, role_id, granted_by_user_id) select $1, id, $1 from roles where code = $2",
     [userId, role],
   )
+  return signInAs(app, userId, email)
+}
+
+export const signInAs = async (app: FastifyInstance, userId: string, email: string): Promise<AdminSession> => {
   const login = await app.inject({
     method: "POST",
     url: "/v1/auth/web/login",

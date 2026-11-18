@@ -25,7 +25,8 @@ import { z } from "zod"
 import type { UnitOfWork } from "../db/database.js"
 import type { AppConfigVersion, ContentItem, IdempotencyRepository } from "../db/repositories.js"
 import type { Database } from "../db/types.js"
-import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
+import { requireAnyPermission, resolveAdminPrincipal, type AdminPrincipal } from "../domain/admin/adminAccess.js"
+import { APP_CONFIG_PUBLISH_ACTION, consumeAdminStepUp, type ConsumeAdminStepUpDeps } from "../domain/auth/adminStepUp.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
 import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
@@ -41,6 +42,7 @@ import {
   limitSchema,
   optionalIdempotencyKey,
   reasonDetailSchema,
+  requireAdminConfirmation,
   runAdminMutation,
   uuidParam,
 } from "./adminRouteKit.js"
@@ -60,6 +62,7 @@ export interface AdminContentDeps {
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
   readonly cache: Cache
+  readonly stepUp: ConsumeAdminStepUpDeps
 }
 
 const FAQS_ROUTE = "/v1/admin/faqs"
@@ -464,9 +467,10 @@ const isAppConfigVersionCollision = (error: unknown): boolean => {
 const publishAppConfig = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["config.publish"])
+  const confirmation = requireAdminConfirmation(request)
   const body = parseOrThrow(appConfigPatchSchema, request.body)
   try {
-    return await publishCheckedAppConfig(deps, request, reply, principal.userId, body)
+    return await publishCheckedAppConfig(deps, request, reply, { principal, confirmation }, body)
   } catch (error) {
     if (isAppConfigVersionCollision(error)) throw new AppError("STATE_CONFLICT", { message: COLLIDING_PUBLISH_MESSAGE })
     throw error
@@ -477,9 +481,10 @@ const publishCheckedAppConfig = async (
   deps: AdminContentDeps,
   request: FastifyRequest,
   reply: FastifyReply,
-  principalUserId: string,
+  publisher: Readonly<{ principal: AdminPrincipal; confirmation: string }>,
   body: z.infer<typeof appConfigPatchSchema>,
 ) => {
+  const principalUserId = publisher.principal.userId
   const now = deps.clock()
   const canonicalPayload = JSON.stringify(body.config)
   const contentSha256 = createHash("sha256").update(canonicalPayload).digest()
@@ -493,6 +498,12 @@ const publishCheckedAppConfig = async (
     { config: body.config, ...(body.expectedVersion === undefined ? {} : { expectedVersion: body.expectedVersion }) },
     principalUserId,
     async (tx) => {
+      const stepUpId = await consumeAdminStepUp(tx, deps.stepUp, {
+        principal: publisher.principal,
+        action: APP_CONFIG_PUBLISH_ACTION,
+        presented: publisher.confirmation,
+        now,
+      })
       await deps.contentRepository.lockAppConfigPublication(tx)
       const previous = await deps.contentRepository.findCurrentAppConfig(tx)
       requireEditedFromCurrent(body.expectedVersion, previous)
@@ -517,6 +528,7 @@ const publishCheckedAppConfig = async (
         entityVersion: published.version,
         metadata: {
           version: published.version,
+          stepUpId,
           ...(body.reason === undefined ? {} : { reason: body.reason }),
         },
       })

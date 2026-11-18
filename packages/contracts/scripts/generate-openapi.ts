@@ -20,6 +20,7 @@ import { ADMIN_NATIVE_AUTH_OPERATIONS } from "../src/operations/admin-native-aut
 import { ADMIN_NOMINEE_REQUEST_OPERATIONS } from "../src/operations/admin-nominee-requests.js"
 import { ADMIN_OVERSIGHT_OPERATIONS } from "../src/operations/admin-oversight.js"
 import { ADMIN_REPORT_OPERATIONS } from "../src/operations/admin-reports.js"
+import { ADMIN_STEP_UP_OPERATIONS } from "../src/operations/admin-step-up.js"
 import { ADMIN_SUPPORT_OPERATIONS } from "../src/operations/admin-support.js"
 import { APP_OPERATIONS } from "../src/operations/app.js"
 import { CLIENT_ACCOUNT_OPERATIONS } from "../src/operations/client-account.js"
@@ -89,6 +90,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...ADMIN_CLIENT_ERASURE_OPERATIONS,
   ...ADMIN_CLIENT_RETURN_OPERATIONS,
   ...ADMIN_EMAIL_OPERATIONS,
+  ...ADMIN_STEP_UP_OPERATIONS,
   ...ADMIN_SUPPORT_OPERATIONS,
   ...VALUE_UPDATE_OPERATIONS,
   ...ADMIN_REPORT_OPERATIONS,

@@ -64,6 +64,7 @@ describe("cors", () => {
         "x-csrf-token",
         "x-client-platform",
         "x-app-version",
+        "x-admin-confirmation",
       ]) {
         expect(allowedHeaders).toContain(header)
       }

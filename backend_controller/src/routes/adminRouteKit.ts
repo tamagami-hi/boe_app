@@ -85,6 +85,25 @@ export const optionalIdempotencyKey = (request: FastifyRequest): string | null =
   return parsed.data
 }
 
+export const ADMIN_CONFIRMATION_HEADER = "x-admin-confirmation"
+
+const UPDATE_ADMIN_APP_MESSAGE = "Update the admin app to publish app config."
+const MALFORMED_CONFIRMATION_MESSAGE =
+  "This password confirmation is not valid. Enter your password again to publish."
+const CONFIRMATION_FORMAT = /^[A-Za-z0-9_-]{43}$/u
+
+export const requireAdminConfirmation = (request: FastifyRequest): string => {
+  const header = request.headers[ADMIN_CONFIRMATION_HEADER]
+  const value = Array.isArray(header) ? header[0] : header
+  if (value === undefined || value === "") {
+    throw new AppError("AUTHORIZATION_DENIED", { message: UPDATE_ADMIN_APP_MESSAGE })
+  }
+  if (!CONFIRMATION_FORMAT.test(value)) {
+    throw new AppError("TOKEN_INVALID", { message: MALFORMED_CONFIRMATION_MESSAGE })
+  }
+  return value
+}
+
 const IF_MATCH_VERSION = /^(?:W\/)?"(\d{1,15})"$/u
 
 export const optionalIfMatchVersion = (request: FastifyRequest): number | undefined => {

@@ -1,11 +1,13 @@
 import type { FastifyInstance } from "fastify"
 
+import { createPasswordRecheckLimiter } from "../auth/passwordRecheckLimiter.js"
 import { createFixedWindowRateLimiter } from "../http/rateLimit.js"
 import { createAccountingReportRepository } from "../repositories/accountingReportRepository.js"
 import { createAdminCatalogRepository } from "../repositories/adminCatalogRepository.js"
 import { createAdminOversightRepository } from "../repositories/adminOversightRepository.js"
 import { createAuditTrailRepository } from "../repositories/auditTrailRepository.js"
 import { createAdminSipScheduleRepository } from "../repositories/adminSipScheduleRepository.js"
+import { createAdminStepUpRepository } from "../repositories/adminStepUpRepository.js"
 import { createClientErasureDeleteRepository } from "../repositories/clientErasureDeleteRepository.js"
 import { createClientErasureInspectRepository } from "../repositories/clientErasureInspectRepository.js"
 import { createClientErasureWriteRepository } from "../repositories/clientErasureWriteRepository.js"
@@ -35,6 +37,7 @@ import { registerAdminRecordingSheetRoutes } from "../routes/adminRecordingSheet
 import { registerAdminReportRoutes } from "../routes/adminReportRoutes.js"
 import { registerAdminReviewRoutes, type AdminReviewDeps } from "../routes/adminReviewRoutes.js"
 import { registerAdminSipScheduleRoutes } from "../routes/adminSipScheduleRoutes.js"
+import { registerAdminStepUpRoutes } from "../routes/adminStepUpRoutes.js"
 import { registerAdminSupportRoutes, type AdminSupportDeps } from "../routes/adminSupportRoutes.js"
 import { registerClientSipScheduleRoutes } from "../routes/clientSipScheduleRoutes.js"
 import type { ServerConfig } from "./environment.js"
@@ -45,7 +48,7 @@ import { registerSipEarlyExitSurface } from "./earlyExitComposition.js"
 type AdminServerConfig = Pick<ServerConfig, "appUpdate" | "cursorKey" | "fundAum" | "sesConfigurationSet" | "ttls">
 
 export type AdminSurfaceDeps = Omit<AdminIdentityDeps, "config" | "appUpdate"> &
-  Omit<AdminContentDeps, "config" | "contentRepository"> &
+  Omit<AdminContentDeps, "config" | "contentRepository" | "stepUp"> &
   Omit<AdminOversightDeps, "config" | "oversightRepository"> &
   Omit<AdminSupportDeps, "config"> &
   Omit<AdminReviewDeps, "config"> &
@@ -91,6 +94,19 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     idempotencyRepository,
   })
 
+  const stepUpRepository = createAdminStepUpRepository()
+  registerAdminStepUpRoutes(application, {
+    webAuth,
+    unitOfWork,
+    database,
+    userRepository,
+    stepUpRepository,
+    auditRepository,
+    crypto,
+    clock,
+    confirmLimiter: createPasswordRecheckLimiter(clock),
+  })
+
   registerAdminContentRoutes(application, {
     cache,
     webAuth,
@@ -104,6 +120,7 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     contentRepository: adminContentRepository,
     auditRepository,
     idempotencyRepository,
+    stepUp: { stepUpRepository, crypto },
   })
 
   const fundAumRepository = createFundAumRepository()

@@ -30,7 +30,7 @@ const ALLOWED_METHODS = "GET, POST, PATCH, DELETE, OPTIONS"
  * platform and app version the native auth contract declares.
  */
 const ALLOWED_HEADERS =
-  "content-type, authorization, idempotency-key, if-match, x-csrf-token, x-request-id, x-client-platform, x-app-version"
+  "content-type, authorization, idempotency-key, if-match, x-csrf-token, x-request-id, x-client-platform, x-app-version, x-admin-confirmation"
 
 /** Response headers the clients read off the reply. */
 const EXPOSED_HEADERS = "x-request-id, etag, retry-after"

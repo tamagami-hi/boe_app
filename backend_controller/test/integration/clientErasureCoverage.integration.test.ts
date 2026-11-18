@@ -52,6 +52,7 @@ const ACTOR_FKS: readonly string[] = [
   "admin_sip_schedule_months.created_by_user_id -> users",
   "admin_sip_schedules.created_by_user_id -> users",
   "admin_sip_schedules.updated_by_user_id -> users",
+  "admin_step_up_confirmations.user_id -> users",
   "app_config_versions.published_by_user_id -> users",
   "app_update_announcements.actor_user_id -> users",
   "application_reviews.reviewer_user_id -> users",

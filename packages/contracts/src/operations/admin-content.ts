@@ -11,6 +11,7 @@ import {
   AdminReasonDetail,
   OptionalAdminMutationHeaders,
 } from "./admin-shared.js"
+import { ADMIN_CONFIRMATION_ERRORS, ConfirmedAdminMutationHeaders } from "./admin-step-up.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
 const ShortText = z.string().trim().max(200)
@@ -205,12 +206,12 @@ export const publishAdminAppConfig = defineOperation({
   idempotency: "optional-key",
   request: {
     body: AdminAppConfigPatchBody,
-    headers: OptionalAdminMutationHeaders,
+    headers: ConfirmedAdminMutationHeaders,
     mediaType: "application/json",
     maxBodyBytes: MAX_JSON_BODY_BYTES,
   },
   success: { status: 200, schema: createSuccessEnvelopeSchema(AdminAppConfigData) },
-  errorCodes: [...ADMIN_WRITE_ERRORS, "STATE_CONFLICT"],
+  errorCodes: [...ADMIN_WRITE_ERRORS, ...ADMIN_CONFIRMATION_ERRORS, "STATE_CONFLICT"],
 })
 
 export const AdminFundStockItem = z.strictObject({
