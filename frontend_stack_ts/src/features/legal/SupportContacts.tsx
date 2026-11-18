@@ -10,12 +10,17 @@ const SUPPORT_CONTACT_DOCUMENT = "investor-charter"
 
 const contactsOf = (data: unknown): readonly LegalContact[] => readContacts(data as PublishedDocument)
 
-export const useSupportContacts = (): readonly LegalContact[] => {
+export type ContactPick = (contact: LegalContact) => boolean
+
+const picked = (contacts: readonly LegalContact[], pick: ContactPick | undefined): readonly LegalContact[] =>
+  pick === undefined ? contacts : contacts.filter(pick)
+
+export const useSupportContacts = (pick?: ContactPick): readonly LegalContact[] => {
   const query = useLegalDocument(SUPPORT_CONTACT_DOCUMENT)
-  return query.data === undefined ? [] : contactsOf(query.data)
+  return query.data === undefined ? [] : picked(contactsOf(query.data), pick)
 }
 
-export type SupportContactsProps = Readonly<{ unpublished: string; pick?: (contact: LegalContact) => boolean }>
+export type SupportContactsProps = Readonly<{ unpublished: string; pick?: ContactPick }>
 
 export const SupportContacts = ({ unpublished, pick }: SupportContactsProps): React.ReactElement => {
   const query = useLegalDocument(SUPPORT_CONTACT_DOCUMENT)
@@ -27,8 +32,7 @@ export const SupportContacts = ({ unpublished, pick }: SupportContactsProps): Re
       fallback={<Prose>{unpublished}</Prose>}
     >
       {(data) => {
-        const published = contactsOf(data)
-        const contacts = pick === undefined ? published : published.filter(pick)
+        const contacts = picked(contactsOf(data), pick)
         return contacts.length === 0 ? <Prose>{unpublished}</Prose> : <PublishedContactList contacts={contacts} />
       }}
     </AsyncBoundary>

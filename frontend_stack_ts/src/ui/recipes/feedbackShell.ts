@@ -1,13 +1,13 @@
 export const CONNECTIVITY_BANNER = [
   "sticky top-0 z-sticky text-center",
-  "px-[max(var(--be-space-4),var(--be-safe-left))]",
+  "pl-[max(var(--be-space-4),var(--be-safe-left))] pr-[max(var(--be-space-4),var(--be-safe-right))]",
   "pt-[calc(var(--be-space-2)+var(--be-safe-top))] pb-2",
   "bg-warning text-fg-inverse font-ui text-xs font-semibold",
 ].join(" ")
 
 export const NOTICE_BANNER = [
   "sticky top-0 z-sticky text-center",
-  "px-[max(var(--be-space-4),var(--be-safe-left))]",
+  "pl-[max(var(--be-space-4),var(--be-safe-left))] pr-[max(var(--be-space-4),var(--be-safe-right))]",
   "pt-[calc(var(--be-space-2)+var(--be-safe-top))] pb-2",
   "tone-info font-ui text-xs font-semibold",
 ].join(" ")

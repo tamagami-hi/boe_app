@@ -8,6 +8,7 @@ import { formatDateTime } from "~/domain/dates"
 import { supportRequestState } from "~/domain/status"
 import { SUPPORT_CATEGORIES, supportCategoryLabel } from "~/domain/supportCategories"
 import { SupportContacts, useSupportContacts } from "~/features/legal/SupportContacts"
+import type { LegalContact } from "~/features/legal/publishedContent"
 import {
   useCreateSupportTicket,
   useSupportFaqs,
@@ -39,13 +40,26 @@ const MAX_BODY = 5_000
 const CONTACTS_TITLE = "Contact the BeOnEdge team"
 
 const CONTACTS_UNPUBLISHED =
-  "Contact details are not published yet. Requests you send here reach the BeOnEdge team."
+  "No contact details are listed here yet. Requests you send here reach the BeOnEdge team."
+
+const PHONE_CHARACTERS = /^\+?[0-9\s().-]+$/u
+
+const MIN_PHONE_DIGITS = 10
+
+const digitCount = (text: string): number => text.replace(/[^0-9]/gu, "").length
+
+const isPhone = (contact: LegalContact): boolean =>
+  contact.href?.toLowerCase().startsWith("tel:") === true ||
+  contact.label === "Phone" ||
+  (PHONE_CHARACTERS.test(contact.value) && digitCount(contact.value) >= MIN_PHONE_DIGITS)
+
+const isNotPhone = (contact: LegalContact): boolean => !isPhone(contact)
 
 const SupportScreen = (): React.ReactElement => {
   const faqs = useSupportFaqs()
   const tickets = useSupportTickets()
   const create = useCreateSupportTicket()
-  const hasContacts = useSupportContacts().length > 0
+  const hasContacts = useSupportContacts(isNotPhone).length > 0
 
   const [category, setCategory] = useState<string>("general")
   const [subject, setSubject] = useState("")
@@ -253,7 +267,7 @@ const SupportScreen = (): React.ReactElement => {
 
       <Section title={CONTACTS_TITLE}>
         <Card>
-          <SupportContacts unpublished={CONTACTS_UNPUBLISHED} />
+          <SupportContacts unpublished={CONTACTS_UNPUBLISHED} pick={isNotPhone} />
         </Card>
       </Section>
     </Page>

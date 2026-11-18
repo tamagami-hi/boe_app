@@ -64,6 +64,8 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
 
   const activeId = route.id
   const ownerId = resolveNavOwner(ADMIN_ROUTES, route, ADMIN_HOME_PATH)?.id ?? null
+  const isAccountSection =
+    route.path === ADMIN_ACCOUNT_PATH || (route.back.kind === "parent" && route.back.path === ADMIN_ACCOUNT_PATH)
   const activeDomain = route.nav?.domain ?? null
   const siblings =
     activeDomain === null ? [] : permitted.filter((entry) => entry.nav.domain === activeDomain)
@@ -106,7 +108,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
             <Link
               to={ADMIN_ACCOUNT_PATH}
               className={ADMIN_ACTION_LINK}
-              aria-current={activeId === "account" ? "page" : undefined}
+              aria-current={isAccountSection ? "page" : undefined}
             >
               Account
             </Link>
