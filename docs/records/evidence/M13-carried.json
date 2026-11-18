@@ -299,6 +299,81 @@
         "ignored": 0
       },
       "note": "integration suite after review fixes, coverage off"
+    },
+    {
+      "id": "37295808-4182-4a53-a672-ab732e7462a9",
+      "task": "carried-config",
+      "track": "p-carried-config",
+      "agent": "claude-opus-5-5 builder p-carried-config",
+      "kind": "green",
+      "command": [
+        ".temp/p-carried-config/nginx-t.sh",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-config/release_manager/nginx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-config",
+      "started": "2026-11-18T14:13:55Z",
+      "seconds": 0,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-carried-config/20261118T141355Z-3528032-green.log",
+        "sha256": "6c5d6440ca9f42914757ded3d57aad88a9bf6d0e9b1b68e34e3fcf66a491495d",
+        "bytes": 262
+      },
+      "head": "6a9d6f7f2a32e2560979b99730e592956d1b5f75",
+      "dirty": false
+    },
+    {
+      "id": "470e3de0-4ac9-4ed3-bb2b-24491613f038",
+      "task": "carried-config",
+      "track": "p-carried-config",
+      "agent": "claude-opus-5-5 builder p-carried-config",
+      "kind": "other",
+      "command": [
+        ".temp/p-carried-config/nginx-t.sh",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-config/release_manager/nginx",
+        "debian-default"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-config",
+      "started": "2026-11-18T14:13:55Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-carried-config/20261118T141355Z-3528293-red.log",
+        "sha256": "1db976885838f999d37ee741c7d69becc552b3cc74d414b258cf5545c7cda97c",
+        "bytes": 398
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error",
+      "head": "6a9d6f7f2a32e2560979b99730e592956d1b5f75",
+      "dirty": false
+    },
+    {
+      "id": "7a286418-d2bf-4262-b5c1-0f20c5f99795",
+      "task": "carried-config",
+      "track": "p-carried-config",
+      "agent": "claude-opus-5-5 builder p-carried-config",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-config/backend_controller",
+      "started": "2026-11-18T14:13:54Z",
+      "seconds": 84,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-carried-config/20261118T141354Z-3527333-green.log",
+        "sha256": "d2e9ba19e8122bb72af405e62811a91f437cf33b2d3f8316681430a7a192bf3c",
+        "bytes": 18389
+      },
+      "summary": {
+        "passed": 1243,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "6a9d6f7f2a32e2560979b99730e592956d1b5f75",
+      "dirty": false
     }
   ]
 }

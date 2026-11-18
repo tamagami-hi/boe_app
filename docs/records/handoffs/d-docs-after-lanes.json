@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "track": "d-docs-after-lanes",
+  "current": {
+    "from": "claude-opus-5-5",
+    "track": "d-docs-after-lanes",
+    "at": "2026-11-18T14:02:26.934Z",
+    "lines": [
+      "D2-docs-after-lanes (M18-docs-cleanup, DEC-60): DONE. Two docs-only commits on track/d-docs-after-lanes, not rebased or landed: 3cb33886, 2c73b347. Author tamagami-hi, no trailers.",
+      "task_claim was refused (task sits on track main); the coordinator records the claim and landing.",
+      "3cb33886: git mv the 4 'BeOnEdge Client*.md' briefs -> release_manager/docs/Completed/client-ui-2026-09/; existing-client-impl/ -> Completed/existing-client-impl/; plans/app-onboarding-contact-investment-email.md -> Completed/.",
+      "3cb33886 links: README.md Current documents (pointers, no phase status, tally line for docs/records/, layout row for docs/); DEPLOY.md sequencing example path only; plan line 7 link and section 6 brief path; CLAUDE.md task map.",
+      "3cb33886 RULES.md: Authority (decisions in tally alone, plan cites the ID; plans/ = active plan, new programme plans and audits under docs/<programme>/), Updating documents and plans (first bullet: decisions in tally, not plan tables), task map rows. Rule 16 and the section-0a questions bullet NOT changed: the brief named decisions only.",
+      "3cb33886 client-erasure.md: DEC-66 line now 'released from v0.18.1 (b69602d)' per git tag --contains; deployment not inferred. Line 3 already said released from v0.16.0.",
+      "2c73b347 (finding-29): prometheus.yml blackbox_https drops admin, dev-admin and monitor.beonedge.in (no nginx site config; boe-shared.conf says monitor conf retired). Alert regexes unchanged and still match app/dev-app.",
+      "2c73b347: OPERATOR_MANUAL_STEPS.md 5.3/5.5/5.6 drop monitor A record, dig loop, certbot and monitor htpasswd; MS_GUIDE.md Grafana is Tailscale-only (admin.tailscale.conf includes boe-monitor-grafana.conf) or SSH tunnel; release_manager/README.md BOE_APP/ and wt/* wording corrected.",
+      "Verify: relative-link check over the 9 edited Markdown files, 34 links, 0 broken; git diff --check clean; prometheus.yml parses. No application or runtime checks ran.",
+      "LEFT (config, outside brief, not changed): GRAFANA_ROOT_URL defaults to https://monitor.beonedge.in in docker-compose.monitor_service.yml:81 and .env.example:32, and .env.example:10 comment says Grafana is publicly proxied; boe-shared.conf:96 CORS map lists admin.beonedge.in. The maintainer decides.",
+      "LEFT: the boe-monitor-grafana.conf snippet admin.tailscale.conf includes is not tracked in the repo, so the Grafana path inside the console is not documented here.",
+      "LEFT: WORKFLOW.md:21 wt/* sentence already correct after D1; status.sh still handles wt/* (script, not touched). Rule 16 questions wording and Q1's tally rule-50 re-tailor are for the maintainer/coordinator."
+    ]
+  },
+  "history": []
+}

@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "track": "p-findings-0184",
+  "current": {
+    "task": "P-findings-0184",
+    "from": "claude-opus-5-5 builder p-findings-0184",
+    "track": "p-findings-0184",
+    "at": "2026-11-18T13:37:52.088Z",
+    "lines": [
+      "Commits on track/p-findings-0184 (base f948f970): c9c81f45 F1, fb5bba68 F4, aeaeaacf F2, 295a177e F3, 1a3cdf18 N4. Item 6 needed no change. Tree clean.",
+      "F1 (c9c81f45, whatsNewSeen.ts + new whatsNewSeen.test.ts): markSeen also writes to IndexedDB db boe.whatsNew, store seen, key boe.<scope>.whatsNew.<userId>, in a readwrite transaction with durability strict. The store is read once at module load. lastSeen = this-run id, else the newer of localStorage and IndexedDB by release number. The localStorage key and meaning are unchanged; unseenEntries is untouched. If IndexedDB is missing or refused, it falls back to localStorage and never throws.",
+      "F1 evidence RUNTIME (headless Chromium 1248, not the Android WebView): SIGKILL about 1.7 s after Done left localStorage null and IndexedDB 0.18.4, and lastSeen returned 0.18.4. A data: page that refuses IndexedDB (SecurityError) fell back with no throw. A cold IndexedDB read took 2-4 ms.",
+      "F1 residual window: a lastSeen call made before the IndexedDB read settles uses localStorage only. WhatsNewPrompt.tsx is outside this lane. On native the first call comes after tokenStore.hydrate (sequential secure-storage reads), so the window should be closed in practice. Closing it fully needs the prompt to wait on a ready signal (follow-up file: WhatsNewPrompt.tsx).",
+      "F2 (aeaeaacf, EarlierInvestmentForm.tsx): the Category hint is keyed by kind. One-time: 'A one-time investment is a single amount the client paid, not a month of a SIP.' SIP: unchanged. Correction: 'A correction adds an amount that is missing from the client's record.' Each ends with the receipt-label sentence. Copy only, no test (rule 10).",
+      "F3 (295a177e, recordingCategory.ts recordingNoticeOf + recordContribution.ts + new recordingCategory.test.ts): one-time -> title 'One-time investment recorded', body 'Your one-time investment in <fund> is now in your portfolio. Contact support if you do not recognise it.' SIP -> 'SIP payment recorded', 'Your SIP payment for <Month YYYY> in <fund> ...'. The titles match the email subjects. Kind client_contribution_recorded and the payload keys are unchanged.",
+      "F3 judgement to confirm: recordContribution passes the same category the audit row records (sipLink ? 'sip' : assigned). A month-linked recording from a released 0.16.0-0.18.2 admin app with no category therefore gets the SIP wording, as its receipt label and SIP email already do. Only recordings that are neither linked nor one-time keep the released text. For the literal reading instead, pass `assigned` alone in recordContribution.ts.",
+      "F3 wiring TESTED with a throwaway integration test (deleted, not committed). It stored: categorised SIP 'for March 2025'; linked without category 'for April 2025'; one-time; uncategorised monthly with the old text. Kind and payload keys were unchanged.",
+      "F4 (fb5bba68, SipDetailScreen.tsx): the payment mode is autopay (an AutoPay-only status, or the AutoPay read returned data), manual (only when that read answered RESOURCE_NOT_FOUND, the backend's reply for a manual plan) or unknown. Unknown shows a Skeleton in Paid by while the read is pending. On failure it shows 'Not available' plus an error Alert 'We could not check how this plan is paid' with Try again (refetch).",
+      "F4 also: Pause, Resume and Cancel this plan, and the 'nothing is taken automatically' text, show only for a known manual plan. The day label stays 'Day each month' until AutoPay is known. No AutoPay or PhonePe wording was added. A throwaway render test (deleted) passed 5 cases. New copy for review: 'Not available'; 'We could not check how this plan is paid'; 'Check your connection and try again. The actions for this plan show once this loads.'",
+      "N4 (1a3cdf18, guards.test.tsx): findByText('Users directory', {}, { timeout: 5000 }) and a 15000 ms test limit, the AdminShellRoot.test.tsx pattern. Test only.",
+      "Item 6, record form close: already safe, no change (STATIC + TESTED). submit() keeps the hold in sessionStorage key beo.admin.held-write.v1:record:<userId> (durable retention) before the request is sent. Close unmounts the form; reopening restores the hold as Not confirmed, and Check again resends the same key and body.",
+      "Item 6 evidence: heldMoneyWrites.test.tsx 'record an investment: ... stays locked across closing and reopening, and Check again resends the same key' passes. ClientHubActions.tsx:52 disables Close while UserDetailScreen passes canClose={recordHold !== 'unsaved'}, so a hold that could not be saved cannot be closed. If the reply lands after close, mutate callbacks do not fire, so the hold is kept and Check again replays it. No duplicate is possible.",
+      "Rule 11: no response key, enum value, route or contract change. Notification title and body are free text. Released builds keep reading and writing the same localStorage key; the IndexedDB db is new client-side storage only. A rollback to 0.18.3 ignores it and reads the localStorage copy, which is still written.",
+      "Checks (Node 24 container, committed head 1a3cdf18, clean tree): contracts npm ci+build 20261118T133235Z-2737385.",
+      "Checks: backend npm ci+check 20261118T133256Z-2742044, 105 files / 1243 tests, unit coverage 82.05 statements / 85.09 branches / 86.84 functions / 82.05 lines.",
+      "Checks: backend integration subset, coverage off, 20261118T133415Z-2760018, 6 files / 45 tests: recordingReceipts, recordingCategories, recordingCategoryEmails, adminSipSchedules, recordingSheet, accountingReports.",
+      "Checks: frontend npm ci+check 20261118T133435Z-2769781, 67 files / 599 tests.",
+      "Checks: build:android 20261118T133550Z-2784885 (73 assets, 1066467 bytes, 62 chunks boot); build:android:admin 20261118T133555Z-2785280 (105 assets, 1465712 bytes, 93 chunks boot). PhonePe target check passed both times.",
+      "Red controls F1 (each restored and checked with cmp): 20261118T133613Z-2788303 whatsNewSeen.ts reverted to f948f970, the kill case red; 20261118T133626Z-2792826 compared as text, the 0.18.10 vs 0.18.9 case red; 20261118T133642Z-2797927 durable failures uncaught, the fallback case red.",
+      "Red control F3 (restored and checked with cmp): 20261118T133651Z-2801486, notice ignores the assigned category; the SIP and one-time cases are red.",
+      "EMU F1 (client dev, Rahul Kumar): on the first open after the 0.18.4 update, the sheet shows the newest unseen notes. Tap Done, then adb shell am force-stop com.beonedge.app.dev within 1 s, then reopen: no sheet.",
+      "EMU F1 repeat via CDP: localStorage.setItem('boe.client.whatsNew.<Rahul userId>','0.18.1') and indexedDB.deleteDatabase('boe.whatsNew'), restart, Done, force-stop within 1 s, reopen: no sheet. IndexedDB boe.whatsNew/seen holds the newest id. Admin uses boe.admin.whatsNew.<adminId>.",
+      "EMU F2 (admin dev): Users > Rahul Kumar > Record an investment. Switch Category between One-time investment, SIP payment and Correction: the hint under Category changes each time. Nothing needs to be submitted.",
+      "EMU F3 (needs the 0.18.4 backend on dev): record a one-time 1000 on BOE_ARBITRAGE for Rahul. The client notification reads 'One-time investment recorded' / 'Your one-time investment in BOE_ARBITRAGE ...'.",
+      "EMU F3 SIP: record a SIP payment (the form defaults to Sept 2026). The notification reads 'SIP payment recorded' / 'Your SIP payment for September 2026 in BOE_ARBITRAGE ...'. Reverse both afterwards; each also sends its email to Rahul's dev mailbox.",
+      "EMU F4 (client dev, Rahul): open the cancelled AutoPay plan with airplane mode on, then turn it off. While it reloads, Paid by shows a grey bar, never 'You, each month', and then 'AutoPay'. No Pause or Cancel appears at any point.",
+      "EMU item 6 (optional, a write on Rahul): Record an investment, then Review. Turn airplane mode on, then Record: 'Not confirmed'. Close the recording form, reopen: still Not confirmed and locked. Airplane off, Check again: recorded once. Reverse it afterwards.",
+      "Not done: no emulator or adb use. No new tests for F2 or F4 (copy and rendering, rule 10). What's new notes untouched."
+    ]
+  },
+  "history": []
+}

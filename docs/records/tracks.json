@@ -1385,6 +1385,220 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       }
+    },
+    {
+      "name": "p-findings-0184",
+      "branch": "track/p-findings-0184",
+      "worktree": ".temp/worktrees/p-findings-0184",
+      "purpose": "0.18.4: fix the four 0.18.3 emulator findings, the flaky guard test and the record-form held write",
+      "paths": [
+        "frontend_stack_ts/src/features/whats-new/whatsNewSeen.ts",
+        "frontend_stack_ts/src/features/whats-new/whatsNewSeen.test.ts",
+        "frontend_stack_ts/src/features/admin/client-values",
+        "frontend_stack_ts/src/features/sip",
+        "frontend_stack_ts/src/app/routing/guards.test.tsx",
+        "backend_controller/src/domain/shared",
+        "backend_controller/src/domain/admin",
+        "backend_controller/test"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T13:12:53.364Z"
+    },
+    {
+      "name": "p-carried-lows",
+      "branch": "track/p-carried-lows",
+      "worktree": ".temp/worktrees/p-carried-lows",
+      "purpose": "0.18.4: the carried LOW findings of M13 (maintainer scheduled them 2026-11-18)",
+      "paths": [
+        "frontend_stack_ts/src",
+        "backend_controller"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T13:12:53.845Z"
+    },
+    {
+      "name": "p-admin-sidebar",
+      "branch": "track/p-admin-sidebar",
+      "worktree": ".temp/worktrees/p-admin-sidebar",
+      "purpose": "0.18.4: docked, retractable admin desktop sidebar; single-page sections first (maintainer 2026-11-18)",
+      "paths": [
+        "frontend_stack_ts/src/shells/admin",
+        "frontend_stack_ts/src/ui/recipes/shellAdmin.ts",
+        "frontend_stack_ts/src/ui/recipes/layout.ts",
+        "frontend_stack_ts/src/app/routing/routeManifest.ts",
+        "frontend_stack_ts/src/app/routing/routeManifest.test.ts",
+        "frontend_stack_ts/src/app/routing/adminRoutes.ts"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T13:37:46.347Z"
+    },
+    {
+      "name": "v-breakdown-core",
+      "branch": "track/v-breakdown-core",
+      "worktree": ".temp/worktrees/v-breakdown-core",
+      "purpose": "0.18.4 DEC-76 V1: breakdown tables, pure fold, client breakdown endpoint, admin clean-up endpoints, widened categorising",
+      "paths": [
+        "backend_controller",
+        "packages/contracts",
+        "frontend_stack_ts/src/api/generated"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T13:48:31.645Z"
+    },
+    {
+      "name": "v-client-breakdown",
+      "branch": "track/v-client-breakdown",
+      "worktree": ".temp/worktrees/v-client-breakdown",
+      "purpose": "0.18.4 DEC-76 V2: client Breakdown view on Portfolio",
+      "paths": [
+        "frontend_stack_ts/src/features/portfolio",
+        "frontend_stack_ts/src/api",
+        "packages/contracts",
+        "backend_controller"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T13:56:23.985Z"
+    },
+    {
+      "name": "v-admin-cleanup",
+      "branch": "track/v-admin-cleanup",
+      "worktree": ".temp/worktrees/v-admin-cleanup",
+      "purpose": "0.18.4 DEC-76 V3: admin clean-up screens (categorise list, earlier growth panel, overview item, banner)",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/client-values",
+        "frontend_stack_ts/src/features/admin/users",
+        "frontend_stack_ts/src/features/admin/overview",
+        "frontend_stack_ts/src/app/routing/adminRoutes.ts",
+        "frontend_stack_ts/src/api",
+        "packages/contracts",
+        "backend_controller"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T13:56:24.651Z"
+    },
+    {
+      "name": "v-growth-ui",
+      "branch": "track/v-growth-ui",
+      "worktree": ".temp/worktrees/v-growth-ui",
+      "purpose": "0.18.4 DEC-76 V4 task 3: admin per-investment growth screens (target choice, monthly sheet per investment, whole fund)",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/client-values",
+        "frontend_stack_ts/src/api",
+        "packages/contracts",
+        "backend_controller"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T13:56:25.206Z"
+    },
+    {
+      "name": "d-docs-after-lanes",
+      "branch": "track/d-docs-after-lanes",
+      "worktree": ".temp/worktrees/d-docs-after-lanes",
+      "purpose": "M18 D2 (DEC-60): archive and link updates, README and RULES.md edits, finding-29 docs items",
+      "paths": [
+        "README.md",
+        "RULES.md",
+        "DEPLOY.md",
+        "plans",
+        "release_manager/docs",
+        "release_manager/stacks/monitor_service",
+        "release_manager/README.md",
+        "release_manager/OPERATOR_MANUAL_STEPS.md",
+        "release_manager/stacks",
+        "WORKFLOW.md",
+        "docs"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T13:58:02.934Z"
+    },
+    {
+      "name": "p-carried-config",
+      "branch": "track/p-carried-config",
+      "worktree": ".temp/worktrees/p-carried-config",
+      "purpose": "0.18.4: carried config items (nginx default_server, stale admin and monitor hosts, CLAUDE.md link)",
+      "paths": [
+        "release_manager/nginx",
+        "release_manager/stacks",
+        ".env.production.example",
+        "backend_controller/.env.example",
+        "CLAUDE.md"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T14:05:08.946Z"
+    },
+    {
+      "name": "v-growth-parts",
+      "branch": "track/v-growth-parts",
+      "worktree": ".temp/worktrees/v-growth-parts",
+      "purpose": "DEC-76 V4 backend: per-investment growth plan, endpoints, released-app refusal, growth email v2",
+      "paths": [
+        "backend_controller",
+        "packages/contracts",
+        "frontend_stack_ts/src/api/generated"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T14:16:26.974Z"
+    },
+    {
+      "name": "v-early-exit-sip",
+      "branch": "track/v-early-exit-sip",
+      "worktree": ".temp/worktrees/v-early-exit-sip",
+      "purpose": "DEC-76 V5: SIP early exit returns only the SIP's value (amends DEC-41)",
+      "paths": [
+        "backend_controller",
+        "packages/contracts",
+        "frontend_stack_ts/src/features/admin/users",
+        "frontend_stack_ts/src/api/generated"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T14:16:28.010Z"
+    },
+    {
+      "name": "p-button-disabled",
+      "branch": "track/p-button-disabled",
+      "worktree": ".temp/worktrees/p-button-disabled",
+      "purpose": "0.18.4: a disabled Button drops its tone so it no longer looks enabled",
+      "paths": [
+        "frontend_stack_ts/src/ui/primitives/Button.tsx"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T14:20:18.323Z"
     }
   ]
 }

@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "track": "v-admin-cleanup",
+  "current": {
+    "task": "V-admin-cleanup",
+    "from": "claude-opus-5-5 builder v-admin-cleanup",
+    "track": "v-admin-cleanup",
+    "at": "2026-11-18T14:24:10.951Z",
+    "lines": [
+      "Review fixes for V3 (review of 7d5ab01c: land, 0 blocking, 2 medium, 3 low) on track/v-admin-cleanup, head 50a55b04.",
+      "86dc46b5 fixup! feat(admin-cleanup) (squashes into 1b2696af): (1) RecordingCategoryPanel one-time cell: 'Linked to a SIP month' only when sipScheduleId or sipMonth is set, 'One-time' when category is one_time, otherwise 'Cannot be categorised'; (3) proposedAmountOf returns null for a ref missing from the proposal, and the form leaves that field empty, so the sum gate blocks Confirm and the line reads 'Enter an amount for every investment'; adds splitFormKeyOf (fund id, cutoff entry id, every investment ref key).",
+      "50a55b04 fixup! fix(admin-cleanup) (squashes into 7d5ab01c): (2) EarlierGrowthPanel keys each fund form by splitFormKeyOf, so a refetch that adds or removes an investment under the same cutoff re-seeds the fields. Split this way because one fixup on 1b2696af conflicted with 7d5ab01c's import block.",
+      "Autosquash checked in memory with git merge-tree and commit-tree, no branch or worktree made: both fixups apply cleanly, and the squashed tree equals the 50a55b04 tree.",
+      "SipScheduleEditor.test.tsx kept (M17-X1 part 1). The tile's stale-zero low stays as known.",
+      "Checks on 50a55b04, clean tree: frontend npm ci && check 20261118T142204Z-3788387 (69 files, 604 tests); build:android 20261118T142328Z-3830368; build:android:admin 20261118T142337Z-3833947. Contracts unchanged since 20261118T141640Z-3621851.",
+      "Earlier hand-off content (commits, red controls 20261118T140918Z-3411804 and 20261118T140927Z-3416281, screenshots, dev steps, assumptions) still holds."
+    ]
+  },
+  "history": [
+    {
+      "task": "V-admin-cleanup",
+      "from": "claude-opus-5-5 builder v-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "at": "2026-11-18T14:17:30.073Z",
+      "lines": [
+        "Lane V3 (DEC-76) on track/v-admin-cleanup, head 7d5ab01c. The cherry-picked V1 contracts commit 10349f4c (= 9e24efe9) drops out on rebase.",
+        "Commits: 1b2696af feat(admin-cleanup) screens; 00454e70 test(sip-schedules) M17-X1 part 1; 7d5ab01c fix(admin-cleanup) persisted split hold.",
+        "Categorise list (RecordingCategoryPanel): copy now names corrections; rows still come from the server's widened list filtered by sipLinkAllowed. Mark as one-time only when oneTimeAllowed and no sipScheduleId/sipMonth, so a linked correction cannot be marked one-time.",
+        "EarlierGrowthPanel + EarlierGrowthFundForm: funds with earlierGrowth.needsConfirmation; signed rupee input per investment, pre-filled from proposal; running remainder; Confirm only at the exact total (earlierGrowthSplit.ts); review dialog; held write of confirmAdminEarlierGrowthSplit persisted in slot earlier-growth-split:<userId>; STATE_CONFLICT shows 'The earlier growth changed. Reload to see the new total.' with Reload; says no email is sent; market-risk footnote.",
+        "Ledger tab merges the split's unsaved-hold signal with the ledger reversal's, so Records tabs refuse to switch while an unsaved hold exists.",
+        "Overview tile 'Investments to categorise: N clients' from clientCount, hidden at 0; failed read shows Try again. New screen /client-values/to-categorise (client_values.read, nav 'To categorise', order 6.5), rows link to /users/<id>?tab=ledger.",
+        "adminRoutes.ts: one entry appended after client-values-position, no reorder (p-admin-sidebar merge). queryKeys.ts: clientInvestments, investmentsToCategorise.",
+        "Client page banner (InvestmentsCategoryBanner): 'N investments in M funds need a category before this client's breakdown can show.' plus a split sentence when a fund needs one; hidden at none; failed read shows retry (rule 4).",
+        "M17-X1 part 1 (review-14 N3): Done was already locked since 4978151a; added SipScheduleEditor.test.tsx guard (Done disabled, onClose not called, same key on Check again).",
+        "Rule 11: frontend only; consumes three new operations; no existing response or request changes. New localStorage hold slot is ignored by released apps.",
+        "Tests: earlierGrowthSplit.test.ts (4) red 20261118T140918Z-3411804 (gate compares whole rupees); SipScheduleEditor.test.tsx (1) red 20261118T140927Z-3416281 (Done disabled only while pending). Both restored, cmp identical.",
+        "Checks on 7d5ab01c (clean tree): contracts build 20261118T141640Z-3621851; frontend npm ci && check 20261118T141407Z-3533228 (69 files, 604 tests); build:android 20261118T141539Z-3587673; build:android:admin 20261118T141545Z-3591214. Earlier on 00454e70: check 20261118T140946Z-3425061, builds 20261118T141103Z-3450305 / 20261118T141112Z-3453690.",
+        "Screenshots (fixture-backed mock runtime, no backend): .temp/worktrees/v-admin-cleanup/.temp/v-admin-cleanup/shots/1-8 (Overview tile, list, banner, panel, off-by-one-paisa, review dialog, 412 px panel and list; no horizontal overflow at 412).",
+        "UNVERIFIED: against V1's real backend (not on this branch). Assumes stale cutoff answers STATE_CONFLICT and investments[].label reads 'SIP' / 'Ended SIP' / 'One-time investment'.",
+        "Observed, not my files: a disabled primary Button renders dark like an enabled one (grad-solid wins over BUTTON_DISABLED's bg-none); Confirm is disabled (attribute checked) but does not look it. ui/recipes/button.ts.",
+        "Dev steps (Rahul Kumar): see the coordinator report; no emulator used."
+      ]
+    }
+  ]
+}

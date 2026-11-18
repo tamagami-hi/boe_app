@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextId": 90,
+  "nextId": 99,
   "reviews": [
     {
       "id": "review-1",
@@ -1945,6 +1945,212 @@
         "agent": "claude-opus-5-5 (coordinator)"
       },
       "at": "2026-11-18T12:27:06.855Z"
+    },
+    {
+      "id": "review-90",
+      "milestone": "M19-patches-0-18",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "commit": "1a3cdf1",
+      "reviewer": "ecc:code-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 4
+      },
+      "summary": "F1 IndexedDB seen id never throws, falls back to localStorage, compares releases numerically (0.18.10 over 0.18.9), keys per scope and user, one cached connection. F3 changes only title and body; month-linked recordings from released apps get SIP wording, matching receipt and email; month format matches the email. F4 manual only on the backend's 404 for a manual plan, no actions while unknown, error state with retry. F2 and N4 fine; item 6 already safe. Red controls bite (27 tests rerun). Lows: async IDB read has no re-render (ms window, after session restore), no test for F4, caller wiring for F3 untested, no component test for Close.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/.temp/p-findings-0184/review.md",
+        "sha256": "d800b95465f5deb8af042ba7c24c24a167830b682c0606945f6bfbdd1fc9e9ec",
+        "bytes": 5503
+      },
+      "by": {
+        "track": "p-findings-0184",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T13:41:28.660Z"
+    },
+    {
+      "id": "review-91",
+      "milestone": "M13-carried",
+      "task": "carried-lows",
+      "track": "main",
+      "commit": "999f7e4",
+      "reviewer": "ecc:react-reviewer agent (claude-opus-5-5, not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 1,
+        "low": 4
+      },
+      "summary": "Reviewed at 9a51ebf: CL-12 lock keeps the held investor and key across links with no render loops; CL-07 rewrites use replace and converge; CL-08/09 no permission bypass, route ids intact; CL-03 test covers the fund filter and cursor reuse; no API change. The one medium (M1, no test for the position screen's isHolding wiring) is fixed in 999f7e4 with a red control (run 20261118T134649Z-2942290); frontend check green on 999f7e4. Lows left as known edges: fundId-only link ignored, persisted unconfirmed hold unlocked and unhinted, long ?q= kept in the URL, focus lost after a password error. CL-10 moved to p-admin-sidebar.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/p-carried-lows/review.md",
+        "sha256": "c2a7ad9abf80fd26f2c96649b85a615f87d6e8d7111bd32766f0c79e5b9fe02d",
+        "bytes": 9353
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T13:49:47.697Z"
+    },
+    {
+      "id": "review-92",
+      "milestone": "M19-patches-0-18",
+      "task": "P-admin-sidebar",
+      "track": "p-admin-sidebar",
+      "commit": "93a3116",
+      "reviewer": "claude-pro account, opus xhigh read-only run (not the builder's context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 2
+      },
+      "summary": "Phones unchanged (412 px pairs byte-identical), bottom bar order and route ids untouched, orderSidebarGroups never drops a page (red control recorded), toggle has aria-expanded/aria-controls, keeps focus, collapsed nav hidden and out of the tab order, 44 px target; storage read and write wrapped, default shown, read before first paint; motion only under motion-safe; every class resolves; sticky layout sits beside content under the chrome offset. Lows: a grouped section reduced to one page by permissions keeps its group position rather than joining the singles at the top; the toggle jumps when the header recentres during the hide animation.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-p-admin-sidebar.out.md",
+        "sha256": "e3dae9729b1acba555ca26dfa39c2355290e2dedbfd2fa589ef51b07f75068e5",
+        "bytes": 4481
+      },
+      "by": {
+        "track": "p-admin-sidebar",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:03:12.937Z"
+    },
+    {
+      "id": "review-93",
+      "milestone": "M18-docs-cleanup",
+      "task": "D2-docs-after-lanes",
+      "track": "main",
+      "commit": "f933424",
+      "reviewer": "claude-opus-5-5 coordinator (built by the claude-pro account, a different context)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 1
+      },
+      "summary": "Read the full diff: archives moved with git mv (previous plan, four UI briefs, existing-client-impl) and every link updated (34 links, 0 broken); RULES.md edits match DEC-60 exactly (decisions live in tally alone, programme docs under docs/<programme>/, task map rows), nothing else in the rulebook changed; DEPLOY.md and the plan changed links only; prometheus.yml dropped three probes for hostnames with no nginx site config, alert rules untouched; monitor host steps removed and Grafana described as Tailscale or SSH tunnel only. Low: the CLAUDE.md link to the archived plan was outside the track's paths and moves to the next coordinator track. Left for config: GRAFANA_ROOT_URL default, an .env.example comment, admin.beonedge.in in the boe-shared.conf CORS map.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/d-docs-after-lanes.out.md",
+        "sha256": "61dfa2c939eec410cafe5031c2fec3c2c94d8e50d8e27ed0e7a956d1f878b5d6",
+        "bytes": 5965
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:04:18.045Z"
+    },
+    {
+      "id": "review-94",
+      "milestone": "M19-patches-0-18",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "commit": "7faa3cc",
+      "reviewer": "claude-opus-5-5 xhigh (claude-pro account)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 2
+      },
+      "summary": "Land. Money via MoneyValue/toPaise with no client arithmetic, returns via formatBasisPoints, null XIRR 'Available after 30 days', preparing fund shows only the notice, order active SIP / ended SIP / one-time newest first / other adjustments, ?view=breakdown with replace, key in CLIENT_MONEY_PREFIXES, aria-pressed toggle, Positions unchanged under -w, no contract or route change. Lows: L1 the only way back to Positions is tapping the pressed Breakdown pill again (Back leaves Portfolio), a product call; L2 a reversed one-time shows Growth ₹0.00 in the gain tone from the shared MoneyValue.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-v-client-breakdown.out.md",
+        "sha256": "d2224883e3f1f95b1d861b71aef221fa783b854ec9f7f8fe2ae406fc32cb70f3",
+        "bytes": 2956
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:15:54.633Z"
+    },
+    {
+      "id": "review-95",
+      "milestone": "M13-carried",
+      "task": "carried-config",
+      "track": "p-carried-config",
+      "commit": "6a9d6f7",
+      "reviewer": "claude-opus-5-5 xhigh (claude-pro account)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 3
+      },
+      "summary": "Land. Every :80/:443 listen is wildcard so each pair has one default; named hosts (app, dev-app, tailnet consoles, .internal redirects) still match their own servers; console TLS unchanged; CORS keeps both tailnet consoles and nothing names admin.beonedge.in; WEB_ORIGIN_ALLOWLIST matches prod_release; alert rules parse and match the remaining probes; comment edits only correct existing comments. Lows: L1 a stock sites-enabled/default makes nginx -t fail (DEPLOY text carries the precheck); L2 cloudflared must pass the app Host header through or :80 return 444 refuses it (DEPLOY adds a tunnel curl check); L3 the console TLS settings now live in two files and must change together.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-p-carried-config.out.md",
+        "sha256": "0d74e6ec5902c88cd03d287c2b84e4a9119b223c48de149402b0e430c9f2c875",
+        "bytes": 3418
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:19:22.861Z"
+    },
+    {
+      "id": "review-96",
+      "milestone": "M19-patches-0-18",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "commit": "7d5ab01",
+      "reviewer": "claude-opus-5-5 ecc:react-reviewer (local)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "medium": 2,
+        "low": 3
+      },
+      "summary": "Money gate exact on BigInt paise with signed input parsing, held write keyed by user and admin with same-key Check again, STATE_CONFLICT reload, one-time gating on oneTimeAllowed and no SIP month, permissions and route order clean, tile and banner retry. M1 fallback label 'Linked to a SIP month' wrong for ineligible rows: fix. M2 SipScheduleEditor test is the coordinator-assigned M17-X1 part 1 with a red control: kept. L1 form key misses investment refs: fix. L2 missing proposal ref defaults to 0: fix. L3 stale zero tile: known.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-v-admin-cleanup.prompt.md",
+        "sha256": "3808bccc81ff1f7a79166de3c6e4b0be5b78d912af94a3331fb9106847c67a12",
+        "bytes": 2306
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:19:55.641Z"
+    },
+    {
+      "id": "review-97",
+      "milestone": "M19-patches-0-18",
+      "task": "P-button-disabled",
+      "track": "p-button-disabled",
+      "commit": "9f9e7ff",
+      "reviewer": "claude-opus-5-5 (coordinator)",
+      "verdict": "waived",
+      "blocking": 0,
+      "summary": "One-line class swap in Button: a disabled, not-loading button now gets BUTTON_DISABLED in place of its tone class. Cause confirmed in built CSS: .grad-solid is emitted after .bg-none with equal specificity, so the gradient survived. No behaviour, prop or API change; the landing's frontend check covers it.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:21:04.489Z"
+    },
+    {
+      "id": "review-98",
+      "milestone": "M19-patches-0-18",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "commit": "50a55b0",
+      "reviewer": "claude-opus-5-5 (coordinator)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 1
+      },
+      "summary": "Fixups verified: the one-time cell reads 'Linked to a SIP month' only with a schedule or month, 'One-time' for one_time, else 'Cannot be categorised'; a missing proposal ref is null and leaves the field empty so the sum gate blocks Confirm; fund forms keyed by fund, cutoff and every investment ref. Frontend check green 20261118T142204Z-3788387. Known low: the tile shows a stale zero after a failed refresh.",
+      "follows": "review-96",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:24:46.793Z"
     }
   ]
 }

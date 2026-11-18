@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "track": "v-growth-ui",
+  "current": {
+    "task": "V-growth-ui",
+    "from": "claude-opus-5-5 builder v-growth-ui",
+    "track": "v-growth-ui",
+    "at": "2026-11-18T14:26:13.495Z",
+    "lines": [
+      "Commits on track/v-growth-ui: abc5171c = cherry-pick of V1 9e24efe9 (drops on rebase); c52066cc feat(admin-growth) per-investment target, sheet and whole-fund preview; 0b64ddfe fix(admin-growth) market-risk footnote.",
+      "LANDING: must land with or after V4 Tasks 1-2. Until the generated V4 ops are wired, the three growth screens refuse with ConfigurationMismatchError ('This admin build cannot record growth per investment yet, so nothing was sent.') and send nothing; old collective/individual endpoints are no longer called from these screens.",
+      "WIRING LEFT: investmentGrowthApi.ts holds the V4 port (preview, commit, individual) and its default UNWIRED_INVESTMENT_GROWTH_API. Swap the three port calls (or the context default) for api.request(generatedOp, ...) and replace the local zod body schemas with the generated ones. getAdminClientInvestments (V1) is already wired for real.",
+      "ASSUMED V4 REQUESTS: POST /v1/admin/investment-growth/preview body {fundId, growthBasisPoints:int} | {fundId, items:[{userId, ref, gainSinceInvestedPaise}] (1..500)}; no idempotency key.",
+      "POST /v1/admin/investment-growth/commit body = preview body + {basisHash:64 hex, effectiveDate:YYYY-MM-DD, reasonCode, note?}; Idempotency-Key header.",
+      "POST /v1/admin/investment-growth/individual body {userId, fundId, ref, effectiveDate, reasonCode, note?, growthBasisPoints:int | growthPaise:non-zero signed paise}; Idempotency-Key; NO basisHash (no source for one in V1's read; if V4 requires it, add a per-fund basisHash to a read).",
+      "ref = {kind:'sip',scheduleId} | {kind:'one_time',allocationId} (same as V1 AdminInvestmentRef).",
+      "ASSUMED V4 RESPONSES: preview {fundId, mode:'percentage'|'gain_since_invested', basisHash, targetCount, totalDeltaPaise, entries:[{userId, beforePaise, deltaPaise, afterPaise, parts:[{ref, label, investedPaise, beforePaise, deltaPaise, afterPaise}]}], skipped:[{userId, reason:'categorise_first'|'zero_invested'}]}.",
+      "commit {batchId, fundId, mode, effectiveDate, targetCount, totalDeltaPaise, entries (as preview)}.",
+      "individual = today's AdminIndividualClientGrowthData fields (batchId, entryId, userId, fundId, effectiveDate, reasonCode, principalPaise, beforePaise, currentValuePaise, deltaPaise, growthPaise, afterPaise, newValuePaise) + part:{ref,label,investedPaise,beforePaise,deltaPaise,afterPaise}, so GrowthReceipt renders unchanged.",
+      "Assumed: server omits zero-change parts; entry.deltaPaise = sum(parts) (client refuses a preview otherwise); part label is display text built by the server.",
+      "V1 SHAPE LIMITS (verified at 9e24efe9): items are {ref,label,date|null,amountPaise,reversed}. No per-investment value and no active/ended flag. So: sheet rows show invested + fund value now (no per-investment gain before preview); one-investor shows invested, change and position before/after, and investment before/after only on the receipt (from part).",
+      "Ended SIPs cannot be filtered client-side; they are listed as targets and V4 must refuse them (Review Focus 2). Reversed items are hidden.",
+      "Categorise first = the fund has any uncategorised recording (or the client has no V1 fund entry / no live investment). This also blocks a fund holding one uncategorised recording, which spec 6.4 would let take untargeted growth; the new endpoints need a ref, so it was the conservative reading. Question for V4.",
+      "Sheet fund rate semantics: 'Fund return since invested' in bp fills each row's GAIN SINCE INVESTED with invested x rate (applyBasisPoints = backend symmetricHalfUpBasisPoints); it is cumulative, not the month's change. Min -10000 bp, no upper cap. Overrides typed as gain since invested; commit sends gainSinceInvestedPaise per ref.",
+      "Sheet reads getAdminClientInvestments once per client in the fund (useQueries, N requests, ~100 at most). Any failed read shows 'Sheet not loaded' with Reload, never a shorter sheet. A fund-scoped read in V4 would remove the N requests.",
+      "Held-write slots kept (value-update, collective-growth, growth:<userId>). A hold saved by 0.18.3 with the old body shape now parses as unreadable: the screen locks with the existing unreadable notice, nothing is resent to a new endpoint.",
+      "RULE 11: frontend only; no existing request/response shape changes; the cherry-picked V1 contracts add operations only.",
+      "TESTS (valueUpdateSheet.test.ts, 6): rate pre-fill rounding (red 20261118T141530Z-3582325, truncation), override replaces one row (red 20261118T141534Z-3584641, override applied to whole client), categorise-first rows out of commit body (red 20261118T141538Z-3587014, check dropped). Each log shows the AssertionError; file restored and cmp-identical.",
+      "VOID red runs (failed for the wrong reason: zsh passed the command as one word): 20261118T141512Z-3568289, 20261118T141512Z-3568749, 20261118T141513Z-3569305. Ignore them.",
+      "heldMoneyWrites.test.tsx and IndividualClientGrowthScreen.test.tsx (rule 6 guards) now route the growth cases through a fixture port / mocked hooks; assertions unchanged, a Target choice added to their fills.",
+      "CHECKS at 0b64ddfe (clean tree): frontend npm ci && npm run check green 20261118T142251Z-3814300 (67 files, 600 tests, bundle boot ok); build:android 20261118T142417Z-3856774; build:android:admin 20261118T142423Z-3859953. Contracts npm ci && build 20261118T141554Z-3595988 (contracts unchanged since). Earlier head c52066cc: check 20261118T141604Z-3601638, android 20261118T141720Z-3639296, admin 20261118T141725Z-3642484.",
+      "SCREENSHOTS (fixture admin preview, mock runtime + fixture port, no backend): .temp/v-growth-ui/shots/ in this worktree: sheet-desktop, sheet-preview-desktop, sheet-preview-412, whole-fund-preview-desktop, one-investor-target-desktop, one-investor-target-412, one-investor-categorise-first-desktop. Harness in .temp/v-growth-ui/preview/. Full-page 412 shots show the sticky header/bottom bar mid-page (capture artefact); AdminTable scrolls sideways at 412 as before.",
+      "EMULATOR (after V4 lands and is wired; dev stack, Rahul Kumar): Client values > Adjust one investor, pick Rahul, his fund: Target lists his SIP and each one-time investment with date; choose one, 250 bp: growth = 2.5% of that investment's invested amount; Review shows Investment and Position total after; write; receipt shows investment value before/after.",
+      "If Rahul has uncategorised recordings in that fund: 'Categorise first' with Open the Ledger tab (/users/<id>?tab=ledger), no Review.",
+      "Monthly value update: pick the fund, type 500 in Fund return since invested, Fill every row: each row = 5% of its invested amount; type over one row; only that row changes; Preview lists per-investment rows; categorise-first clients are counted and absent from the preview.",
+      "Adjust a whole fund: 150 bp preview lists one row per investment with invested, before, change, after.",
+      "Not done: per-investment 'Current value'/'Gain so far' labels on One investor still read as position figures (kept for the held-write test text); growthQueries.ts collective/individual hooks and heldBodies growth parsers are now unused by these screens (outside allowed files, left for cleanup after V4 lands)."
+    ]
+  },
+  "history": []
+}

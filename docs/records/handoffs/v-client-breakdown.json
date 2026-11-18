@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "track": "v-client-breakdown",
+  "current": {
+    "task": "V-client-breakdown",
+    "from": "claude-opus-5-5 builder v-client-breakdown",
+    "track": "v-client-breakdown",
+    "at": "2026-11-18T14:12:29.641Z",
+    "lines": [
+      "Commits: 7faa3cc0 feat(portfolio): add the client Breakdown view to Portfolio, on top of the cherry-picked V1 contracts commit f9d0220b (= 9e24efe9). The cherry-pick drops out when the coordinator rebases onto main after V1 lands.",
+      "Wiring: done. breakdownQueries.ts calls getClientInvestmentBreakdown; key qk.client.investmentBreakdown() = ['client','investment-breakdown'], also added to CLIENT_MONEY_PREFIXES so useInvalidateMoney refreshes it. Nothing left to wire on the client side; it only needs V1's backend route on main.",
+      "Files: features/portfolio/BreakdownView.tsx, breakdownQueries.ts, PortfolioViewControl.tsx (new); PortfolioScreen.tsx, portfolio.recipe.ts; api/queryKeys.ts.",
+      "View control: Value updates and SIP plans stay links to their screens; Breakdown is a toggle button (aria-pressed) that swaps the Positions list for the breakdown, kept in ?view=breakdown with replace (so Back from a fund returns to it, and history does not grow). 3-column equal grid on phones, a row from sm up. SIP plans still hides when the client has no SIP plans (2 columns then). No route added (routing manifests outside the lane).",
+      "Per fund: active SIP, Ended SIP, one-time newest first, then 'Other adjustments'. Client sorts too (defensive; server already orders). Amounts with paise (MoneyValue showDecimals), returns via formatBasisPoints, XIRR null shows 'Available after 30 days'. Labels: Invested, Current value, Growth, Return, 'Annualised return (XIRR)', 'X of Y months paid', Reversed badge. Preparing: 'Your breakdown is being prepared by BeOnEdge.' Failed read: AsyncBoundary error state with Try again; market-risk footnote unchanged below.",
+      "Rule 11: no response shape changed; the breakdown endpoint is new, so released apps never call it. Rule 10: no test; the switch holds display state only.",
+      "Checks (committed head 7faa3cc0, clean tree, Node 24 container): contracts npm ci && build green 20261118T140950Z-3426363; frontend npm ci && npm run check green 20261118T141001Z-3430250 (67 files, 599 tests); build:android 20261118T141134Z-3463680; build:android:admin 20261118T141139Z-3464870; build:client 20261118T141146Z-3468189; build:admin 20261118T141152Z-3470304.",
+      "Visual (RUNTIME, mock client runtime preview, fixtures; not against V1's backend): screenshots in .temp/worktrees/v-client-breakdown/.temp/v-client-breakdown/shots/ (412-positions, 412-breakdown-ready, 412-breakdown-preparing, 412-breakdown-offline, 360-breakdown-ready, 1440-positions, 1440-breakdown-ready, 1440-breakdown-preparing). At 412 px the control spans x 16 to 396.5, page scrollWidth 412 (no overflow); at 360 each pill is 104 px with no text overflow.",
+      "Emulator steps (dev stack, Rahul Kumar, after V1+V2 land): Portfolio > tap Breakdown: pill turns dark, title reads Breakdown, funds listed per block, or 'Your breakdown is being prepared by BeOnEdge.' until admins categorise. Open a fund and press Back: Breakdown still shown. Tap Breakdown again: Positions back. Airplane mode then reopen Breakdown: 'No connection' with Try again.",
+      "Doubtful: the positions JSX is re-indented inside the new branch (git diff -w shows no change). The preview harness (mock runtime + vite config) is in .temp/v-client-breakdown/preview/ for reuse."
+    ]
+  },
+  "history": []
+}

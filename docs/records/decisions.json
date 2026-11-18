@@ -750,6 +750,36 @@
       "state": "decided, not built",
       "by": "operator",
       "on": "2026-11-18T07:22:24.582Z"
+    },
+    {
+      "id": "DEC-76",
+      "group": "admin-improvements",
+      "text": "Investment breakdown and per-investment growth, in 0.18.4 (design .temp/main/design-investment-breakdown-0184.md, approved 2026-11-18). A one-time investment is its contribution's allocation and a SIP is its schedule. Growth is kept per one-time investment, and a fund's SIP is one investment. Clients get a Breakdown view: SIP with simple return and XIRR, each one-time investment with growth and return. Portfolio keeps the collective figures. Admin growth targets an investment. The monthly sheet has one row per investment, typed as gain since invested, with a fund rate pre-filling every row. Growth storage is one entry per client and fund per operation, with per-investment parts beside it. Admins categorise every recording, corrections included, and confirm the earlier-growth split per multi-investment fund in the app, reminded on Overview and the client page. Clients see 'being prepared' until resolved. A SIP early exit returns only the SIP's value (amends DEC-41). Maturity stays per fund and is spread across investments by value. Released admin apps get untargeted growth refused only for multi-investment funds.",
+      "since": "2026-11-18",
+      "status": "decided, not built",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-18T13:46:23.045Z"
+    },
+    {
+      "id": "DEC-77",
+      "group": "admin-improvements",
+      "text": "Phase D (M7) is not needed: no database reform is required. Read-only aggregate checks of production on 2026-11-18 (schema at migration 060, 16 accounts): no duplicate investments; two pairs of live accounts with the same name, where in each pair one account holds all investments and the other none, so nothing to merge; categories, maturity dates, SIP schedules and nominees are missing only because those features come with the upgrade. These are admin tasks in the app: confirm a same-name pair is one person (email, phone) and close the empty account, releasing its contacts if needed; categorise and confirm earlier growth (DEC-76); set maturity dates, SIP schedules and nominees. D1-dev-cleanup, D2-prod-reform, D-close and the production pre-flight gate G9 are removed from the board.",
+      "since": "2026-11-18",
+      "status": "in force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-18T14:01:45.897Z"
+    },
+    {
+      "id": "DEC-78",
+      "group": "admin-improvements",
+      "text": "The remaining M3 gates leave the board. The production deploy (G8) and any production App config publish (G11, the online-payments switch kept off) are run by the admins on the production stack, outside the agents' flow, and agents never deploy (DEC-36 roles unchanged). Re-enabling payments and AutoPay (G10) stays the maintainer's call; payments stay off (DEC-14, DEC-22), so the payment-only follow-ups that waited on G10 are parked under DEC-22. G-close closes nothing once those three are off the board. Dev releases stay tracked by G7.",
+      "since": "2026-11-18",
+      "status": "in force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-18T14:22:21.810Z"
     }
   ],
   "replaced": [

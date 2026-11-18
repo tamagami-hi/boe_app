@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "track": "p-carried-config",
+  "current": {
+    "task": "carried-config",
+    "from": "claude-opus-5-5 builder p-carried-config",
+    "track": "p-carried-config",
+    "at": "2026-11-18T14:15:50.152Z",
+    "lines": [
+      "Commit 6a9d6f7f on track/p-carried-config: fix(nginx): refuse unknown hosts and drop the retired public hosts (7 files, +39/-17). Config and docs only, no VPS.",
+      "boe-shared.conf: added a default server for :80 (listen 80/[::]:80 default_server, return 444) and for :443 (listen 443 ssl/[::]:443 ssl default_server, ssl_reject_handshake on). The :443 block repeats the admin console's ssl_protocols, session cache (shared:boe_admin_tls:10m), timeout and tickets off, because the default server's TLS context can govern version choice and resumption for every name on the port. It goes in conf.d because a default is box-wide and boe-shared.conf already ships via nginx_ship.sh, so no new mapping row is needed.",
+      "boe-shared.conf CORS map: removed https://admin.beonedge.in. Kept localhost, app, dev-app and both ts.net consoles.",
+      "admin.tailscale.conf: comment only. The :443 note that it is the implicit default for any other Host is now false and was reworded. Behaviour is unchanged.",
+      "backend_controller/.env.production.example WEB_ORIGIN_ALLOWLIST: admin.beonedge.in replaced by https://boe-prod-admin.tail4ea2bc.ts.net, matching prod_release/.env.example.",
+      "boe-alerts.yml: Production/DevelopmentEndpointDown now use instance=\"https://app.beonedge.in\" and \"https://dev-app.beonedge.in\" instead of the (app|admin) regexes.",
+      "monitor compose plus .env.example: GRAFANA_ROOT_URL default changed from https://monitor.beonedge.in to http://localhost:3000/ (the SSH tunnel in MS_GUIDE). The EXPOSURE comment and two compose comments no longer call Grafana public.",
+      "CLAUDE.md: the coordinator's patch was applied with git apply.",
+      "Dropped from this lane: prometheus.yml probe removal and MS_GUIDE.md. Track d-docs-after-lanes (f9334249) already removes the same three probes and rewrites the same MS_GUIDE row, and two versions would conflict at landing.",
+      "Rule 11: no app code, routes or response shapes changed. Named hosts route as before (runtime probe below). The APK origin https://localhost is kept. Real .env files are untouched.",
+      "nginx -t, image nginxinc/nginx-unprivileged:1.31.1-alpine3.23-slim@sha256:762e8e4e (frontend Dockerfile base). Files mounted ro in Debian layout, stub self-signed cert, empty boe-monitor-grafana.conf stub, containers removed.",
+      "Results: HEAD~1 'test is successful'. Change: green run 20261118T141355Z-3528032, 'test is successful'. Red control 20261118T141355Z-3528293 adds Debian's stock default site: 'a duplicate default server for 0.0.0.0:80'.",
+      "The openssl pair came from host openssl, because the image has no openssl binary. The sysctls ip_nonlocal_bind and unprivileged_port_start let nginx -t bind 172.17.0.1:8080 and :80/:443.",
+      "Runtime probe in a throwaway container. Before: an unknown Host on :80 got 301 and an unknown SNI on :443 got the console cert. After: 000 with curl exit 52, and SSL alert 112. Unchanged both ways: app and dev-app 502 (no upstream), the .internal names 301, the console by SNI 403.",
+      "Backend check: green run 20261118T141354Z-3527333, 105 files and 1243 tests passed, originExamples and envPassthrough included, lines 82.05%. An earlier run was stopped before the amend and recorded nothing.",
+      "Finding, not fixed: in the :80 redirect blocks of both tailscale confs, return runs in the rewrite phase, before allow/deny, so the .internal redirects answer anyone with the right Host, the tunnel included. It leaks only the tailnet names.",
+      "Left, outside the allowed files: comment lines dev compose :420 (dev-admin) and prod compose :406 (admin.beonedge.in).",
+      "Left, outside the allowed files: the nginx_ship.sh:293 verify curl with Host beonedge.in now prints 000 unless this box serves beonedge.in.",
+      "Left: no tailnet Grafana URL was set, because the boe-monitor-grafana.conf snippet is untracked and its path is unknown.",
+      "VPS: the monitor_service/.env there may still hold GRAFANA_ROOT_URL=https://monitor.beonedge.in and needs the operator. The compose default applies only when the key is empty.",
+      "DEPLOY text for the coordinator is in this lane's report: default-server precheck, install, verification."
+    ]
+  },
+  "history": []
+}

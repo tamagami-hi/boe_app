@@ -299,7 +299,11 @@
           "deferred": [
             {
               "what": "separate maintainer approval of the destructive production reform after the pre-flight report",
-              "to": "M7-phase-d:D2-prod-reform"
+              "parked": {
+                "why": "No production reform is needed (DEC-77), so no destructive-change approval is required.",
+                "decision": "DEC-77",
+                "owner": "maintainer"
+              }
             }
           ]
         },
@@ -317,49 +321,14 @@
         {
           "id": "G7-dev-release",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "926c68d",
           "also": [],
           "brief": "MAINTAINER: per phase, export client+admin APKs, deploy to the dev stack, test there; agents never deploy",
           "covers": [
             "G-releases"
-          ]
-        },
-        {
-          "id": "G8-prod-release",
-          "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "MAINTAINER: production deploy in a maintenance window; publish minimumSupportedVersion only if a phase needs it",
-          "covers": [
-            "G-releases"
-          ]
-        },
-        {
-          "id": "G9-prod-preflight",
-          "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "MAINTAINER: run the read-only production pre-flight report for Phase D and share its output",
-          "covers": [
-            "G-releases"
-          ]
-        },
-        {
-          "id": "G10-payments-decision",
-          "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "MAINTAINER: decide when payments/AutoPay are re-enabled; gates E2 landing",
-          "covers": [
-            "G-payments"
-          ]
-        },
-        {
-          "id": "G11-investing-content",
-          "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "MAINTAINER: publish app-config featureFlags.onlinePayments=false (B8 is on main). No How to invest FAQ, no bank details or payment instructions anywhere (rule-11)"
+          ],
+          "landedAt": "2026-11-18T13:13:12.551Z"
         },
         {
           "id": "G12-stale-payments",
@@ -370,11 +339,14 @@
           "brief": "MAINTAINER: decide whether old pending online payments/orders created before payments were turned off are expired (state change of in-flight records, rule 11) or left as they are"
         },
         {
-          "id": "G-close",
+          "id": "G-payments-off",
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "All gates resolved"
+          "brief": "DEC-78: the maintainer's payments decision for this build is that payments and AutoPay stay off (DEC-14, DEC-22); re-enabling is a later decision outside this board. Closed by the records commit that holds DEC-78.",
+          "covers": [
+            "G-payments"
+          ]
         }
       ]
     },
@@ -578,7 +550,11 @@
           "deferred": [
             {
               "what": "misplaced duplicate filed under M4 by the coordinator; the real task is in Phase D",
-              "to": "M7-phase-d:D1-dev-cleanup"
+              "parked": {
+                "why": "The Phase D task it pointed at was removed: no dev cleanup tooling is needed (DEC-77).",
+                "decision": "DEC-77",
+                "owner": "maintainer"
+              }
             }
           ]
         },
@@ -592,7 +568,11 @@
           "deferred": [
             {
               "what": "misplaced duplicate filed under M4 by the coordinator; the real task is in Phase D",
-              "to": "M7-phase-d:D2-prod-reform"
+              "parked": {
+                "why": "The Phase D task it pointed at was removed: no production reform is needed (DEC-77).",
+                "decision": "DEC-77",
+                "owner": "maintainer"
+              }
             }
           ]
         },
@@ -953,38 +933,15 @@
       ],
       "tasks": [
         {
-          "id": "D1-dev-cleanup",
+          "id": "D-not-needed",
           "track": "main",
           "status": "planned",
           "also": [],
-          "waits": "conditional: only when a feature needs a client-data reform (maintainer 2026-11-13); then masked dev rehearsal, no data lost",
-          "brief": "Lane track/d-data: dev-only tooling refusing production NODE_ENV/database: masked import of a production copy (names, emails, phones replaced; amounts and dates real) and a cleanup that keeps every client and investment record",
+          "brief": "DEC-77: Phase D is not required (maintainer, 2026-11-18). No dev cleanup command and no production reform are built; the read-only production checks found nothing to reform. Closed by the records commit that holds DEC-77.",
           "covers": [
-            "D1"
-          ]
-        },
-        {
-          "id": "D2-prod-reform",
-          "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "Lane track/d-data (after D1): read-only production pre-flight listing suspected duplicate investments, duplicate client pairs, and clients missing categories/maturity dates/SIP schedules/nominees; one-time reform rehearsed on dev: duplicate investments reversed (both rows kept), duplicate client pairs merged only where the maintainer confirmed, missing details filled from a maintainer-approved sheet; rollback boundary + populated-upgrade test; production run only after separate approval",
-          "covers": [
+            "D1",
             "D2"
-          ],
-          "waitsOn": [
-            {
-              "task": "M7-phase-d:D1-dev-cleanup",
-              "what": "after dev cleanup; separate destructive-change approval and maintainer pre-flight run (G9)"
-            }
           ]
-        },
-        {
-          "id": "D-close",
-          "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "Review, land, maintainer runs pre-flight (G9) before any production step"
         }
       ]
     },
@@ -1319,7 +1276,11 @@
             },
             {
               "what": "Payment tab, online payment history and SIP screens keep the catalogue Fund fallback: parked under DEC-14 (finding-27)",
-              "to": "M3-gates:G10-payments-decision"
+              "parked": {
+                "why": "Payment-only screens; payments stay off until the maintainer resumes them, and G10 left the board (DEC-78).",
+                "decision": "DEC-22",
+                "owner": "maintainer"
+              }
             },
             {
               "what": "AccountPasswordPanel and ResetPasswordScreen keep typed passwords in form state after an error (h-hygiene review F3)",
@@ -1390,11 +1351,19 @@
             },
             {
               "what": "Fund receipt queue and detail round to rupees; rows come only from gateway settlement, so parked under DEC-14 (finding-27)",
-              "to": "M3-gates:G10-payments-decision"
+              "parked": {
+                "why": "Fund receipt rows come only from gateway settlement; payments stay off, and G10 left the board (DEC-78).",
+                "decision": "DEC-22",
+                "owner": "maintainer"
+              }
             },
             {
               "what": "UserDetailScreen orders column rounds to rupees (orders are payment rows, DEC-14)",
-              "to": "M3-gates:G10-payments-decision"
+              "parked": {
+                "why": "The orders column lists payment rows; payments stay off, and G10 left the board (DEC-78).",
+                "decision": "DEC-22",
+                "owner": "maintainer"
+              }
             }
           ]
         },
@@ -1437,9 +1406,18 @@
         {
           "id": "carried-lows",
           "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "LOW and class findings carried from the Phase H reviews (plan section 8, Phase H close, 'Carried'): user-row lock for other client writes racing erasure; statement renderer layering; receipts fundId filter test; password panels clearing form state; record form close dropping a held write; stale ?q= and unknown URL filters; audit trail client links; duplication and sidebar group semantics; silent Show more failure; ?userId= read on first mount only; unknown linked id retry. Not scheduled; the maintainer decides."
+          "status": "landed",
+          "commit": "31fe9fa",
+          "also": [
+            "0c336f3",
+            "5a3239b",
+            "b942a0e",
+            "c529151",
+            "c7b0f1b",
+            "f71cb96"
+          ],
+          "brief": "LOW and class findings carried from the Phase H reviews (plan section 8, Phase H close, 'Carried'): user-row lock for other client writes racing erasure; statement renderer layering; receipts fundId filter test; password panels clearing form state; record form close dropping a held write; stale ?q= and unknown URL filters; audit trail client links; duplication and sidebar group semantics; silent Show more failure; ?userId= read on first mount only; unknown linked id retry. Not scheduled; the maintainer decides.",
+          "landedAt": "2026-11-18T14:09:16.656Z"
         },
         {
           "id": "CL-backend",
@@ -1455,6 +1433,20 @@
             "backend_controller"
           ],
           "landedAt": "2026-11-16T22:50:47.459Z"
+        },
+        {
+          "id": "carried-config",
+          "track": "p-carried-config",
+          "status": "landed",
+          "commit": "20832f6",
+          "also": [],
+          "brief": "Carried M14 F2 parts 1-2 and finding-29 config left-overs: explicit default_server on :80/:443 refusing unknown hosts (nginx -t validated), stale admin.beonedge.in/dev-admin references removed from CORS map, example envs and alerts, monitor GRAFANA_ROOT_URL default and comment, CLAUDE.md archived-plan link.",
+          "paths": [
+            "release_manager/nginx",
+            "release_manager/stacks",
+            "CLAUDE.md"
+          ],
+          "landedAt": "2026-11-18T14:24:06.127Z"
         }
       ]
     },
@@ -1505,11 +1497,11 @@
           "deferred": [
             {
               "what": "No explicit default_server on :80/:443, so an unmatched Host gets the first site's answer (review F6)",
-              "to": "M13-carried:carried-lows"
+              "to": "M13-carried:carried-config"
             },
             {
               "what": "Stale admin.beonedge.in and dev-admin.beonedge.in references: Prometheus probes and alerts, OPERATOR_MANUAL DNS/certbot steps, .env.production.example, boe-shared.conf map entry (review F9)",
-              "to": "M13-carried:carried-lows"
+              "to": "M13-carried:carried-config"
             }
           ],
           "landedAt": "2026-11-15T08:08:08.243Z"
@@ -1826,7 +1818,7 @@
           "deferred": [
             {
               "what": "The SIP schedule editor's own Done button can unmount it while a write is held and drop the Idempotency-Key (pre-existing; review-14 N3)",
-              "to": "M13-carried:carried-lows"
+              "to": "M19-patches-0-18:V-admin-cleanup"
             }
           ],
           "landedAt": "2026-11-16T21:18:42.174Z"
@@ -1869,9 +1861,13 @@
         {
           "id": "D2-docs-after-lanes",
           "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "DEC-60, after the lanes land: client-erasure.md status line; archive the four UI briefs, existing-client-impl/ and the previous plan with link updates in README, DEPLOY and the plan; README current-documents and the tally line; RULES.md edits for decisions in tally alone and docs/<programme>/; reword tally rule-48."
+          "status": "landed",
+          "commit": "3ab8d4a",
+          "also": [
+            "0ecf192"
+          ],
+          "brief": "DEC-60, after the lanes land: client-erasure.md status line; archive the four UI briefs, existing-client-impl/ and the previous plan with link updates in README, DEPLOY and the plan; README current-documents and the tally line; RULES.md edits for decisions in tally alone and docs/<programme>/; reword tally rule-48.",
+          "landedAt": "2026-11-18T14:20:29.509Z"
         }
       ]
     },
@@ -2474,6 +2470,123 @@
           ],
           "brief": "Release prep per .temp/main/release-prep-0183.md: What's new 0.18.3 checked against what landed and frozen in releasedNotes.json before VERSION moves; WORKFLOW freeze step; DEPLOY notes (076/077, step-up password, version.json, nginx maintenance header); admin top-bar title; plan 0.18.3 section.",
           "landedAt": "2026-11-18T12:27:07.221Z"
+        },
+        {
+          "id": "P-findings-0184",
+          "track": "p-findings-0184",
+          "status": "landed",
+          "commit": "c9c81f4",
+          "also": [
+            "1a3cdf1",
+            "295a177",
+            "aeaeaac",
+            "c9c81f4",
+            "fb5bba6"
+          ],
+          "brief": "0.18.4: F1 durable What's new seen id, F2 per-category hint on the recording form, F3 category wording in the in-app recording notice, F4 no manual label while the AutoPay read loads, N4 guards test timeout, and the record form close with a held write (M13 item).",
+          "paths": [
+            "frontend_stack_ts/src/features/whats-new/whatsNewSeen.ts",
+            "frontend_stack_ts/src/features/admin/client-values/EarlierInvestmentForm.tsx",
+            "frontend_stack_ts/src/features/sip/SipDetailScreen.tsx",
+            "frontend_stack_ts/src/app/routing/guards.test.tsx",
+            "backend_controller/src/domain/shared/recordingCategory.ts"
+          ],
+          "landedAt": "2026-11-18T13:53:24.457Z"
+        },
+        {
+          "id": "P-admin-sidebar",
+          "track": "p-admin-sidebar",
+          "status": "landed",
+          "commit": "ab53d4e",
+          "also": [
+            "85d64ba"
+          ],
+          "brief": "Admin desktop sidebar docked to the left edge (no floating card), retractable with Hide menu / Show menu remembered per browser, single-page sections (Overview, Applications, Funds, AUM) at the top; phones unchanged.",
+          "paths": [
+            "frontend_stack_ts/src/shells/admin/AdminFrame.tsx",
+            "frontend_stack_ts/src/ui/recipes/shellAdmin.ts"
+          ],
+          "landedAt": "2026-11-18T14:14:51.181Z"
+        },
+        {
+          "id": "V-breakdown-core",
+          "track": "v-breakdown-core",
+          "status": "planned",
+          "also": [],
+          "brief": "DEC-76 lane V1 (plan .temp/main/plan-investment-breakdown-0184.md, Tasks 1-4): migration 078 growth parts and earlier-growth splits; pure investmentBreakdown fold with SIP XIRR, attribution, maturity spread, sum invariant; GET /v1/client/investment-breakdown; admin to-categorise list, per-client investments with proposed split, confirm split; categorising widened to corrections and AutoPay collections.",
+          "paths": [
+            "backend_controller",
+            "packages/contracts",
+            "frontend_stack_ts/src/api/generated"
+          ]
+        },
+        {
+          "id": "V-client-breakdown",
+          "track": "v-client-breakdown",
+          "status": "planned",
+          "also": [],
+          "brief": "DEC-76 lane V2: client Breakdown view on Portfolio (three-way view control at 412 px, SIP blocks with simple return and XIRR, one-time blocks, preparing state).",
+          "paths": [
+            "frontend_stack_ts/src/features/portfolio"
+          ]
+        },
+        {
+          "id": "V-admin-cleanup",
+          "track": "v-admin-cleanup",
+          "status": "planned",
+          "also": [],
+          "brief": "DEC-76 lane V3: categorise list widened to corrections, Earlier growth panel with sum gating and held write, Overview follow-up item and list screen, client page banner.",
+          "paths": [
+            "frontend_stack_ts/src/features/admin/client-values",
+            "frontend_stack_ts/src/features/admin/users",
+            "frontend_stack_ts/src/features/admin/overview"
+          ]
+        },
+        {
+          "id": "V-growth-ui",
+          "track": "v-growth-ui",
+          "status": "planned",
+          "also": [],
+          "brief": "DEC-76 lane V4 task 3: target choice on One investor, monthly sheet one row per investment with fund-rate pre-fill and overrides as gain since invested, Categorise first rows, whole-fund per-investment preview.",
+          "paths": [
+            "frontend_stack_ts/src/features/admin/client-values"
+          ]
+        },
+        {
+          "id": "V-growth-parts",
+          "track": "v-growth-parts",
+          "status": "planned",
+          "also": [],
+          "brief": "DEC-76 V4 Tasks 1-2: planInvestmentGrowth, /v1/admin/investment-growth/individual|preview|commit, released-app 403 for multi-investment funds, investment_growth email v2",
+          "paths": [
+            "backend_controller",
+            "packages/contracts",
+            "frontend_stack_ts/src/api/generated"
+          ]
+        },
+        {
+          "id": "V-early-exit-sip",
+          "track": "v-early-exit-sip",
+          "status": "planned",
+          "also": [],
+          "brief": "DEC-76 V5: SIP early exit withdraws only the SIP block's value and principal; copy 'the current value of your SIP' (amends DEC-41)",
+          "paths": [
+            "backend_controller",
+            "packages/contracts",
+            "frontend_stack_ts/src/features/admin/users"
+          ]
+        },
+        {
+          "id": "P-button-disabled",
+          "track": "p-button-disabled",
+          "status": "landed",
+          "commit": "42575f8",
+          "also": [],
+          "brief": "Button: when disabled and not loading, use BUTTON_DISABLED instead of the tone class; grad-* utilities are emitted after bg-none, so the gradient survived and disabled buttons looked enabled",
+          "paths": [
+            "frontend_stack_ts/src/ui/primitives/Button.tsx"
+          ],
+          "landedAt": "2026-11-18T14:27:03.735Z"
         }
       ]
     }

@@ -12673,6 +12673,1445 @@
       },
       "head": "5648e7e1f069446fe73346effdca8d93db28fdf5",
       "dirty": false
+    },
+    {
+      "id": "4f8c5eb7-8712-4b87-86e3-134662d37f2a",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "agent": "claude-opus-5-5 builder p-findings-0184",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/packages/contracts",
+      "started": "2026-11-18T13:32:35Z",
+      "seconds": 15,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-findings-0184/20261118T133235Z-2737385-green.log",
+        "sha256": "5b1085310b5446c2eb98a6c27f5e087a099ac6263f530b905a3507a5773c58c3",
+        "bytes": 898
+      },
+      "head": "1a3cdf189d413325e288a02a94ed97968bf41cf3",
+      "dirty": false
+    },
+    {
+      "id": "24b4242f-de0e-438d-bbde-3b9cf2bb636b",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "agent": "claude-opus-5-5 builder p-findings-0184",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/backend_controller",
+      "started": "2026-11-18T13:32:56Z",
+      "seconds": 72,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-findings-0184/20261118T133256Z-2742044-green.log",
+        "sha256": "4bc0bb4470a6af7a04a5f905993dddaa925708640235b91f0f6b163eb7d25409",
+        "bytes": 18489
+      },
+      "summary": {
+        "passed": 1243,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "1a3cdf189d413325e288a02a94ed97968bf41cf3",
+      "dirty": false
+    },
+    {
+      "id": "684b37aa-5a34-44b0-9360-786bb0e1d224",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "agent": "claude-opus-5-5 builder p-findings-0184",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/recordingReceipts.integration.test.ts test/integration/recordingCategories.integration.test.ts test/integration/recordingCategoryEmails.integration.test.ts test/integration/adminSipSchedules.integration.test.ts test/integration/recordingSheet.integration.test.ts test/integration/accountingReports.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/backend_controller",
+      "started": "2026-11-18T13:34:15Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-findings-0184/20261118T133415Z-2760018-green.log",
+        "sha256": "682b90b3d2a9e3d606d304e004a0225224343dcf220fc31b338b9e223288249e",
+        "bytes": 893
+      },
+      "summary": {
+        "passed": 45,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "1a3cdf189d413325e288a02a94ed97968bf41cf3",
+      "dirty": false
+    },
+    {
+      "id": "44a5d9ec-1b36-40bf-b242-3efc105cfd97",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "agent": "claude-opus-5-5 builder p-findings-0184",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/frontend_stack_ts",
+      "started": "2026-11-18T13:34:35Z",
+      "seconds": 68,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-findings-0184/20261118T133435Z-2769781-green.log",
+        "sha256": "3c90e04e30f44ecd4ee5d9453ef7b052bb06efabff3962525de85b6b298630e4",
+        "bytes": 19084
+      },
+      "summary": {
+        "passed": 599,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "1a3cdf189d413325e288a02a94ed97968bf41cf3",
+      "dirty": false
+    },
+    {
+      "id": "b28cd700-cfd3-4e0f-92c0-587618f5f6be",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "agent": "claude-opus-5-5 builder p-findings-0184",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/frontend_stack_ts",
+      "started": "2026-11-18T13:35:50Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-findings-0184/20261118T133550Z-2784885-green.log",
+        "sha256": "a2bc62266b260bb8c9b18572b9d862cddb52baf8ae86d83884665dc975441a27",
+        "bytes": 7716
+      },
+      "head": "1a3cdf189d413325e288a02a94ed97968bf41cf3",
+      "dirty": false
+    },
+    {
+      "id": "442b534a-c5b0-4688-8ee1-e35b483b82e1",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "agent": "claude-opus-5-5 builder p-findings-0184",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/frontend_stack_ts",
+      "started": "2026-11-18T13:35:55Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-findings-0184/20261118T133555Z-2785280-green.log",
+        "sha256": "a4ef937f1bd36255c6fec6f9aee86218cf6164b18dc563c57aeb38c023df2484",
+        "bytes": 10760
+      },
+      "head": "1a3cdf189d413325e288a02a94ed97968bf41cf3",
+      "dirty": false
+    },
+    {
+      "id": "76e05cb3-da8c-45fc-bf22-85cbb7ec48a2",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "agent": "claude-opus-5-5 builder p-findings-0184",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/whats-new/whatsNewSeen.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/frontend_stack_ts",
+      "started": "2026-11-18T13:36:13Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-findings-0184/20261118T133613Z-2788303-red.log",
+        "sha256": "e44ef279b6521456651bf79ab8c5ff16ce380e540bcfa591a8dd33bc39895655",
+        "bytes": 1471
+      },
+      "summary": {
+        "passed": 2,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "F1 control: whatsNewSeen.ts reverted to f948f970 (localStorage only)",
+      "head": "1a3cdf189d413325e288a02a94ed97968bf41cf3",
+      "dirty": true
+    },
+    {
+      "id": "7910da3a-5eb4-44a0-b29e-89adfba358d3",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "agent": "claude-opus-5-5 builder p-findings-0184",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/whats-new/whatsNewSeen.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/frontend_stack_ts",
+      "started": "2026-11-18T13:36:26Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-findings-0184/20261118T133626Z-2792826-red.log",
+        "sha256": "8d6950e718e0f81f0c8a7a1e7330ab9b1ae7a94e0fb79979c2135104aca16430",
+        "bytes": 1489
+      },
+      "summary": {
+        "passed": 2,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "F1 control: newer of the two ids compared as text instead of release numbers",
+      "head": "1a3cdf189d413325e288a02a94ed97968bf41cf3",
+      "dirty": true
+    },
+    {
+      "id": "955ba8b4-b165-49eb-b509-47ca9375be72",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "agent": "claude-opus-5-5 builder p-findings-0184",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/whats-new/whatsNewSeen.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/frontend_stack_ts",
+      "started": "2026-11-18T13:36:42Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-findings-0184/20261118T133642Z-2797927-red.log",
+        "sha256": "9c6112e7ecb246e13c43a592f29083445b80e28efd436e036984e825385c9683",
+        "bytes": 4355
+      },
+      "summary": {
+        "passed": 2,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "F1 control: durable read and write failures not caught",
+      "head": "1a3cdf189d413325e288a02a94ed97968bf41cf3",
+      "dirty": true
+    },
+    {
+      "id": "2ce716be-173d-4e3a-b1da-139c05d87cbe",
+      "task": "P-findings-0184",
+      "track": "p-findings-0184",
+      "agent": "claude-opus-5-5 builder p-findings-0184",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run --config vitest.config.ts src/domain/shared/recordingCategory.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-findings-0184/backend_controller",
+      "started": "2026-11-18T13:36:51Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-findings-0184/20261118T133651Z-2801486-red.log",
+        "sha256": "7a8fcf589e1dd2a1730cb5703bbe9a36b6a1abfb015dc8face6891fd203c81c3",
+        "bytes": 3509
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "F3 control: notice ignores the assigned category (pre-fix wording)",
+      "head": "1a3cdf189d413325e288a02a94ed97968bf41cf3",
+      "dirty": true
+    },
+    {
+      "id": "b640bea7-7e51-4f63-8d29-c221b056a828",
+      "task": "P-admin-sidebar",
+      "track": "p-admin-sidebar",
+      "agent": "claude-opus-5-5 builder p-admin-sidebar",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/packages/contracts",
+      "started": "2026-11-18T13:54:53Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-sidebar/20261118T135453Z-3051650-green.log",
+        "sha256": "5343dd4bc902ff6732147a0d64aa59b698cb7ef5395b8af3b1cbb7dc0b04796a",
+        "bytes": 568
+      },
+      "head": "93a31164f93373388f0b8e21634819f052cc98a3",
+      "dirty": false
+    },
+    {
+      "id": "8647bf38-848e-4a91-a36b-e003856a9c8b",
+      "task": "P-admin-sidebar",
+      "track": "p-admin-sidebar",
+      "agent": "claude-opus-5-5 builder p-admin-sidebar",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/frontend_stack_ts",
+      "started": "2026-11-18T13:55:01Z",
+      "seconds": 67,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-sidebar/20261118T135501Z-3052463-green.log",
+        "sha256": "66e937a371c040a7254cab61def6cadd890d7789bb7f80d97a545f3d5c8268d7",
+        "bytes": 17874
+      },
+      "summary": {
+        "passed": 599,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "93a31164f93373388f0b8e21634819f052cc98a3",
+      "dirty": false
+    },
+    {
+      "id": "9843c8da-10db-44e1-8ce9-682b4ad53274",
+      "task": "P-admin-sidebar",
+      "track": "p-admin-sidebar",
+      "agent": "claude-opus-5-5 builder p-admin-sidebar",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/frontend_stack_ts",
+      "started": "2026-11-18T13:56:08Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-sidebar/20261118T135608Z-3065368-green.log",
+        "sha256": "27a716ae5fef166d923edfce1c8c5818ac3b10b8e3a8fa49b7832f80c314b117",
+        "bytes": 7551
+      },
+      "head": "93a31164f93373388f0b8e21634819f052cc98a3",
+      "dirty": false
+    },
+    {
+      "id": "aa1ec7c1-2eb9-4b53-a830-eea85b13797c",
+      "task": "P-admin-sidebar",
+      "track": "p-admin-sidebar",
+      "agent": "claude-opus-5-5 builder p-admin-sidebar",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/frontend_stack_ts",
+      "started": "2026-11-18T13:56:14Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-sidebar/20261118T135614Z-3068659-green.log",
+        "sha256": "4bbbc8962d6e19493288e8ab24bb553aa20c62fe6e623b0910a5ee8aedd4e75c",
+        "bytes": 10379
+      },
+      "head": "93a31164f93373388f0b8e21634819f052cc98a3",
+      "dirty": false
+    },
+    {
+      "id": "9257867c-cb75-4114-8345-d5d6491894f1",
+      "task": "P-admin-sidebar",
+      "track": "p-admin-sidebar",
+      "agent": "claude-opus-5-5 builder p-admin-sidebar",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/frontend_stack_ts",
+      "started": "2026-11-18T13:56:19Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-sidebar/20261118T135619Z-3070883-green.log",
+        "sha256": "90b2c8ae36aed02455e04e6cde8cdc5a456fad3ad010f046ad1bedfa930cf174",
+        "bytes": 7716
+      },
+      "head": "93a31164f93373388f0b8e21634819f052cc98a3",
+      "dirty": false
+    },
+    {
+      "id": "9de0863e-b707-4e97-abaa-2c7316fc49fe",
+      "task": "P-admin-sidebar",
+      "track": "p-admin-sidebar",
+      "agent": "claude-opus-5-5 builder p-admin-sidebar",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/frontend_stack_ts",
+      "started": "2026-11-18T13:56:25Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-sidebar/20261118T135625Z-3074316-green.log",
+        "sha256": "47b2262dcda062b2aae9d011cf15f66c1b928a9347690d2dea33e6222b64980e",
+        "bytes": 10760
+      },
+      "head": "93a31164f93373388f0b8e21634819f052cc98a3",
+      "dirty": false
+    },
+    {
+      "id": "3a3b2b13-c16e-4bcd-acfd-d944cdc400c5",
+      "task": "P-admin-sidebar",
+      "track": "p-admin-sidebar",
+      "agent": "claude-opus-5-5 builder p-admin-sidebar",
+      "kind": "red",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/shells/admin/adminSidebarOrder.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-admin-sidebar/frontend_stack_ts",
+      "started": "2026-11-18T13:56:42Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-admin-sidebar/20261118T135642Z-3079469-red.log",
+        "sha256": "8f3c1c3b41317478a899db507d97a570d3baaa4cf175db2fc497d9c752de61c0",
+        "bytes": 3415
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "red control: orderSidebarGroups reverted to the pre-change identity order",
+      "head": "93a31164f93373388f0b8e21634819f052cc98a3",
+      "dirty": true
+    },
+    {
+      "id": "9fcf2649-c17d-4267-a85f-54e69dfad71e",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/packages/contracts",
+      "started": "2026-11-18T14:01:48Z",
+      "seconds": 42,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T140148Z-3220593-green.log",
+        "sha256": "368914abf75a1d5285f5a16f24a58f99894cfbe24fca9db4fc703b8a8a120d6e",
+        "bytes": 8658
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "9e24efe9b90e2d878dce2279a1459d4e1f44a35e",
+      "dirty": false
+    },
+    {
+      "id": "7b50cb4b-c607-4d2a-8165-995ca8c73416",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/client-values/earlierGrowthSplit.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:09:18Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T140918Z-3411804-red.log",
+        "sha256": "cf2f97235a90c684ecd14ba57f21f621fad2768cfeed515e462512c28d9bb836",
+        "bytes": 4483
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "red control: sum gate compares whole rupees only",
+      "head": "00454e703ca8e49f519230e3a967f3cd431254a7",
+      "dirty": true
+    },
+    {
+      "id": "8681ac2a-17e8-4fca-8d37-d61e66600979",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/users/SipScheduleEditor.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:09:27Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T140927Z-3416281-red.log",
+        "sha256": "bf496cb5f7014a9d4b10e270129851529b9330b4d11aa6a3dd93b44c13e53542",
+        "bytes": 1398
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: Done disabled only while a request is in flight (review-14 N3)",
+      "head": "00454e703ca8e49f519230e3a967f3cd431254a7",
+      "dirty": true
+    },
+    {
+      "id": "4a8f879c-e645-441b-b970-1495aa1d04f5",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/packages/contracts",
+      "started": "2026-11-18T14:09:37Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T140937Z-3421411-green.log",
+        "sha256": "5343dd4bc902ff6732147a0d64aa59b698cb7ef5395b8af3b1cbb7dc0b04796a",
+        "bytes": 568
+      },
+      "head": "00454e703ca8e49f519230e3a967f3cd431254a7",
+      "dirty": false
+    },
+    {
+      "id": "e9b1716b-dfa6-44d6-a958-3056c3137a99",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/packages/contracts",
+      "started": "2026-11-18T14:09:50Z",
+      "seconds": 11,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T140950Z-3426363-green.log",
+        "sha256": "c8064694624569571498f752db919f8aaae8905d44d6767cf7684046779602c2",
+        "bytes": 568
+      },
+      "head": "7faa3cc0b9897e3eaf942a420b77f580306502c3",
+      "dirty": false
+    },
+    {
+      "id": "a589a3c3-f5ee-4ae2-861e-5b33069900ae",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:09:46Z",
+      "seconds": 77,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T140946Z-3425061-green.log",
+        "sha256": "41255c98d8d900922cd7cf4e115264794ea6725b56bba06b3a614cfac2b13486",
+        "bytes": 19918
+      },
+      "summary": {
+        "passed": 604,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "00454e703ca8e49f519230e3a967f3cd431254a7",
+      "dirty": false
+    },
+    {
+      "id": "1e60602b-4085-4fa2-9cf8-f5bf53242d53",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:11:03Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T141103Z-3450305-green.log",
+        "sha256": "bb4602772e44b6d2e038174f134497fece83f30d9f90339c9d7ff60e55979a53",
+        "bytes": 7716
+      },
+      "head": "00454e703ca8e49f519230e3a967f3cd431254a7",
+      "dirty": false
+    },
+    {
+      "id": "47f64ae0-70df-4898-a18c-059f074b039f",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:11:12Z",
+      "seconds": 11,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T141112Z-3453690-green.log",
+        "sha256": "4723531661fb4f03d382ed39d060678ddf521e7beff554a704be12c8440645ba",
+        "bytes": 11045
+      },
+      "head": "00454e703ca8e49f519230e3a967f3cd431254a7",
+      "dirty": false
+    },
+    {
+      "id": "edee0921-1c16-4664-83e8-790d19f9fef9",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:10:01Z",
+      "seconds": 85,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T141001Z-3430250-green.log",
+        "sha256": "3051e6daec75391e480b43e99e9025a2e2bee59d2f7bd8155b88121fb414717e",
+        "bytes": 19731
+      },
+      "summary": {
+        "passed": 599,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "7faa3cc0b9897e3eaf942a420b77f580306502c3",
+      "dirty": false
+    },
+    {
+      "id": "5b59207f-6b33-4a57-bad6-a4b3a8485943",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:11:34Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T141134Z-3463680-green.log",
+        "sha256": "6cac08fea7181ec503b6f39ddd9c7c8faeeb572459f88920866e33cc00517ff0",
+        "bytes": 7716
+      },
+      "head": "7faa3cc0b9897e3eaf942a420b77f580306502c3",
+      "dirty": false
+    },
+    {
+      "id": "ef51dddf-d53a-4177-8bac-dcb3fe460633",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:11:39Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T141139Z-3464870-green.log",
+        "sha256": "3ad6ca191537e9c3bedc86795daf58076f63b9d5efb536ed1df794fe81479fbf",
+        "bytes": 10760
+      },
+      "head": "7faa3cc0b9897e3eaf942a420b77f580306502c3",
+      "dirty": false
+    },
+    {
+      "id": "a1e5e8db-f2c3-4c1f-816f-4b89493abc13",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:11:46Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T141146Z-3468189-green.log",
+        "sha256": "2c0efc35802503766e829fc4f6a8ca01459fa491407bef3018bf4510143a3287",
+        "bytes": 7551
+      },
+      "head": "7faa3cc0b9897e3eaf942a420b77f580306502c3",
+      "dirty": false
+    },
+    {
+      "id": "6d9ef3a1-9be0-46fe-944d-b64c6dd37c45",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:11:52Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T141152Z-3470304-green.log",
+        "sha256": "e55376ef9c04077a201f151b3b45142be8527d6c5ba67f6d8fa3605633adc2d1",
+        "bytes": 10379
+      },
+      "head": "7faa3cc0b9897e3eaf942a420b77f580306502c3",
+      "dirty": false
+    },
+    {
+      "id": "d5c2917e-3620-415e-98b2-e5c545674873",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/domain/client/investmentBreakdown.test.ts -t sumsToPositionValue"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:14:12Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T141412Z-3535615-red.log",
+        "sha256": "fa4654c04ed4ce9a204230887393c27c1efcdd75392d6eee5ef9a2a73251e7aa",
+        "bytes": 2728
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 13
+      },
+      "head": "9d760d9700f82e27813f19e18d69f42d800a015a",
+      "dirty": true
+    },
+    {
+      "id": "55348425-38be-4281-82bb-90d32fe02b57",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/domain/client/investmentBreakdown.test.ts -t \"singleInvestmentTakesAllUntargetedGrowth|growthBeforeSecondInvestmentBelongsToFirst\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:14:22Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T141422Z-3542591-red.log",
+        "sha256": "3e3e9537c68ddd7014da2fcec54f6390ae8f8c43710c49783fc3a8e3af143027",
+        "bytes": 3446
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 2,
+        "ignored": 12
+      },
+      "head": "9d760d9700f82e27813f19e18d69f42d800a015a",
+      "dirty": true
+    },
+    {
+      "id": "7ba233fe-73d6-4178-9246-3b150c52e454",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/domain/client/investmentBreakdown.test.ts -t earlyExitComesOutOfSipOnly"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:14:25Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T141425Z-3544702-red.log",
+        "sha256": "ed8c7f6c4ba001b1033411c250861b8962bb16dcd054d9de6e642e49fa1c53b6",
+        "bytes": 2905
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 13
+      },
+      "head": "9d760d9700f82e27813f19e18d69f42d800a015a",
+      "dirty": true
+    },
+    {
+      "id": "f57a557e-3ca6-4d11-948d-7e40f61578d8",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx vitest run src/features/admin/client-values/valueUpdateSheet.test.ts",
+        "-t",
+        "pre-fills each row"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:15:12Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T141512Z-3568289-red.log",
+        "sha256": "b6cef42c9fb99b54a9f8b445b90ddd5a478dd2bc2feba6edb34225ba9737be32",
+        "bytes": 868
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error",
+      "head": "c52066cc5e3f148a3c1fd2ea9f49e87f88a729ac",
+      "dirty": true
+    },
+    {
+      "id": "6db2b16f-c23f-4981-9ff8-8bad39794484",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx vitest run src/features/admin/client-values/valueUpdateSheet.test.ts",
+        "-t",
+        "replaces only the overridden row"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:15:12Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T141512Z-3568749-red.log",
+        "sha256": "b6cef42c9fb99b54a9f8b445b90ddd5a478dd2bc2feba6edb34225ba9737be32",
+        "bytes": 868
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error",
+      "head": "c52066cc5e3f148a3c1fd2ea9f49e87f88a729ac",
+      "dirty": true
+    },
+    {
+      "id": "5e2aa56d-1b7c-4f86-99ec-d626cdfd9776",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx vitest run src/features/admin/client-values/valueUpdateSheet.test.ts",
+        "-t",
+        "leaves rows of clients still to categorise"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:15:13Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T141513Z-3569305-red.log",
+        "sha256": "b6cef42c9fb99b54a9f8b445b90ddd5a478dd2bc2feba6edb34225ba9737be32",
+        "bytes": 868
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error",
+      "head": "c52066cc5e3f148a3c1fd2ea9f49e87f88a729ac",
+      "dirty": true
+    },
+    {
+      "id": "5074380b-b234-459d-8b17-45202c6bedba",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/client-values/valueUpdateSheet.test.ts",
+        "-t",
+        "pre-fills each row"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:15:30Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T141530Z-3582325-red.log",
+        "sha256": "5c32ec61f53d188db0dbf6a5e5b25c5b9b97db88f4ae5225d63c8ca973088306",
+        "bytes": 2621
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "head": "c52066cc5e3f148a3c1fd2ea9f49e87f88a729ac",
+      "dirty": true
+    },
+    {
+      "id": "47af17fa-cc50-4516-8b2a-d3b64c42fef3",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:14:07Z",
+      "seconds": 92,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T141407Z-3533228-green.log",
+        "sha256": "1ee088095fe3b5d2801bb87418861e03ff37bb16c816c44c912537ca096d4e4a",
+        "bytes": 20443
+      },
+      "summary": {
+        "passed": 604,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "7d5ab01cf2d80fce438759c93d3f08aae0ce4ad6",
+      "dirty": false
+    },
+    {
+      "id": "1639f850-9197-498f-9c61-eb50073173e7",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/client-values/valueUpdateSheet.test.ts",
+        "-t",
+        "replaces only the overridden row"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:15:34Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T141534Z-3584641-red.log",
+        "sha256": "23dc98b71c5684c0a19ca09335413fea2be9eb9b78b351efece7db9a4861936c",
+        "bytes": 2632
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "head": "c52066cc5e3f148a3c1fd2ea9f49e87f88a729ac",
+      "dirty": true
+    },
+    {
+      "id": "deae403d-cde1-497a-b076-93648e3e416f",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/client-values/valueUpdateSheet.test.ts",
+        "-t",
+        "leaves rows of clients still to categorise"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:15:38Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T141538Z-3587014-red.log",
+        "sha256": "4a0ba1d47717e53b1356bb6f2973ff562a980b09bd116b7b58b846d21e5982c9",
+        "bytes": 2440
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "head": "c52066cc5e3f148a3c1fd2ea9f49e87f88a729ac",
+      "dirty": true
+    },
+    {
+      "id": "4ed4a8fb-c771-4979-ad1c-10d3fe9571ff",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:15:39Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T141539Z-3587673-green.log",
+        "sha256": "6a913025575147568895e0e8aff919cd766860fc1ca8c8441a7b69415e1481d2",
+        "bytes": 7716
+      },
+      "head": "7d5ab01cf2d80fce438759c93d3f08aae0ce4ad6",
+      "dirty": false
+    },
+    {
+      "id": "721aa9db-956d-4a87-bb05-d3cc5f4707ea",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:15:45Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T141545Z-3591214-green.log",
+        "sha256": "0dbb4bf6f9bebb5bc0fb3acb01b0e7af7815f2e1f309279c418d049bcd78c6a8",
+        "bytes": 11045
+      },
+      "head": "7d5ab01cf2d80fce438759c93d3f08aae0ce4ad6",
+      "dirty": false
+    },
+    {
+      "id": "d7f7b60a-6310-4064-9273-7f3490243a42",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/packages/contracts",
+      "started": "2026-11-18T14:15:54Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T141554Z-3595988-green.log",
+        "sha256": "c8064694624569571498f752db919f8aaae8905d44d6767cf7684046779602c2",
+        "bytes": 568
+      },
+      "head": "c52066cc5e3f148a3c1fd2ea9f49e87f88a729ac",
+      "dirty": false
+    },
+    {
+      "id": "070b7a97-578e-4bf2-831c-9f60298e5bde",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/packages/contracts",
+      "started": "2026-11-18T14:16:40Z",
+      "seconds": 11,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T141640Z-3621851-green.log",
+        "sha256": "c8064694624569571498f752db919f8aaae8905d44d6767cf7684046779602c2",
+        "bytes": 568
+      },
+      "head": "7d5ab01cf2d80fce438759c93d3f08aae0ce4ad6",
+      "dirty": false
+    },
+    {
+      "id": "e20d5331-a9b9-4133-9444-2ee4bf0b18dd",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:16:04Z",
+      "seconds": 76,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T141604Z-3601638-green.log",
+        "sha256": "fe9574479080eaa41daa049545645777df8abd2c0b26afa56d994be111835cb5",
+        "bytes": 18962
+      },
+      "summary": {
+        "passed": 600,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "c52066cc5e3f148a3c1fd2ea9f49e87f88a729ac",
+      "dirty": false
+    },
+    {
+      "id": "449ba38b-39a1-40e2-9f54-720bb7a3c563",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:17:20Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T141720Z-3639296-green.log",
+        "sha256": "116f94a34786a0ffbfdfa7693d6ef75765daf718404e8735fd1539b965e873e9",
+        "bytes": 7716
+      },
+      "head": "c52066cc5e3f148a3c1fd2ea9f49e87f88a729ac",
+      "dirty": false
+    },
+    {
+      "id": "08c89d4a-54d0-498e-b7e0-071283ed8eb1",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:17:25Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T141725Z-3642484-green.log",
+        "sha256": "28aa3d070f4b6f2ac3c6c165eafeafbca6cf69fbde170c9d465563982fbc4e6b",
+        "bytes": 10760
+      },
+      "head": "c52066cc5e3f148a3c1fd2ea9f49e87f88a729ac",
+      "dirty": false
+    },
+    {
+      "id": "6477fa08-913c-461d-ac94-e288d1ebbfe9",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:22:04Z",
+      "seconds": 84,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T142204Z-3788387-green.log",
+        "sha256": "51906a2ff4475aca45df5ed086119626c8eb07b00274fa5820c8d74207449dc2",
+        "bytes": 20621
+      },
+      "summary": {
+        "passed": 604,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "50a55b049a64167d8d0a4b6410bd49ec2b29d758",
+      "dirty": false
+    },
+    {
+      "id": "b5d9a7ab-b932-4a7b-9db7-bc3d28b8f6fc",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:23:28Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T142328Z-3830368-green.log",
+        "sha256": "44fe9301883a91631078de6c269195744b66e7639ef33d27706470e6b604b23f",
+        "bytes": 7716
+      },
+      "head": "50a55b049a64167d8d0a4b6410bd49ec2b29d758",
+      "dirty": false
+    },
+    {
+      "id": "dc73a2e0-2c78-409c-909a-fac539f26d24",
+      "task": "V-admin-cleanup",
+      "track": "v-admin-cleanup",
+      "agent": "claude-opus-5-5 builder v-admin-cleanup",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-admin-cleanup/frontend_stack_ts",
+      "started": "2026-11-18T14:23:37Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-admin-cleanup/20261118T142337Z-3833947-green.log",
+        "sha256": "5f29230102145467bad73ac631b8710b8bfb59ba3a6b4cb23349bdf5e0b0c41a",
+        "bytes": 11045
+      },
+      "head": "50a55b049a64167d8d0a4b6410bd49ec2b29d758",
+      "dirty": false
+    },
+    {
+      "id": "0d5dffc5-b1bf-4786-bcfd-fda55a30d2a9",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:22:51Z",
+      "seconds": 86,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T142251Z-3814300-green.log",
+        "sha256": "8486c9623e4bbbc9d58ffb8603a4f37d27989bd8bcebfae18375d1fd5b63da90",
+        "bytes": 18639
+      },
+      "summary": {
+        "passed": 600,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "0b64ddfe3171755e3325b227539f98f5d640f93e",
+      "dirty": false
+    },
+    {
+      "id": "45eaf01d-59c2-4981-881f-273f49404adb",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:24:17Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T142417Z-3856774-green.log",
+        "sha256": "09f96ccba2fd64b74f263dac80989543ab1239bba19ee5b6341cd76b5a186471",
+        "bytes": 7716
+      },
+      "head": "0b64ddfe3171755e3325b227539f98f5d640f93e",
+      "dirty": false
+    },
+    {
+      "id": "7d51e2f6-a4cc-4e36-b790-9ce3b567d5cc",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:24:23Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T142423Z-3859953-green.log",
+        "sha256": "b63adb5b7420c6b94e70113e036521b661e4abc9791198997ee30c83b3cc0e66",
+        "bytes": 10760
+      },
+      "head": "0b64ddfe3171755e3325b227539f98f5d640f93e",
+      "dirty": false
+    },
+    {
+      "id": "92e41e24-9ccc-4a41-bf25-b2b7da76f49c",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:24:05Z",
+      "seconds": 48,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T142405Z-3848577-green.log",
+        "sha256": "0df6b2d9629ff11dde92862386c4d6fe9cbd34165998d6930605d35e7d894588",
+        "bytes": 1000
+      },
+      "note": "recorded as other, not green: it exited 1",
+      "head": "e0f131ff5902ebc809aba3dabf2e7cd5ec07fa61",
+      "dirty": false
     }
   ]
 }

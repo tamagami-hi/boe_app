@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 143,
+  "nextNumber": 211,
   "notes": [
     {
       "id": "note-1",
@@ -2306,6 +2306,978 @@
         ]
       },
       "at": "2026-11-18T12:23:30.291Z",
+      "replies": []
+    },
+    {
+      "id": "note-143",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132449Z-2627945 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132449Z-2627945 and tried again when the ledger changes",
+      "at": "2026-11-18T13:24:53.703Z",
+      "replies": []
+    },
+    {
+      "id": "note-144",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132501Z-2631237 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132501Z-2631237 and tried again when the ledger changes",
+      "at": "2026-11-18T13:25:05.705Z",
+      "replies": []
+    },
+    {
+      "id": "note-145",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132556Z-2646146 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132556Z-2646146 and tried again when the ledger changes",
+      "at": "2026-11-18T13:26:01.718Z",
+      "replies": []
+    },
+    {
+      "id": "note-146",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132614Z-2651867 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132614Z-2651867 and tried again when the ledger changes",
+      "at": "2026-11-18T13:26:19.722Z",
+      "replies": []
+    },
+    {
+      "id": "note-147",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133014Z-2697843 (red: timeout 600 ../tools/node24-container/run.sh npm run -s test:integration -- --coverage.enabled=false test/integration/recordingReceipts.integration.test.ts) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133014Z-2697843 and tried again when the ledger changes",
+      "at": "2026-11-18T13:30:21.799Z",
+      "replies": []
+    },
+    {
+      "id": "note-148",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133110Z-2709213 (green: ../../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run build) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133110Z-2709213 and tried again when the ledger changes",
+      "at": "2026-11-18T13:31:17.823Z",
+      "replies": []
+    },
+    {
+      "id": "note-149",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133116Z-2710573 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133116Z-2710573 and tried again when the ledger changes",
+      "at": "2026-11-18T13:32:17.851Z",
+      "replies": []
+    },
+    {
+      "id": "note-150",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133217Z-2729569 (green: ../tools/node24-container/run.sh npm run build:android) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133217Z-2729569 and tried again when the ledger changes",
+      "at": "2026-11-18T13:32:23.855Z",
+      "replies": []
+    },
+    {
+      "id": "note-151",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133223Z-2732274 (green: ../tools/node24-container/run.sh npm run build:android:admin) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133223Z-2732274 and tried again when the ledger changes",
+      "at": "2026-11-18T13:32:33.858Z",
+      "replies": []
+    },
+    {
+      "id": "note-152",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133230Z-2734758 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133230Z-2734758 and tried again when the ledger changes",
+      "at": "2026-11-18T13:33:39.879Z",
+      "replies": []
+    },
+    {
+      "id": "note-153",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133338Z-2748062 (green: ../tools/node24-container/run.sh npm run test:integration -- --coverage.enabled=false test/integration/recordingReceipts.integration.test.ts) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133338Z-2748062 and tried again when the ledger changes",
+      "at": "2026-11-18T13:33:47.890Z",
+      "replies": []
+    },
+    {
+      "id": "note-154",
+      "from": {
+        "track": "p-carried-lows",
+        "agent": "claude-opus-5-5 builder p-carried-lows"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "answer",
+      "text": "p-carried-lows: I had edited AdminFrame.tsx in 0f5327e (CL-10, phone All sections sheet only): the group label span got id={`${sidebarId}-more-${group.domain}`} and its ul got aria-labelledby pointing to it when the group has more than one entry. 9 lines, no class or recipe change. shellAdmin.ts is untouched. I am reverting that hunk now in a separate commit so the branch leaves AdminFrame.tsx identical to main; the change is described in my hand-off for the sidebar lane.",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/src/shells/admin/AdminFrame.tsx"
+        ],
+        "task": "M13-carried:carried-lows"
+      },
+      "at": "2026-11-18T13:34:38.975Z",
+      "replies": []
+    },
+    {
+      "id": "note-155",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133516Z-2779363 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133516Z-2779363 and tried again when the ledger changes",
+      "at": "2026-11-18T13:36:39.963Z",
+      "replies": []
+    },
+    {
+      "id": "note-156",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133637Z-2796204 (green: ../tools/node24-container/run.sh npm run build:android) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133637Z-2796204 and tried again when the ledger changes",
+      "at": "2026-11-18T13:36:45.964Z",
+      "replies": []
+    },
+    {
+      "id": "note-157",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133643Z-2798337 (green: ../tools/node24-container/run.sh npm run build:android:admin) was not recorded: session 59300efb-6cad-44fe-b786-679ea1870be5 is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133643Z-2798337 and tried again when the ledger changes",
+      "at": "2026-11-18T13:36:49.964Z",
+      "replies": []
+    },
+    {
+      "id": "note-158",
+      "from": {
+        "track": "p-carried-lows",
+        "agent": "claude-opus-5-5 builder p-carried-lows"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "answer",
+      "text": "p-carried-lows: adminRoutes.ts was never edited (no commit, no diff vs f948f97). AdminFrame.tsx is back to main at 9a51ebf; shellAdmin.ts untouched. One dependency for the sidebar lane: AuditTrailTable.tsx and ClientHubActions.tsx (via useRouteAccess) look up route ids user-detail, support-ticket, receipt-detail, client-values-individual, client-values-position, email-send, mandates, user-erase. Reordering is safe; renaming those ids would turn the links into plain text.",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/src/app/routing/adminRoutes.ts",
+          "frontend_stack_ts/src/shells/admin/AdminFrame.tsx"
+        ],
+        "task": "M13-carried:carried-lows"
+      },
+      "at": "2026-11-18T13:37:47.538Z",
+      "replies": []
+    },
+    {
+      "id": "note-159",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T134649Z-2942290 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T134649Z-2942290 and tried again when the ledger changes",
+      "at": "2026-11-18T13:47:00.187Z",
+      "replies": []
+    },
+    {
+      "id": "note-160",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T134702Z-2948600 (green: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T134702Z-2948600 and tried again when the ledger changes",
+      "at": "2026-11-18T13:47:14.197Z",
+      "replies": []
+    },
+    {
+      "id": "note-161",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T134708Z-2951111 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T134708Z-2951111 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:24.285Z",
+      "replies": []
+    },
+    {
+      "id": "note-162",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132449Z-2627945 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132449Z-2627945 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-163",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132501Z-2631237 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132501Z-2631237 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-164",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132556Z-2646146 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132556Z-2646146 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-165",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132614Z-2651867 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132614Z-2651867 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-166",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133014Z-2697843 (red: timeout 600 ../tools/node24-container/run.sh npm run -s test:integration -- --coverage.enabled=false test/integration/recordingReceipts.integration.test.ts) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133014Z-2697843 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-167",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133110Z-2709213 (green: ../../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run build) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133110Z-2709213 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-168",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133116Z-2710573 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133116Z-2710573 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-169",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133217Z-2729569 (green: ../tools/node24-container/run.sh npm run build:android) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133217Z-2729569 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-170",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133223Z-2732274 (green: ../tools/node24-container/run.sh npm run build:android:admin) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133223Z-2732274 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-171",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133230Z-2734758 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133230Z-2734758 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-172",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133338Z-2748062 (green: ../tools/node24-container/run.sh npm run test:integration -- --coverage.enabled=false test/integration/recordingReceipts.integration.test.ts) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133338Z-2748062 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-173",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133516Z-2779363 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133516Z-2779363 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-174",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133637Z-2796204 (green: ../tools/node24-container/run.sh npm run build:android) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133637Z-2796204 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-175",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133643Z-2798337 (green: ../tools/node24-container/run.sh npm run build:android:admin) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133643Z-2798337 and tried again when the ledger changes",
+      "at": "2026-11-18T13:48:38.288Z",
+      "replies": []
+    },
+    {
+      "id": "note-176",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132449Z-2627945 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132449Z-2627945 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-177",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132501Z-2631237 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132501Z-2631237 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-178",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132556Z-2646146 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132556Z-2646146 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-179",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132614Z-2651867 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132614Z-2651867 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-180",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133014Z-2697843 (red: timeout 600 ../tools/node24-container/run.sh npm run -s test:integration -- --coverage.enabled=false test/integration/recordingReceipts.integration.test.ts) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133014Z-2697843 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-181",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133110Z-2709213 (green: ../../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run build) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133110Z-2709213 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-182",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133116Z-2710573 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133116Z-2710573 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-183",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133217Z-2729569 (green: ../tools/node24-container/run.sh npm run build:android) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133217Z-2729569 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-184",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133223Z-2732274 (green: ../tools/node24-container/run.sh npm run build:android:admin) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133223Z-2732274 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-185",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133230Z-2734758 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133230Z-2734758 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-186",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133338Z-2748062 (green: ../tools/node24-container/run.sh npm run test:integration -- --coverage.enabled=false test/integration/recordingReceipts.integration.test.ts) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133338Z-2748062 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-187",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133516Z-2779363 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133516Z-2779363 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-188",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133637Z-2796204 (green: ../tools/node24-container/run.sh npm run build:android) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133637Z-2796204 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-189",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133643Z-2798337 (green: ../tools/node24-container/run.sh npm run build:android:admin) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133643Z-2798337 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-190",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T134649Z-2942290 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T134649Z-2942290 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-191",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T134702Z-2948600 (green: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T134702Z-2948600 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-192",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T134708Z-2951111 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session d70c881e-4c0c-4b06-9c70-26d98f6fe1bf is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T134708Z-2951111 and tried again when the ledger changes",
+      "at": "2026-11-18T13:53:30.382Z",
+      "replies": []
+    },
+    {
+      "id": "note-193",
+      "from": {
+        "track": "v-breakdown-core",
+        "agent": "claude-opus-5-5 builder v-breakdown-core"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "V1 contracts committed 9e24efe9 on track/v-breakdown-core (check green 20261118T140148Z-3220593). Ops: getClientInvestmentBreakdown, listAdminInvestmentsToCategorise, getAdminClientInvestments, confirmAdminEarlierGrowthSplit. Shapes as plan, plus: list data has clientCount (Overview N); earlierGrowth has needsConfirmation; investments[] items are {ref,label,date|null,amountPaise,reversed}; ref = {kind:'sip',scheduleId}|{kind:'one_time',allocationId}; split 201 data {fundId, split:{splitId,cutoffEntryId,totalPaise,parts,confirmedAt}}. Backend not built yet.",
+      "about": {
+        "paths": [
+          "packages/contracts/src/operations/investment-breakdown.ts",
+          "packages/contracts/src/operations/admin-investments.ts"
+        ],
+        "task": "M19-patches-0-18:V-breakdown-core"
+      },
+      "at": "2026-11-18T14:02:46.155Z",
+      "replies": []
+    },
+    {
+      "id": "note-194",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132449Z-2627945 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132449Z-2627945 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-195",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132501Z-2631237 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132501Z-2631237 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-196",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132556Z-2646146 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132556Z-2646146 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-197",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T132614Z-2651867 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/IndividualClientGrowthScreen.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T132614Z-2651867 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-198",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133014Z-2697843 (red: timeout 600 ../tools/node24-container/run.sh npm run -s test:integration -- --coverage.enabled=false test/integration/recordingReceipts.integration.test.ts) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133014Z-2697843 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-199",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133110Z-2709213 (green: ../../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run build) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133110Z-2709213 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-200",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133116Z-2710573 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133116Z-2710573 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-201",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133217Z-2729569 (green: ../tools/node24-container/run.sh npm run build:android) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133217Z-2729569 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-202",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133223Z-2732274 (green: ../tools/node24-container/run.sh npm run build:android:admin) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133223Z-2732274 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-203",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133230Z-2734758 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133230Z-2734758 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-204",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133338Z-2748062 (green: ../tools/node24-container/run.sh npm run test:integration -- --coverage.enabled=false test/integration/recordingReceipts.integration.test.ts) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133338Z-2748062 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-205",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133516Z-2779363 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133516Z-2779363 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-206",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133637Z-2796204 (green: ../tools/node24-container/run.sh npm run build:android) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133637Z-2796204 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-207",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T133643Z-2798337 (green: ../tools/node24-container/run.sh npm run build:android:admin) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T133643Z-2798337 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-208",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T134649Z-2942290 (red: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T134649Z-2942290 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-209",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T134702Z-2948600 (green: ../tools/node24-container/run.sh npx vitest run src/features/admin/client-values/heldMoneyWrites.test.tsx) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T134702Z-2948600 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-210",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "p-carried-lows"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T134708Z-2951111 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T134708Z-2951111 and tried again when the ledger changes",
+      "at": "2026-11-18T14:09:20.759Z",
       "replies": []
     }
   ]

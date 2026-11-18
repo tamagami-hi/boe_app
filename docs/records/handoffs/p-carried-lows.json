@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "track": "p-carried-lows",
+  "current": {
+    "from": "claude-opus-5-5 builder p-carried-lows",
+    "track": "p-carried-lows",
+    "at": "2026-11-18T13:49:17.811Z",
+    "lines": [
+      "Lane p-carried-lows, M13-carried:carried-lows. Branch track/p-carried-lows, head 999f7e4 on f948f97. Not pushed or landed. Review verdict land (0 blocking); M1 added as 999f7e4.",
+      "RECORDS: task carried-lows is on track main, so every runner result sits in .temp/tally/results/refused/ (logs in .temp/tally/logs/p-carried-lows/); the coordinator records the landing from main.",
+      "Commits: a65f0ee CL-12; 50afe2b CL-12 test; 0f5327e CL-07/08/09 (+CL-10 sheet, reverted); f29ca7c CL-05; f60f684 CL-03 test; 9a51ebf AdminFrame.tsx back to main; 999f7e4 M1 test (investor record keeps a hold across a link).",
+      "M1 (999f7e4): new case in heldMoneyWrites.test.tsx renders ClientPositionDetailScreen at ?userId=, a ledger reversal kept on this page only (setItem refused), a link to another investor; expects Not confirmed kept, address back to the held investor, Check again with the same key, body and params. Green 20261118T134702Z-2948600 (17 tests); red 20261118T134649Z-2942290 (isHolding replaced by false: fails on Not confirmed).",
+      "Greens on 999f7e4: frontend check 20261118T134708Z-2951111 (66 files, 600 tests, 207 operations). Builds last run on 9a51ebf (test-only change since): build:android 20261118T133637Z-2796204, build:android:admin 20261118T133643Z-2798337. Backend and contracts greens on f60f684 (trees unchanged): 20261118T133230Z-2734758 (1238 tests), integration 20261118T133338Z-2748062, contracts 20261118T133110Z-2709213.",
+      "CL-03 FIXED f60f684, red 20261118T133014Z-2697843. CL-05 FIXED f29ca7c. CL-07, CL-08, CL-09 FIXED 0f5327e. CL-11 ALREADY FIXED 6a559fe/6dbb75c/ae24ae5. CL-12 FIXED a65f0ee+50afe2b, reds 20261118T132614Z-2651867 and 20261118T132556Z-2646146. CL-13 ALREADY FIXED 4978151.",
+      "CL-10: desktop already fixed in b75c778; phone All sections sheet left to the sidebar lane: AdminFrame.tsx line 208 label span id={`${sidebarId}-more-${group.domain}`}, line 210 ul aria-labelledby that id when group.entries.length > 1.",
+      "Review LOWs not taken (recorded as known): L1 same investor with another fundId is not followed; L2 a persisted hold is left (unlocked, as the picker) when a link moves away; L3 an over-long ?q= is not normalised in the address; L4 focus is lost after a failed password change because the cleared form disables its submit.",
+      "Rule 11: no API, contract, schema or response change. Route ids used by AuditTrailTable/ClientHubActions must not be renamed by the sidebar lane.",
+      "Overlap: ClientPositionDetailScreen.tsx and ClientHubActions.tsx changed here; p-findings-0184 owns EarlierInvestmentForm.tsx, which the M1 test renders but does not drive."
+    ]
+  },
+  "history": [
+    {
+      "from": "claude-opus-5-5 builder p-carried-lows",
+      "track": "p-carried-lows",
+      "at": "2026-11-18T13:34:17.951Z",
+      "lines": [
+        "Lane p-carried-lows, M13-carried:carried-lows (frontend plus one backend test). Branch track/p-carried-lows, head f60f684 on f948f97. Not pushed or landed.",
+        "RECORDS: task carried-lows is still on track main, so task_claim was refused and every runner result below sits in .temp/tally/results/refused/ (logs in .temp/tally/logs/p-carried-lows/). Move the task to p-carried-lows (or record them from main); tally retries them when the ledger changes.",
+        "Commits: a65f0ee fix(admin-values) CL-12; 50afe2b test(admin-values) CL-12; 0f5327e fix(admin-ui) CL-07/08/09/10; f29ca7c fix(auth) CL-05; f60f684 test(receipts) CL-03.",
+        "CL-03 receipts fundId filter test (h-client review-1 F4): FIXED f60f684. New case in recordingReceipts.integration.test.ts (fund pages, other fund, unfiltered, cross-filter cursor CURSOR_INVALID). Red 20261118T133014Z-2697843 (fundId condition removed from listByUser).",
+        "CL-05 password panels keep passwords (h-hygiene review-1 F3): FIXED f29ca7c. AccountPasswordPanel clears all three fields on any outcome; ResetPasswordScreen clears both on error and success. No test (rule 10).",
+        "CL-07 stale ?q= and unknown filters (h-admin-access review-1 F5, F6): FIXED 0f5327e. Users search is ?q= itself (Enter/blur writes it, replace); useUrlFilter drops an unknown value. No test.",
+        "CL-08 audit trail client links (h-admin-access F7): FIXED 0f5327e. Client column uses ClientPageLink; record links (user-detail, support-ticket, receipt-detail) are links only when useRouteAccess allows. No test.",
+        "CL-09 duplication (h-admin-access F8): FIXED 0f5327e. ClientHubActions uses useRouteAccess; useChosenClient removed, SendEmailScreen uses useAdminUser.",
+        "CL-10 sidebar group semantics (h-admin-access F8): desktop ALREADY FIXED b75c778; phone All sections sheet FIXED 0f5327e (ul aria-labelledby its heading).",
+        "CL-11 silent Show more (h-admin-money review-1): ALREADY FIXED by fx-paging 6a559fe, 6dbb75c, ae24ae5. LoadMore.test.tsx and paged.test.ts pass in green 20261118T133116Z-2710573.",
+        "CL-12 ?userId= first mount (h-admin-money review-1): FIXED a65f0ee + 50afe2b. useFollowedLink in linkedRecord.ts: picker writes only the URL, screen follows it; while the picker is locked (unsaved hold, growth send pending) a link is undone and the hold kept. IndividualGrowthForm gains optional onInvestorLock.",
+        "CL-12 tests: IndividualClientGrowthScreen.test.tsx, 3 new cases. Red A (screen reverted) 20261118T132614Z-2651867 (3 fail); red B (lock ignored) 20261118T132556Z-2646146 (other-investor case fails on Not confirmed). Earlier runs on a65f0ee: 20261118T132449Z-2627945, 20261118T132501Z-2631237.",
+        "CL-13 unknown linked id retry (h-admin-money review-1): ALREADY FIXED in 4978151 (fx-admin-values, landed 57dff67): linkedInvestor.tsx shows 'No investor matches the link' with no retry. STATIC, no test.",
+        "Greens on f60f684, clean tree: contracts build 20261118T133110Z-2709213; frontend check 20261118T133116Z-2710573 (66 files, 599 tests, 207 operations); build:android 20261118T133217Z-2729569 (73 assets, 1,064,030 bytes, 62 chunks boot); build:android:admin 20261118T133223Z-2732274 (105 assets, 1,464,463 bytes, 93 chunks boot); backend check 20261118T133230Z-2734758 (104 files, 1238 tests); integration recordingReceipts 20261118T133338Z-2748062 (14 tests, coverage off).",
+        "Rule 11: no API, contract, schema or response change; frontend reads and URL handling only, plus one test. Released apps unaffected.",
+        "Overlap: ClientPositionDetailScreen.tsx and ClientHubActions.tsx changed here; p-findings-0184 owns EarlierInvestmentForm.tsx (CL-06) and may touch the same screens. EarlierInvestmentForm itself is untouched.",
+        "Doubt: two useUrlFilter cleanups on one screen with two bad values converge over two replace navigations (RR7 setSearchParams reads render-time params). Cosmetic.",
+        "Runtime (not run, no browser or device here): steps are in the lane report."
+      ]
+    },
+    {
+      "from": "claude-opus-5-5 builder p-carried-lows",
+      "track": "p-carried-lows",
+      "at": "2026-11-18T13:37:33.544Z",
+      "lines": [
+        "Lane p-carried-lows, M13-carried:carried-lows (frontend plus one backend test). Branch track/p-carried-lows, head 9a51ebf on f948f97. Not pushed or landed.",
+        "RECORDS: task carried-lows is still on track main, so task_claim was refused and every runner result below sits in .temp/tally/results/refused/ (logs in .temp/tally/logs/p-carried-lows/). Move the task to p-carried-lows (or record them from main); tally retries them when the ledger changes.",
+        "Commits: a65f0ee fix(admin-values) CL-12; 50afe2b test(admin-values) CL-12; 0f5327e fix(admin-ui) CL-07/08/09 (+CL-10 sheet, reverted); f29ca7c fix(auth) CL-05; f60f684 test(receipts) CL-03; 9a51ebf chore(admin-shell) puts AdminFrame.tsx back to main (coordinator scope change). Net branch diff touches neither AdminFrame.tsx nor shellAdmin.ts.",
+        "CL-03 receipts fundId filter test (h-client review-1 F4): FIXED f60f684. New case in recordingReceipts.integration.test.ts (fund pages, other fund, unfiltered, cross-filter cursor CURSOR_INVALID). Red 20261118T133014Z-2697843 (fundId condition removed from listByUser).",
+        "CL-05 password panels keep passwords (h-hygiene review-1 F3): FIXED f29ca7c. AccountPasswordPanel clears all three fields on any outcome; ResetPasswordScreen clears both on error and success. No test (rule 10).",
+        "CL-07 stale ?q= and unknown filters (h-admin-access review-1 F5, F6): FIXED 0f5327e. Users search is ?q= itself (Enter/blur writes it, replace); useUrlFilter drops an unknown value. No test.",
+        "CL-08 audit trail client links (h-admin-access F7): FIXED 0f5327e. Client column uses ClientPageLink; record links (user-detail, support-ticket, receipt-detail) are links only when useRouteAccess allows. No test.",
+        "CL-09 duplication (h-admin-access F8): FIXED 0f5327e. ClientHubActions uses useRouteAccess; useChosenClient removed, SendEmailScreen uses useAdminUser.",
+        "CL-10 sidebar group semantics (h-admin-access F8): desktop ALREADY FIXED b75c778. Phone All sections sheet NOT FIXED here (file handed to the sidebar lane). For that lane, AdminFrame.tsx at 9a51ebf: line 208 give the label span id={`${sidebarId}-more-${group.domain}`}; line 210 give the ul aria-labelledby that id when group.entries.length > 1 (undefined otherwise). No class or recipe change. Was in 0f5327e, reverted in 9a51ebf.",
+        "CL-11 silent Show more (h-admin-money review-1): ALREADY FIXED by fx-paging 6a559fe, 6dbb75c, ae24ae5. LoadMore.test.tsx and paged.test.ts pass in green 20261118T133516Z-2779363.",
+        "CL-12 ?userId= first mount (h-admin-money review-1): FIXED a65f0ee + 50afe2b. useFollowedLink in linkedRecord.ts: picker writes only the URL, screen follows it; while the picker is locked (unsaved hold, growth send pending) a link is undone and the hold kept. IndividualGrowthForm gains optional onInvestorLock.",
+        "CL-12 tests: IndividualClientGrowthScreen.test.tsx, 3 new cases. Red A (screen reverted) 20261118T132614Z-2651867 (3 fail); red B (lock ignored) 20261118T132556Z-2646146 (other-investor case fails on Not confirmed). Earlier runs on a65f0ee: 20261118T132449Z-2627945, 20261118T132501Z-2631237.",
+        "CL-13 unknown linked id retry (h-admin-money review-1): ALREADY FIXED in 4978151 (fx-admin-values, landed 57dff67): linkedInvestor.tsx shows 'No investor matches the link' with no retry. STATIC, no test.",
+        "Greens on 9a51ebf, clean tree: frontend check 20261118T133516Z-2779363 (66 files, 599 tests, 207 operations); build:android 20261118T133637Z-2796204 (73 assets, 1,064,030 bytes, 62 chunks boot); build:android:admin 20261118T133643Z-2798337 (105 assets, 1,464,368 bytes, 93 chunks boot).",
+        "Greens on f60f684 (backend and contracts trees identical at 9a51ebf): contracts build 20261118T133110Z-2709213; backend check 20261118T133230Z-2734758 (104 files, 1238 tests); integration recordingReceipts 20261118T133338Z-2748062 (14 tests, coverage off). Superseded frontend greens on f60f684: 133116Z-2710573, 133217Z-2729569, 133223Z-2732274.",
+        "Rule 11: no API, contract, schema or response change; frontend reads and URL handling only, plus one test. Released apps unaffected.",
+        "Overlap: ClientPositionDetailScreen.tsx and ClientHubActions.tsx changed here; p-findings-0184 owns EarlierInvestmentForm.tsx (CL-06) and may touch the same screens. EarlierInvestmentForm itself is untouched.",
+        "Doubt: two useUrlFilter cleanups on one screen with two bad values converge over two replace navigations (RR7 setSearchParams reads render-time params). Cosmetic.",
+        "Runtime (not run, no browser or device here): steps are in the lane report."
+      ]
+    }
+  ]
+}
