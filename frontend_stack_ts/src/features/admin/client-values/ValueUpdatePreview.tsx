@@ -1,6 +1,7 @@
 import { Section } from "~/app/layouts/Section"
 import { toPaise } from "~/domain/money"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
+import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Stat } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
@@ -10,12 +11,22 @@ import { ADMIN_FIGURE, ADMIN_FORM_GRID, ADMIN_SUMMARY_GRID } from "~/ui/recipes/
 import { PROSE_SM } from "~/ui/recipes/datalist"
 import { STACK_LG } from "~/ui/recipes/layout"
 
-import type { PreviewTarget } from "./valueUpdateSheet"
+import { refKey } from "./investmentGrowthApi"
+import type { InvestmentGrowthEntry, InvestmentPart } from "./investmentGrowthApi"
 
-type PreviewRow = PreviewTarget & Readonly<{ afterPaise: string }>
+type PartRow = InvestmentPart & Readonly<{ userId: string; key: string }>
+
+const partRowsOf = (entries: readonly InvestmentGrowthEntry[]): PartRow[] =>
+  entries.flatMap((entry) =>
+    entry.parts.map((part) => ({ ...part, userId: entry.userId, key: `${entry.userId}|${refKey(part.ref)}` })),
+  )
+
+export type LeftOutRow = Readonly<{ key: string; client: string; investment: string }>
 
 export type ValueUpdatePreviewProps = Readonly<{
-  targets: readonly PreviewRow[]
+  entries: readonly InvestmentGrowthEntry[]
+  skippedClientCount: number
+  leftOut: readonly LeftOutRow[]
   totalDeltaPaise: string
   nameOf: (userId: string) => string
   effectiveDate: string
@@ -30,7 +41,9 @@ export type ValueUpdatePreviewProps = Readonly<{
 }>
 
 export const ValueUpdatePreview = ({
-  targets,
+  entries,
+  skippedClientCount,
+  leftOut,
   totalDeltaPaise,
   nameOf,
   effectiveDate,
@@ -44,6 +57,7 @@ export const ValueUpdatePreview = ({
   onReview,
 }: ValueUpdatePreviewProps): React.ReactElement => {
   const futureDated = effectiveDate > today
+  const parts = partRowsOf(entries)
   return (
     <>
       <Section
@@ -53,7 +67,16 @@ export const ValueUpdatePreview = ({
         <Card>
           <div className={ADMIN_SUMMARY_GRID}>
             <Stat label="Clients updated">
-              <span className={ADMIN_FIGURE}>{String(targets.length)}</span>
+              <span className={ADMIN_FIGURE}>{String(entries.length)}</span>
+            </Stat>
+            <Stat label="Investments updated">
+              <span className={ADMIN_FIGURE}>{String(parts.length)}</span>
+            </Stat>
+            <Stat label="Categorise first" hint="Left out of this batch.">
+              <span className={ADMIN_FIGURE}>{String(skippedClientCount)}</span>
+            </Stat>
+            <Stat label="Left out by the server" hint="Typed rows the server will not change.">
+              <span className={ADMIN_FIGURE}>{String(leftOut.length)}</span>
             </Stat>
             <Stat label="Total change">
               <MoneyValue
@@ -67,11 +90,18 @@ export const ValueUpdatePreview = ({
           </div>
         </Card>
         <AdminTable
-          caption="Value updates in this batch"
-          rows={targets}
-          rowKey={(row) => row.userId}
+          caption="Value updates in this batch, per investment"
+          rows={parts}
+          rowKey={(row) => row.key}
           columns={[
             { key: "client", header: "Client", render: (row) => nameOf(row.userId) },
+            { key: "investment", header: "Investment", render: (row) => row.label },
+            {
+              key: "invested",
+              header: "Invested",
+              numeric: true,
+              render: (row) => <MoneyValue amount={toPaise(row.investedPaise)} size="sm" showDecimals />,
+            },
             {
               key: "before",
               header: "Value now",
@@ -94,11 +124,19 @@ export const ValueUpdatePreview = ({
             },
           ]}
         />
+        {leftOut.length === 0 ? null : (
+          <ul className={PROSE_SM}>
+            {leftOut.map((row) => (
+              <li key={row.key}>{`${row.client}, ${row.investment}: left out by the server, nothing is written for it.`}</li>
+            ))}
+          </ul>
+        )}
+        <MoneyFootnote lastUpdated={null} />
       </Section>
 
       <Section
         title="Commit the batch"
-        description="One value-update record is written for each client above. Each is told in the app, and active clients by email."
+        description="One value-update record is written for each client and fund, made of the per-investment changes above. Each client is told in the app, and active clients by email."
       >
         <Card>
           <div className={STACK_LG}>
@@ -146,7 +184,7 @@ export const ValueUpdatePreview = ({
                 onClick={onReview}
                 trailing
               >
-                {`Review and commit ${String(targets.length)} update(s)`}
+                {`Review and commit ${String(entries.length)} update(s)`}
               </Button>
             ) : null}
           </div>

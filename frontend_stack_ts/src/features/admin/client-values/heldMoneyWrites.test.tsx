@@ -25,6 +25,8 @@ const OTHER_USER_ID = "77777777-7777-4777-8777-777777777777"
 const FUND_ID = "22222222-2222-4222-8222-222222222222"
 const MATURITY_ID = "33333333-3333-4333-8333-333333333333"
 const PAYOUT_ID = "44444444-4444-4444-8444-444444444444"
+const SCHEDULE_ID = "55555555-5555-4555-8555-555555555555"
+const SIP_REF = { kind: "sip", scheduleId: SCHEDULE_ID } as const
 const TODAY = indiaToday()
 
 vi.mock("~/app/providers/SessionProvider", () => ({
@@ -98,6 +100,19 @@ const READS: Readonly<Record<string, () => unknown>> = {
   listAdminWithdrawalPayouts: () => ({ userId: USER_ID, items: [] }),
   listAdminUsers: () => ({ items: [] }),
   getAdminUser: () => ({ user: { id: USER_ID, fullName: "Asha Verma", email: "asha@example.com" } }),
+  getAdminClientInvestments: () => ({
+    userId: USER_ID,
+    funds: [
+      {
+        fundId: FUND_ID,
+        fundName: "Balanced Fund",
+        status: "ready",
+        investments: [{ ref: SIP_REF, label: "SIP", date: null, amountPaise: "1000000", reversed: false }],
+        uncategorised: [],
+        earlierGrowth: null,
+      },
+    ],
+  }),
 }
 
 const TARGET = {
@@ -111,16 +126,17 @@ const TARGET = {
   newValuePaise: "1125000",
 }
 
+const PART = { ref: SIP_REF, label: "SIP", investedPaise: TARGET.principalPaise, beforePaise: TARGET.beforePaise, deltaPaise: TARGET.deltaPaise, afterPaise: TARGET.afterPaise }
+
 const ANSWERS: Readonly<Record<string, () => unknown>> = {
-  previewAdminCollectiveClientGrowth: () => ({
+  previewAdminInvestmentGrowth: () => ({
     fundId: FUND_ID,
     mode: "percentage",
     basisHash: "b".repeat(64),
-    excludedCount: 0,
     targetCount: 1,
     totalDeltaPaise: "25000",
-    targets: [TARGET],
-    items: [TARGET],
+    entries: [{ userId: USER_ID, beforePaise: TARGET.beforePaise, deltaPaise: TARGET.deltaPaise, afterPaise: TARGET.afterPaise, parts: [PART] }],
+    skipped: [],
   }),
 }
 
@@ -216,7 +232,7 @@ const CASES: readonly HeldWriteCase[] = [
   },
   {
     name: "append a growth adjustment",
-    operationId: "appendAdminIndividualClientGrowth",
+    operationId: "appendAdminIndividualInvestmentGrowth",
     form: () => (
       <IndividualGrowthForm
         userId={USER_ID}
@@ -227,6 +243,7 @@ const CASES: readonly HeldWriteCase[] = [
       />
     ),
     fill: async () => {
+      await choose(/^Target/u, `sip:${SCHEDULE_ID}`)
       await waitFor(() => {
         expect(screen.getByText("Current value")).toBeTruthy()
       })
@@ -296,7 +313,7 @@ const CASES: readonly HeldWriteCase[] = [
   },
   {
     name: "commit a whole-fund growth batch",
-    operationId: "commitAdminCollectiveClientGrowth",
+    operationId: "commitAdminInvestmentGrowth",
     form: () => <CollectiveClientGrowthScreen />,
     fill: async () => {
       await choose(/^Fund/u, FUND_ID)
@@ -443,6 +460,26 @@ describe("a money or ledger write whose reply is lost", () => {
     expect(screen.getByLabelText(/^Amount in rupees/u).hasAttribute("disabled")).toBe(false)
     expect(window.sessionStorage.getItem(stored)).toBeNull()
     expect(sent).toHaveLength(0)
+  })
+
+  it("never sends a whole-fund hold saved by 0.18.3 to the per-investment commit, and locks until it is settled", async () => {
+    const oldBody = { fundId: FUND_ID, growthBasisPoints: 250, basisHash: "b".repeat(64), effectiveDate: TODAY, reasonCode: "monthly" }
+    window.sessionStorage.setItem(
+      "beo.admin.held-write.v1:collective-growth",
+      JSON.stringify({ adminId: ADMIN_ID, idempotencyKey: STORED_KEY, body: { body: oldBody }, heldAt: Date.now() }),
+    )
+    renderWith(<CollectiveClientGrowthScreen />)
+
+    expect(await screen.findByText("An earlier request is held")).toBeTruthy()
+    await isLocked(() => screen.getByLabelText(/Rate in basis points/u))
+    for (const button of screen.getAllByRole("button", { name: "Check again" })) fireEvent.click(button)
+    await waitFor(() => {
+      expect(sent.length).toBeGreaterThan(0)
+    })
+
+    expect(sent.map((write) => write.operationId)).toEqual(["commitAdminCollectiveClientGrowth"])
+    expect(sent[0]?.idempotencyKey).toBe(STORED_KEY)
+    expect(sent[0]?.body).toEqual(oldBody)
   })
 
   it("keeps a growth batch the tab could not save on this page: it says so and refuses to unload", async () => {

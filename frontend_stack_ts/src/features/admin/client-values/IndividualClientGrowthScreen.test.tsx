@@ -6,14 +6,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ApiError, TransportError } from "~/api/errors"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 
-import type { IndividualGrowthInput } from "./growthQueries"
 import IndividualClientGrowthScreen from "./IndividualClientGrowthScreen"
+import type * as InvestmentGrowthModule from "./investmentGrowthApi"
+import type { IndividualInvestmentGrowthHold } from "./investmentGrowthApi"
+
+type IndividualGrowthInput = IndividualInvestmentGrowthHold & Readonly<{ idempotencyKey: string }>
 
 type Settle = Readonly<{ onSuccess?: () => void; onError?: (error: unknown) => void }>
 
 const USER_ID = "11111111-1111-4111-8111-111111111111"
 const OTHER_USER_ID = "55555555-5555-4555-8555-555555555555"
 const FUND_ID = "22222222-2222-4222-8222-222222222222"
+const ALLOCATION_ID = "55555555-5555-4555-8555-555555555555"
+const LUMP_REF = { kind: "one_time", allocationId: ALLOCATION_ID } as const
 
 const RECEIPT = {
   batchId: "33333333-3333-4333-8333-333333333333",
@@ -29,13 +34,44 @@ const RECEIPT = {
   growthPaise: "25000",
   afterPaise: "1025000",
   newValuePaise: "1025000",
+  part: {
+    ref: LUMP_REF,
+    label: "One-time investment",
+    investedPaise: "1000000",
+    beforePaise: "1000000",
+    deltaPaise: "25000",
+    afterPaise: "1025000",
+  },
 }
 
 const sent: IndividualGrowthInput[] = []
 let nextFailure: unknown = null
 
-vi.mock("./growthQueries", () => ({
-  useIndividualClientGrowth: () => {
+vi.mock("./investmentGrowthApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof InvestmentGrowthModule>()),
+  useClientInvestments: (userId: string) => ({
+    data:
+      userId === ""
+        ? undefined
+        : {
+            userId,
+            funds: [
+              {
+                fundId: FUND_ID,
+                fundName: "Balanced Fund",
+                status: "ready",
+                investments: [
+                  { ref: LUMP_REF, label: "One-time investment", date: "2026-06-02", amountPaise: "1000000", reversed: false },
+                ],
+                uncategorised: [],
+                earlierGrowth: null,
+              },
+            ],
+          },
+    error: null,
+    refetch: () => Promise.resolve(),
+  }),
+  useIndividualInvestmentGrowth: () => {
     const [data, setData] = useState<typeof RECEIPT | undefined>(undefined)
     return {
       mutate: (variables: IndividualGrowthInput, settle: Settle) => {
@@ -54,6 +90,10 @@ vi.mock("./growthQueries", () => ({
       data,
     }
   },
+}))
+
+vi.mock("./growthQueries", () => ({
+  useIndividualClientGrowth: () => ({ mutate: () => undefined, reset: () => undefined, isPending: false, data: undefined }),
 }))
 
 vi.mock("~/app/providers/SessionProvider", () => ({
@@ -145,6 +185,7 @@ const fillForm = (): void => {
   fireEvent.focus(screen.getByPlaceholderText("Start typing a name"))
   fireEvent.click(screen.getByRole("option", { name: /Asha Verma/u }))
   fireEvent.change(screen.getByLabelText(/^Fund/u), { target: { value: FUND_ID } })
+  fireEvent.change(screen.getByLabelText(/^Target/u), { target: { value: `one_time:${ALLOCATION_ID}` } })
   enterRate("250")
 }
 
@@ -187,7 +228,7 @@ describe("appending one investor's growth when the reply is lost", () => {
 
     expect(sent).toHaveLength(2)
     expect(sent[1]).toEqual(sent[0])
-    expect(sent[0]?.body).toMatchObject({ userId: USER_ID, fundId: FUND_ID, growthBasisPoints: 250 })
+    expect(sent[0]?.body).toMatchObject({ userId: USER_ID, fundId: FUND_ID, ref: LUMP_REF, growthBasisPoints: 250 })
   })
 
   it("treats a gateway failure as unknown too and keeps the form held", () => {
@@ -224,11 +265,12 @@ describe("following a link to this screen while it is open", () => {
     expect(addressSearch()).toBe(`?userId=${OTHER_USER_ID}`)
     expect(screen.getByLabelText<HTMLInputElement>(/Rate in basis points/u).value).toBe("")
     fireEvent.change(screen.getByLabelText(/^Fund/u), { target: { value: FUND_ID } })
+    fireEvent.change(screen.getByLabelText(/^Target/u), { target: { value: `one_time:${ALLOCATION_ID}` } })
     enterRate("250")
     submit()
 
     expect(sent).toHaveLength(1)
-    expect(sent[0]?.body).toMatchObject({ userId: OTHER_USER_ID, fundId: FUND_ID })
+    expect(sent[0]?.body).toMatchObject({ userId: OTHER_USER_ID, fundId: FUND_ID, ref: LUMP_REF })
   })
 
   it.each(["link to another investor", "link with no investor"])(

@@ -16,6 +16,8 @@ export type GrowthConfirmDialogsProps = Readonly<{
   effectiveDate: string
   reasonCode: string
   rateLabel: string | null
+  targetLabel: string | null
+  targetInvestedPaise: string | null
   position: Position | null
   adjustment: Readonly<{ delta: bigint; projected: bigint }> | null
   onAppend: () => void
@@ -30,6 +32,8 @@ export const GrowthConfirmDialogs = ({
   effectiveDate,
   reasonCode,
   rateLabel,
+  targetLabel,
+  targetInvestedPaise,
   position,
   adjustment,
   onAppend,
@@ -48,6 +52,12 @@ export const GrowthConfirmDialogs = ({
       <DataList>
         <DetailRow label="Investor">{investorLabel}</DetailRow>
         <DetailRow label="Fund">{fundName}</DetailRow>
+        {targetLabel === null ? null : <DetailRow label="Investment">{targetLabel}</DetailRow>}
+        {targetInvestedPaise === null ? null : (
+          <DetailRow label="Invested in this investment">
+            <MoneyValue amount={toPaise(targetInvestedPaise)} size="sm" showDecimals />
+          </DetailRow>
+        )}
         {position === null ? null : (
           <DetailRow label="Amount invested">
             <MoneyValue amount={toPaise(position.principalPaise)} size="sm" showDecimals />
@@ -65,7 +75,7 @@ export const GrowthConfirmDialogs = ({
           </DetailRow>
         )}
         {adjustment === null ? null : (
-          <DetailRow label="Projected value">
+          <DetailRow label="Position total after">
             <MoneyValue amount={toPaise(adjustment.projected.toString())} size="sm" showDecimals />
           </DetailRow>
         )}
@@ -75,7 +85,7 @@ export const GrowthConfirmDialogs = ({
         </DetailRow>
       </DataList>
       <p className={PROSE_SM}>
-        One growth entry is appended to this position. The investor is told in the app, and by email with the change
+        One growth entry is appended to this position, targeted at the investment above. The investor is told in the app, and by email with the change
         and new value if their account is active. The server recalculates the figures
         and its answer is the truth. A mistake is corrected later with a reversal, not by editing.
       </p>

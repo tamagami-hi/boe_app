@@ -8,6 +8,8 @@ import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Button } from "~/ui/primitives/Button"
 import { Alert } from "~/ui/primitives/Feedback"
 
+import { refKey } from "./investmentGrowthApi"
+import type { InvestmentGrowthEntry } from "./investmentGrowthApi"
 import { investorLabel, useInvestorDirectory } from "./investorQueries"
 
 const NAME_PERMISSIONS = ["users.read", "users.read_limited"] as const
@@ -21,12 +23,27 @@ type InvestorNames =
   | Readonly<{ kind: "ready"; byUserId: ReadonlyMap<string, string>; isComplete: boolean }>
 
 export type PreviewTarget = Readonly<{
+  key: string
   userId: string
+  investment: string
   principalPaise: string
   beforePaise: string
   deltaPaise: string
   afterPaise: string
 }>
+
+const targetsOf = (entries: readonly InvestmentGrowthEntry[]): PreviewTarget[] =>
+  entries.flatMap((entry) =>
+    entry.parts.map((part) => ({
+      key: `${entry.userId}|${refKey(part.ref)}`,
+      userId: entry.userId,
+      investment: part.label,
+      principalPaise: part.investedPaise,
+      beforePaise: part.beforePaise,
+      deltaPaise: part.deltaPaise,
+      afterPaise: part.afterPaise,
+    })),
+  )
 
 type DirectoryRead = Pick<Directory, "data" | "error" | "hasMore">
 
@@ -48,6 +65,7 @@ const nameOf = (names: InvestorNames, userId: string): string => {
 }
 
 const AMOUNT_COLUMNS: readonly AdminColumn<PreviewTarget>[] = [
+  { key: "investment", header: "Investment", render: (row) => row.investment },
   {
     key: "principal",
     header: "Invested",
@@ -111,7 +129,10 @@ const InvestorNamesNotice = ({ names, retrying, onRetry }: NoticeProps): React.R
   )
 }
 
-export const CollectivePreviewTable = ({ targets }: Readonly<{ targets: readonly PreviewTarget[] }>): React.ReactElement => {
+export const CollectivePreviewTable = ({
+  entries,
+}: Readonly<{ entries: readonly InvestmentGrowthEntry[] }>): React.ReactElement => {
+  const targets = useMemo(() => targetsOf(entries), [entries])
   const { hasAnyPermission } = useSession()
   const canReadNames = hasAnyPermission(NAME_PERMISSIONS)
   const directory = useInvestorDirectory(canReadNames)
@@ -121,7 +142,12 @@ export const CollectivePreviewTable = ({ targets }: Readonly<{ targets: readonly
   return (
     <>
       <InvestorNamesNotice names={names} retrying={directory.isFetching} onRetry={directory.refetch} />
-      <AdminTable caption="Preview targets" rows={targets} rowKey={(row) => row.userId} columns={columnsFor(names)} />
+      <AdminTable
+        caption="Preview, one row per investment"
+        rows={targets}
+        rowKey={(row) => row.key}
+        columns={columnsFor(names)}
+      />
     </>
   )
 }

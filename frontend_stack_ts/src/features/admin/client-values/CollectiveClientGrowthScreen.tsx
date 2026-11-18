@@ -11,6 +11,7 @@ import { useFundNames } from "~/features/admin/shared/fundNames"
 import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
+import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { DataList, DetailRow, Stat } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
@@ -31,30 +32,34 @@ import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
 import { CatalogueFundPicker } from "./CatalogueFundPicker"
 import { CollectivePreviewTable } from "./CollectivePreviewTable"
-import { useCommitCollectiveClientGrowth, usePreviewCollectiveClientGrowth } from "./growthQueries"
 import { DEFAULT_GROWTH_REASON, GROWTH_REASON_OPTIONS } from "./growthReasons"
-import { parseCollectiveCommit } from "./heldBodies"
+import {
+  parseInvestmentGrowthCommit,
+  useCommitInvestmentGrowth,
+  usePreviewInvestmentGrowth,
+} from "./investmentGrowthApi"
+import { LEGACY_COLLECTIVE_SLOT, useLegacyCollectiveHold } from "./LegacyGrowthHold"
 
 const MIN_BASIS_POINTS = -2_000
 const MAX_BASIS_POINTS = 2_000
 
-const STALE_BASIS_MESSAGE =
-  "Someone changed a value in this fund after the preview was taken, so the preview is void. Nothing was written. Run a new preview and read it before committing."
+const STALE_BASIS_MESSAGE = "Run a new preview and read it before committing."
 
 const UNSENT = "This batch could not be sent. Reload the page and try again."
 
-export const COLLECTIVE_GROWTH_SLOT = "collective-growth"
+export const COLLECTIVE_GROWTH_SLOT = "investment-growth-collective"
 
 const CollectiveClientGrowthScreen = (): React.ReactElement => {
   const funds = useFundNames()
-  const preview = usePreviewCollectiveClientGrowth()
-  const commitMutation = useCommitCollectiveClientGrowth()
+  const preview = usePreviewInvestmentGrowth()
+  const commitMutation = useCommitInvestmentGrowth()
   const commit = useHeldWrite(commitMutation, UNSENT, {
     slot: COLLECTIVE_GROWTH_SLOT,
-    parseBody: parseCollectiveCommit,
+    parseBody: parseInvestmentGrowthCommit,
     retention: "ordinary",
   })
   const held = commit.held?.body ?? null
+  const legacy = useLegacyCollectiveHold(LEGACY_COLLECTIVE_SLOT)
 
   const [fundId, setFundId] = useState(() => held?.fundId ?? "")
   const [basisPoints, setBasisPoints] = useState(() =>
@@ -74,11 +79,15 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
     !Number.isInteger(rate) || rate === 0 || rate < MIN_BASIS_POINTS || rate > MAX_BASIS_POINTS
   const staleBasis = commit.outcome.kind === "rejected" && commit.outcome.code === "STATE_CONFLICT"
   const plan = staleBasis ? null : (preview.data ?? null)
+  const partCount = plan?.entries.reduce((sum, entry) => sum + entry.parts.length, 0) ?? 0
+  const categoriseFirstCount = new Set(
+    (plan?.skipped ?? []).filter((skip) => skip.reason === "categorise_first").map((skip) => skip.userId),
+  ).size
   const committed = commitMutation.data ?? null
   const unknown = commit.outcome.kind === "unknown"
   useUnloadGuard(isUnsavedHold(commit))
   const keptAcrossPages = commit.persisted ? " also after leaving this page," : ""
-  const locked = commit.pending || commit.held !== null || commit.unreadable || committed !== null
+  const locked = commit.pending || commit.held !== null || commit.unreadable || committed !== null || legacy.locked
   const today = indiaToday()
   const futureDated = effectiveDate > today
 
@@ -139,8 +148,10 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
     <Page width="wide">
       <PageHeader
         title="Adjust a whole fund"
-        description="A rate is measured against each investor's own amount invested, so it does not compound. Preview every position first. Committing sends the preview's basis back; if anything in the fund moved since, the commit is refused rather than applied to different numbers."
+        description="A rate is measured against each investment's own amount invested, so it does not compound. A client's SIP and each one-time investment get their own amount, and the client gets one entry per fund. Preview every position first. Committing sends the preview's basis back; if anything in the fund moved since, the commit is refused rather than applied to different numbers."
       />
+
+      {legacy.notice}
 
       {previewFailure === null ? null : (
         <Alert tone="error" title="No preview">
@@ -150,7 +161,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
 
       {commit.outcome.kind === "rejected" ? (
         <Alert tone={staleBasis ? "warning" : "error"} title="Nothing was written">
-          {staleBasis ? STALE_BASIS_MESSAGE : commit.outcome.message}
+          {staleBasis ? `${commit.outcome.message} ${STALE_BASIS_MESSAGE}` : commit.outcome.message}
         </Alert>
       ) : null}
 
@@ -271,8 +282,11 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                 <Stat label="Positions adjusted">
                   <span className={ADMIN_FIGURE}>{String(plan.targetCount)}</span>
                 </Stat>
-                <Stat label="Excluded" hint="Zero-value positions cannot take a rate.">
-                  <span className={ADMIN_FIGURE}>{String(plan.excludedCount)}</span>
+                <Stat label="Investments adjusted">
+                  <span className={ADMIN_FIGURE}>{String(partCount)}</span>
+                </Stat>
+                <Stat label="Categorise first" hint="Clients left out until their recordings are categorised.">
+                  <span className={ADMIN_FIGURE}>{String(categoriseFirstCount)}</span>
                 </Stat>
                 <Stat label="Total change">
                   <MoneyValue
@@ -284,7 +298,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                   />
                 </Stat>
                 <Stat label="Mode">
-                  <span>{plan.mode === "percentage" ? "Rate" : "Explicit amounts"}</span>
+                  <span>{plan.mode === "percentage" ? "Rate" : "Gain since invested"}</span>
                 </Stat>
               </div>
               <span className={ADMIN_LABEL}>Basis</span>
@@ -296,8 +310,9 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
             </Card>
           </Section>
 
-          <Section title="Every position in the batch">
-            <CollectivePreviewTable targets={plan.targets} />
+          <Section title="Every investment in the batch">
+            <CollectivePreviewTable entries={plan.entries} />
+            <MoneyFootnote lastUpdated={null} />
           </Section>
 
           <Section

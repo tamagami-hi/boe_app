@@ -22,40 +22,69 @@ import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
 import { CatalogueFundPicker } from "./CatalogueFundPicker"
+import { useFundClientPositions } from "./growthQueries"
 import {
-  useCommitCollectiveClientGrowth,
-  useFundClientPositions,
-  usePreviewCollectiveClientGrowth,
-} from "./growthQueries"
-import { parseCollectiveCommit } from "./heldBodies"
+  parseInvestmentGrowthCommit,
+  skipsOf,
+  useClientInvestmentsMany,
+  useCommitInvestmentGrowth,
+  usePreviewInvestmentGrowth,
+  useRefreshClientInvestments,
+} from "./investmentGrowthApi"
+import { LEGACY_SHEET_SLOT, useLegacyCollectiveHold } from "./LegacyGrowthHold"
 import { ListSkeleton } from "./ListSkeleton"
-import { ValueUpdatePreview } from "./ValueUpdatePreview"
-import { ValueUpdateSheetTable } from "./ValueUpdateSheetTable"
-import { MAX_SHEET_CHANGES, planSheet, previewMatchesSheet } from "./valueUpdateSheet"
-import type { SheetChange, SheetPosition } from "./valueUpdateSheet"
+import { ValueUpdatePreview, type LeftOutRow } from "./ValueUpdatePreview"
+import { FundRatePrefill, ValueUpdateSheetTable } from "./ValueUpdateSheetTable"
+import {
+  MAX_SHEET_CHANGES,
+  commitItemsOf,
+  overrideRow,
+  planSheet,
+  prefillFromRate,
+  previewMatchesSheet,
+  sheetCommitBody,
+  sheetRowsFrom,
+  skippedChangesOf,
+} from "./valueUpdateSheet"
+import type { SheetChange, SheetPosition, SheetRow } from "./valueUpdateSheet"
 
 const VALUE_UPDATE_REASON = "monthly"
 
-const STALE_MESSAGE =
-  "A value in this fund changed after the preview, so nothing was written. Reload the sheet, check the numbers and preview again."
+const STALE_SUFFIX = "Reload the sheet, check the numbers and preview again."
+
+const flaggedNotice = (count: number): string =>
+  `${String(count)} client(s) in this preview must have their recordings categorised first, so their rows were taken out of the sheet. Preview again to continue without them.`
+
+const NO_FLAGS: ReadonlySet<string> = new Set()
 
 type Previewed = Readonly<{
   fundId: string
   items: readonly SheetChange[]
-  snapshot: readonly SheetPosition[]
+  snapshot: readonly SheetRow[]
 }>
 
 const SHEET_DESCRIPTION =
-  "Pick a fund and type each client's gain since they invested. The change since the last update is worked out for you, in exact paise. Blank or unchanged rows are skipped, and the whole sheet is written as one batch or not at all."
+  "Pick a fund and type each investment's gain since it was invested, one row per client per investment. A fund rate can fill every row first, and any row can then be typed over. Blank rows are skipped, and the whole sheet is written as one batch or not at all."
 
 const RESTART_DESCRIPTION =
   "Open one client's record in this fund first. If an update from this batch is listed, the batch was written, and writing again would apply the change twice. Starting over discards this preview."
 
 const NO_POSITIONS: readonly SheetPosition[] = []
 
+const INVESTMENTS_FAILED =
+  "The investments of one or more clients in this fund could not be read, so the sheet cannot be shown. Nothing was written."
+
 const UNSENT = "This batch could not be sent. Reload the page and try again."
 
-export const VALUE_UPDATE_SLOT = "value-update"
+export const VALUE_UPDATE_SLOT = "investment-growth-sheet"
+
+const skippedRowsOf = (rows: readonly SheetRow[], skipped: readonly SheetChange[]): LeftOutRow[] => {
+  const byKey = new Map(rows.map((row) => [row.rowKey, row]))
+  return skipped.map((change) => {
+    const row = byKey.get(change.rowKey)
+    return { key: change.rowKey, client: row?.fullName ?? "Name not available", investment: row?.label ?? "" }
+  })
+}
 
 const describePreviewFailure = (error: unknown): string => {
   if (!isApiError(error)) return "We could not build a preview. A preview never writes anything."
@@ -66,14 +95,16 @@ const describePreviewFailure = (error: unknown): string => {
 
 const ValueUpdateSheetScreen = (): React.ReactElement => {
   const funds = useFundNames()
-  const preview = usePreviewCollectiveClientGrowth()
-  const commitMutation = useCommitCollectiveClientGrowth()
+  const preview = usePreviewInvestmentGrowth()
+  const commitMutation = useCommitInvestmentGrowth()
   const commit = useHeldWrite(commitMutation, UNSENT, {
     slot: VALUE_UPDATE_SLOT,
-    parseBody: parseCollectiveCommit,
+    parseBody: parseInvestmentGrowthCommit,
     retention: "ordinary",
   })
   const held = commit.held?.body ?? null
+  const legacy = useLegacyCollectiveHold(LEGACY_SHEET_SLOT)
+  const refreshInvestments = useRefreshClientInvestments()
   const [fundId, setFundId] = useState(() => held?.fundId ?? "")
   const positions = useFundClientPositions(fundId)
   const [inputs, setInputs] = useState<Readonly<Record<string, string>>>({})
@@ -84,7 +115,16 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
   const [confirmingCommit, setConfirmingCommit] = useState(false)
   const [confirmingRestart, setConfirmingRestart] = useState(false)
 
-  const rows = positions.data?.items ?? NO_POSITIONS
+  const [fundRate, setFundRate] = useState("")
+  const [flaggedByServer, setFlaggedByServer] = useState<ReadonlySet<string>>(NO_FLAGS)
+  const [flaggedCount, setFlaggedCount] = useState(0)
+  const positionItems = positions.data?.items ?? NO_POSITIONS
+  const userIds = useMemo(() => positionItems.map((position) => position.userId), [positionItems])
+  const investments = useClientInvestmentsMany(userIds)
+  const rows = useMemo(
+    () => (investments.pending || investments.failed ? [] : sheetRowsFrom(positionItems, investments.byUserId, fundId, flaggedByServer)),
+    [positionItems, investments.pending, investments.failed, investments.byUserId, fundId, flaggedByServer],
+  )
   const plan = useMemo(() => planSheet(rows, inputs), [rows, inputs])
   const names = useMemo(
     () => new Map((previewed?.snapshot ?? rows).map((row) => [row.userId, row.fullName])),
@@ -95,13 +135,13 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
   const unknown = commit.outcome.kind === "unknown"
   useUnloadGuard(isUnsavedHold(commit))
   const keptAcrossPages = commit.persisted ? " also after leaving this page," : ""
-  const locked = commit.pending || commit.held !== null || commit.unreadable || committed !== null
+  const locked = commit.pending || commit.held !== null || commit.unreadable || committed !== null || legacy.locked
   const staleBasis = commit.outcome.kind === "rejected" && commit.outcome.code === "STATE_CONFLICT"
   const result = staleBasis || previewed === null ? null : (preview.data ?? null)
   const matches =
     result !== null &&
     previewed !== null &&
-    previewMatchesSheet(previewed.snapshot, previewed.items, result.targets)
+    previewMatchesSheet(previewed.snapshot, previewed.items, result.entries, skipsOf(result.skipped))
   const tooMany = plan.changes.length > MAX_SHEET_CHANGES
   const canPreview =
     !locked && result === null && plan.changes.length > 0 && plan.invalidCount === 0 && !tooMany
@@ -110,14 +150,13 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
   const commitBody =
     result === null || previewed === null || !matches
       ? null
-      : {
-          fundId: previewed.fundId,
-          items: previewed.items.map((item) => ({ ...item })),
+      : sheetCommitBody(previewed.fundId, previewed.items, {
           basisHash: result.basisHash,
           effectiveDate,
           reasonCode: VALUE_UPDATE_REASON,
-          ...(trimmedNote === "" ? {} : { note: trimmedNote }),
-        }
+          note: trimmedNote,
+        })
+  const heldCount = held?.items?.length ?? 0
 
   const clearPreview = (): void => {
     preview.reset()
@@ -129,22 +168,42 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
   const chooseFund = (next: string): void => {
     setFundId(next)
     setInputs({})
+    setFundRate("")
+    setFlaggedByServer(NO_FLAGS)
+    setFlaggedCount(0)
     clearPreview()
   }
 
-  const typeGain = (userId: string, text: string): void => {
-    setInputs((current) => ({ ...current, [userId]: text }))
+  const typeGain = (rowKey: string, text: string): void => {
+    setInputs((current) => overrideRow(current, rowKey, text))
+    if (previewed !== null || previewFailure !== null) clearPreview()
+  }
+
+  const fillFromRate = (basisPoints: number): void => {
+    setInputs(prefillFromRate(rows, basisPoints))
     if (previewed !== null || previewFailure !== null) clearPreview()
   }
 
   const runPreview = (): void => {
     clearPreview()
+    setFlaggedCount(0)
     const snapshot = rows
     const items = plan.changes
     setPreviewed({ fundId, items, snapshot })
     preview.mutate(
-      { fundId, items: items.map((item) => ({ ...item })) },
+      { fundId, items: commitItemsOf(items) },
       {
+        onSuccess: (data) => {
+          const sent = new Set(items.map((item) => item.userId))
+          const flagged = data.skipped
+            .filter((skip) => skip.reason === "categorise_first" && sent.has(skip.userId))
+            .map((skip) => skip.userId)
+          if (flagged.length === 0) return
+          setFlaggedByServer((current) => new Set([...current, ...flagged]))
+          setFlaggedCount(new Set(flagged).size)
+          preview.reset()
+          setPreviewed(null)
+        },
         onError: (error) => {
           setPreviewFailure(describePreviewFailure(error))
         },
@@ -154,7 +213,10 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
 
   const reloadSheet = (): void => {
     clearPreview()
+    setFlaggedByServer(NO_FLAGS)
+    setFlaggedCount(0)
     void positions.refetch()
+    void refreshInvestments()
   }
 
   const runCommit = (): void => {
@@ -190,6 +252,14 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
         description={SHEET_DESCRIPTION}
       />
 
+      {legacy.notice}
+
+      {flaggedCount === 0 ? null : (
+        <Alert tone="warning" title="Categorise first">
+          {flaggedNotice(flaggedCount)}
+        </Alert>
+      )}
+
       {previewFailure === null ? null : (
         <Alert tone="error" title="No preview">
           {previewFailure}
@@ -202,7 +272,7 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
           title="Nothing was written"
           {...(staleBasis ? { action: reloadAction } : {})}
         >
-          {staleBasis ? STALE_MESSAGE : commit.outcome.message}
+          {staleBasis ? `${commit.outcome.message} ${STALE_SUFFIX}` : commit.outcome.message}
         </Alert>
       ) : null}
 
@@ -241,7 +311,7 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
           {`The reply did not arrive, so it is not known whether this batch was written. Check again sends the same request under the same key,${keptAcrossPages} and it can only ever be written once.${
             held === null
               ? ""
-              : ` Held: ${funds.nameOf(held.fundId)}, ${String(held.items?.length ?? 0)} change(s), dated ${formatDate(held.effectiveDate)}.`
+              : ` Held: ${funds.nameOf(held.fundId)}, ${String(heldCount)} investment(s), dated ${formatDate(held.effectiveDate)}.`
           }`}
         </Alert>
       ) : null}
@@ -256,7 +326,7 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
             </Button>
           }
         >
-          {`${String(committed.targetCount)} client(s) updated. Each was told in the app, and active clients by email.`}
+          {`${String(committed.targetCount)} client(s) updated, each with one value update made of its investments' changes. Each was told in the app, and active clients by email.`}
         </Alert>
       )}
 
@@ -267,7 +337,7 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
       {fundId === "" ? null : (
         <Section
           title="Clients in this fund"
-          description="Invested, current value and gain are read from the ledger now."
+          description="Each client's investments in this fund, with the amount invested in each and the fund value now."
         >
           <AsyncBoundary
             query={positions}
@@ -280,10 +350,17 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
               />
             }
           >
-            {(data) => (
+            {() => investments.failed ? (
+              <Alert tone="error" title="Sheet not loaded" action={reloadAction}>
+                {INVESTMENTS_FAILED}
+              </Alert>
+            ) : investments.pending ? (
+              <ListSkeleton />
+            ) : (
               <div className={STACK_LG}>
+                <FundRatePrefill value={fundRate} disabled={locked} onChange={setFundRate} onFill={fillFromRate} />
                 <ValueUpdateSheetTable
-                  positions={data.items}
+                  rows={rows}
                   inputs={inputs}
                   plan={plan}
                   locked={locked}
@@ -292,9 +369,11 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
                 <p className={PROSE_SM}>
                   {tooMany
                     ? `One batch can hold at most ${String(MAX_SHEET_CHANGES)} changes. Split the sheet.`
-                    : `${String(plan.changes.length)} change(s) to preview. ${String(
+                    : `${String(plan.changes.length)} investment(s) to preview. ${String(
                         plan.invalidCount,
-                      )} row(s) need attention.`}
+                      )} row(s) need attention. ${String(plan.skippedRowCount)} row(s) of ${String(
+                        plan.skippedClientCount,
+                      )} client(s) read Categorise first and are left out of this batch.`}
                 </p>
                 <Button
                   tone="secondary"
@@ -312,7 +391,9 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
 
       {result === null ? null : matches ? (
         <ValueUpdatePreview
-          targets={result.targets}
+          entries={result.entries}
+          skippedClientCount={plan.skippedClientCount}
+          leftOut={skippedRowsOf(previewed.snapshot, skippedChangesOf(previewed.items, skipsOf(result.skipped)))}
           totalDeltaPaise={result.totalDeltaPaise}
           nameOf={(userId) => names.get(userId) ?? "Name not available"}
           effectiveDate={effectiveDate}

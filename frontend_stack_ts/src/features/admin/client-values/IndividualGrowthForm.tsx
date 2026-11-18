@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 
-import { indiaToday } from "~/domain/dates"
+import { formatDate, indiaToday } from "~/domain/dates"
 import { applyBasisPoints, toPaise } from "~/domain/money"
 import { useAdminInvestorPositions } from "~/features/admin/shared/adminQueries"
 import { useFundNames } from "~/features/admin/shared/fundNames"
@@ -8,8 +8,10 @@ import { HeldWriteNotice, UnsavedHoldNotice, isUnsavedHold } from "~/features/ad
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
 import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
+import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Button } from "~/ui/primitives/Button"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
@@ -21,9 +23,18 @@ import { ACTION_ROW, STACK_LG, STACK_SM } from "~/ui/recipes/layout"
 import { GrowthAmountFields, type Direction } from "./GrowthAmountFields"
 import { GrowthConfirmDialogs } from "./GrowthConfirmDialogs"
 import { GrowthReceipt } from "./GrowthReceipt"
-import { useIndividualClientGrowth, type IndividualGrowthHold } from "./growthQueries"
-import { parseIndividualGrowth } from "./heldBodies"
 import { DEFAULT_GROWTH_REASON, GROWTH_REASON_OPTIONS } from "./growthReasons"
+import { useLegacyIndividualHold } from "./LegacyGrowthHold"
+import {
+  parseIndividualInvestmentGrowth,
+  refKey,
+  isTargetable,
+  mustCategoriseFirst,
+  useClientInvestments,
+  useIndividualInvestmentGrowth,
+  type AdminClientInvestment,
+  type IndividualInvestmentGrowthHold,
+} from "./investmentGrowthApi"
 import { paiseToRupeeText, parsePositiveRupees } from "./rupeeAmount"
 
 type Mode = "rate" | "amount"
@@ -33,12 +44,15 @@ const MAX_BASIS_POINTS = 2_000
 
 const UNSENT = "This adjustment could not be sent. Reload the page and try again."
 
-export const growthSlot = (userId: string): string => `growth:${userId}`
+export const growthSlot = (userId: string): string => `investment-growth-individual:${userId}`
 
 export const formatRate = (basisPoints: number): string => `${basisPoints > 0 ? "+" : ""}${String(basisPoints / 100)}%`
 
 const describeRejection = (code: string | null, message: string): string =>
-  code === "RESOURCE_NOT_FOUND" ? "That investor has no contribution in that fund, so there is nothing to adjust." : message
+  code === "RESOURCE_NOT_FOUND" ? "That investment is not in this investor's fund, so there is nothing to adjust." : message
+
+const targetLabel = (item: AdminClientInvestment): string =>
+  item.date === null ? item.label : `${item.label}, ${formatDate(item.date)}`
 
 type Draft = Readonly<{
   mode: Mode
@@ -50,7 +64,7 @@ type Draft = Readonly<{
   note: string
 }>
 
-const draftOf = (held: IndividualGrowthHold | null, today: string): Draft => {
+const draftOf = (held: IndividualInvestmentGrowthHold | null, today: string): Draft => {
   const body = held?.body
   const growthPaise = body?.growthPaise
   return {
@@ -82,17 +96,23 @@ export const IndividualGrowthForm = ({
   onInvestorLock,
 }: IndividualGrowthFormProps): React.ReactElement => {
   const funds = useFundNames()
-  const mutation = useIndividualClientGrowth()
+  const mutation = useIndividualInvestmentGrowth()
   const write = useHeldWrite(mutation, UNSENT, {
     slot: growthSlot(userId),
-    parseBody: parseIndividualGrowth,
+    parseBody: parseIndividualInvestmentGrowth,
     retention: "ordinary",
   })
+  const legacy = useLegacyIndividualHold(userId)
   const today = indiaToday()
   const [draft, setDraft] = useState<Draft>(() => draftOf(write.held, today))
   const [fundId, setFundId] = useState(() => write.held?.body.fundId ?? initialFundId)
   const [asking, setAsking] = useState<"append" | "restart" | null>(null)
   const positions = useAdminInvestorPositions(userId)
+  const investments = useClientInvestments(userId)
+  const [targetKey, setTargetKey] = useState(() => {
+    const ref = write.held?.body.ref
+    return ref === undefined ? "" : refKey(ref)
+  })
 
   const edit = (patch: Partial<Draft>): void => {
     setDraft((current) => ({ ...current, ...patch }))
@@ -100,10 +120,25 @@ export const IndividualGrowthForm = ({
 
   const recorded = mutation.data
   const unknown = write.outcome.kind === "unknown"
-  const locked = write.held !== null || write.pending || write.unreadable || recorded !== undefined
+  const locked = write.held !== null || write.pending || write.unreadable || recorded !== undefined || legacy.locked
   const positionsFailed = userId !== "" && positions.data === undefined && positions.error != null
   const positionItems = positions.data?.items ?? []
   const selectedPosition = positionItems.find((position) => position.fundId === fundId) ?? null
+  const fundInvestments = investments.data?.funds.find((fund) => fund.fundId === fundId)
+  const investmentsFailed = fundId !== "" && investments.data === undefined && investments.error != null
+  const categoriseFirst = fundInvestments !== undefined && mustCategoriseFirst(fundInvestments)
+  const targets = categoriseFirst ? [] : (fundInvestments?.investments ?? []).filter(isTargetable)
+  const selectedTarget = targets.find((item) => refKey(item.ref) === targetKey) ?? null
+  const targetPrompt =
+    investmentsFailed
+      ? "This investor's investments could not be loaded"
+      : investments.data === undefined
+        ? "Loading this fund's investments"
+        : targets.length === 0
+          ? (fundInvestments?.uncategorised.length ?? 0) > 0
+            ? "Its only investment is not categorised yet: use A whole fund"
+            : "No investment can take growth"
+          : "Choose an investment"
   const fundPrompt =
     userId === ""
       ? "Choose an investor first"
@@ -125,6 +160,7 @@ export const IndividualGrowthForm = ({
   const incomplete =
     userId === "" ||
     selectedPosition === null ||
+    selectedTarget === null ||
     !funds.ready ||
     draft.reasonCode === "" ||
     draft.effectiveDate === "" ||
@@ -133,7 +169,7 @@ export const IndividualGrowthForm = ({
     invalidAmount
 
   const adjustment = useMemo(() => {
-    if (selectedPosition === null) return null
+    if (selectedPosition === null || selectedTarget === null) return null
     const current = BigInt(selectedPosition.currentValuePaise)
     if (draft.mode === "amount") {
       if (signedPaise === null) return null
@@ -141,9 +177,9 @@ export const IndividualGrowthForm = ({
       return { delta, projected: current + delta }
     }
     if (invalidRate) return null
-    const delta = BigInt(applyBasisPoints(toPaise(selectedPosition.principalPaise), rate))
+    const delta = BigInt(applyBasisPoints(toPaise(selectedTarget.amountPaise), rate))
     return { delta, projected: current + delta }
-  }, [selectedPosition, draft.mode, signedPaise, invalidRate, rate])
+  }, [selectedPosition, selectedTarget, draft.mode, signedPaise, invalidRate, rate])
 
   const unsaved = isUnsavedHold(write)
   const isInvestorLocked = write.pending || unsaved
@@ -159,10 +195,12 @@ export const IndividualGrowthForm = ({
   const append = (): void => {
     setAsking(null)
     const trimmedNote = draft.note.trim()
+    if (selectedTarget === null) return
     write.submit({
       body: {
         userId,
         fundId,
+        ref: selectedTarget.ref,
         effectiveDate: draft.effectiveDate,
         reasonCode: draft.reasonCode,
         ...(trimmedNote === "" ? {} : { note: trimmedNote }),
@@ -183,6 +221,8 @@ export const IndividualGrowthForm = ({
 
   return (
     <>
+      {legacy.notice}
+
       {write.outcome.kind === "rejected" ? (
         <Alert tone="error" title="Not recorded">
           {describeRejection(write.outcome.code, write.outcome.message)}
@@ -298,6 +338,7 @@ export const IndividualGrowthForm = ({
                   disabled={locked || positionItems.length === 0 || !funds.ready}
                   onChange={(event) => {
                     setFundId(event.target.value)
+                    setTargetKey("")
                     onFundChange(event.target.value)
                   }}
                 />
@@ -316,9 +357,64 @@ export const IndividualGrowthForm = ({
             ) : null}
           </div>
 
-          {selectedPosition === null ? null : (
+          {selectedPosition === null ? null : categoriseFirst ? (
+            <Alert
+              tone="warning"
+              title="Categorise first"
+              action={
+                <ButtonLink to={`/users/${userId}?tab=ledger`} size="sm" tone="secondary">
+                  Open the Ledger tab
+                </ButtonLink>
+              }
+            >
+              This fund has recordings without a category, so growth cannot be targeted at one investment yet. Mark
+              each recording as SIP or one-time on the client&apos;s Ledger tab first.
+            </Alert>
+          ) : (
+            <div className={STACK_SM}>
+              <FormField
+                label="Target"
+                required
+                hint="The SIP or one one-time investment this growth applies to. A rate applies to its invested amount."
+                error={investmentsFailed ? "This investor's investments could not be loaded." : undefined}
+              >
+                {({ id, invalid }) => (
+                  <Select
+                    id={id}
+                    options={[
+                      { value: "", label: targetPrompt },
+                      ...targets.map((item) => ({ value: refKey(item.ref), label: targetLabel(item) })),
+                    ]}
+                    value={targetKey}
+                    invalid={invalid}
+                    disabled={locked || targets.length === 0}
+                    onChange={(event) => {
+                      setTargetKey(event.target.value)
+                    }}
+                  />
+                )}
+              </FormField>
+              {investmentsFailed ? (
+                <Button
+                  size="sm"
+                  tone="secondary"
+                  onClick={() => {
+                    void investments.refetch()
+                  }}
+                >
+                  Load this investor&apos;s investments again
+                </Button>
+              ) : null}
+            </div>
+          )}
+
+          {selectedPosition === null || selectedTarget === null ? null : (
             <DataList>
-              <DetailRow label="Amount invested">
+              <DetailRow label="Investment">{targetLabel(selectedTarget)}</DetailRow>
+              <DetailRow label="This investment's invested amount">
+                <MoneyValue amount={toPaise(selectedTarget.amountPaise)} size="sm" showDecimals />
+              </DetailRow>
+              <DetailRow label="Position invested">
                 <MoneyValue amount={toPaise(selectedPosition.principalPaise)} size="sm" showDecimals />
               </DetailRow>
               <DetailRow label="Current value">
@@ -333,13 +429,14 @@ export const IndividualGrowthForm = ({
                   <DetailRow label={draft.mode === "rate" ? "Growth amount, taken from the invested amount" : "Growth amount"}>
                     <MoneyValue amount={toPaise(adjustment.delta.toString())} size="sm" tone="signed" showSign showDecimals />
                   </DetailRow>
-                  <DetailRow label="Projected value after this adjustment">
+                  <DetailRow label="Position total after this adjustment">
                     <MoneyValue amount={toPaise(adjustment.projected.toString())} size="sm" showDecimals />
                   </DetailRow>
                 </>
               )}
             </DataList>
           )}
+          {selectedTarget === null ? null : <MoneyFootnote lastUpdated={null} />}
 
           <GrowthAmountFields
             mode={draft.mode}
@@ -417,7 +514,20 @@ export const IndividualGrowthForm = ({
         </div>
       </Card>
 
-      {recorded === undefined ? null : <GrowthReceipt receipt={recorded} />}
+      {recorded === undefined ? null : (
+        <>
+          <GrowthReceipt receipt={recorded} />
+          <DataList>
+            <DetailRow label="Investment">{recorded.part.label}</DetailRow>
+            <DetailRow label="Investment value before">
+              <MoneyValue amount={toPaise(recorded.part.beforePaise)} size="sm" showDecimals />
+            </DetailRow>
+            <DetailRow label="Investment value after">
+              <MoneyValue amount={toPaise(recorded.part.afterPaise)} size="sm" showDecimals />
+            </DetailRow>
+          </DataList>
+        </>
+      )}
 
       <GrowthConfirmDialogs
         asking={asking}
@@ -426,6 +536,8 @@ export const IndividualGrowthForm = ({
         effectiveDate={draft.effectiveDate}
         reasonCode={draft.reasonCode}
         rateLabel={draft.mode === "rate" && rateInBand ? formatRate(rate) : null}
+        targetLabel={selectedTarget === null ? null : targetLabel(selectedTarget)}
+        targetInvestedPaise={selectedTarget?.amountPaise ?? null}
         position={selectedPosition}
         adjustment={adjustment}
         onAppend={append}
