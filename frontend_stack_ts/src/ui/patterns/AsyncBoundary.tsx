@@ -1,3 +1,6 @@
+import { QueryClientContext } from "@tanstack/react-query"
+import type { Query } from "@tanstack/react-query"
+import { useContext } from "react"
 import type { ReactNode } from "react"
 
 import { ApiError, isApiError, isSessionEnded, isTransportError } from "~/api/errors"
@@ -71,6 +74,17 @@ const StaleNotice = ({ variant, isRetrying, onRetry }: StaleNoticeProps): React.
 const isStaleRefresh = (error: unknown, loadMoreError: unknown): boolean =>
   error != null && error !== loadMoreError && !isSessionEnded(error)
 
+const isFailedRead = (query: Query): boolean => query.state.status === "error"
+
+const useRetryFailedReads = (refetch: (() => void) | undefined): (() => void) | undefined => {
+  const client = useContext(QueryClientContext)
+  if (refetch === undefined) return undefined
+  return () => {
+    refetch()
+    void client?.refetchQueries({ type: "active", predicate: isFailedRead }, { cancelRefetch: false })
+  }
+}
+
 export const AsyncBoundary = <TData,>({
   query,
   skeleton,
@@ -80,7 +94,8 @@ export const AsyncBoundary = <TData,>({
   fallback,
   children,
 }: AsyncBoundaryProps<TData>): React.ReactElement | null => {
-  const { data, error, loadMoreError, isPending, isFetching, refetch } = query
+  const { data, error, loadMoreError, isPending, isFetching } = query
+  const refetch = useRetryFailedReads(query.refetch)
 
   if (error !== null && error !== undefined && data === undefined) {
     if (isSessionEnded(error)) return null

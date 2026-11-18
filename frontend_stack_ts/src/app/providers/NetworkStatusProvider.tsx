@@ -1,7 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import type { Query, QueryClient } from "@tanstack/react-query"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 
 import type { TransportOutcome } from "~/api/http"
+import { qk } from "~/api/queryKeys"
 
 export type NetworkStatus = Readonly<{
   online: boolean
@@ -11,24 +14,86 @@ export type NetworkStatus = Readonly<{
   report: (outcome: TransportOutcome) => void
 }>
 
+type Connectivity = Readonly<{
+  deviceOnline: boolean
+  lastOutcome: TransportOutcome | null
+}>
+
+const RECOVERY_PROBE_INTERVAL_MS = 10_000
+const RECOVERY_PROBE_KEY = qk.app.config()
+
 const NetworkStatusContext = createContext<NetworkStatus | null>(null)
 
-const initialOnline = (): boolean =>
-  typeof navigator === "undefined" ? true : navigator.onLine
+const initialConnectivity = (): Connectivity => ({
+  deviceOnline: typeof navigator === "undefined" ? true : navigator.onLine,
+  lastOutcome: null,
+})
+
+const isConnectionLost = (outcome: TransportOutcome | null): boolean =>
+  outcome?.kind === "offline" || outcome?.kind === "timeout"
+
+const isDegraded = ({ deviceOnline, lastOutcome }: Connectivity): boolean =>
+  !deviceOnline || isConnectionLost(lastOutcome)
+
+const afterDeviceOnline = ({ lastOutcome }: Connectivity): Connectivity => ({
+  deviceOnline: true,
+  lastOutcome: isConnectionLost(lastOutcome) ? null : lastOutcome,
+})
+
+const afterDeviceOffline = ({ lastOutcome }: Connectivity): Connectivity => ({
+  deviceOnline: false,
+  lastOutcome,
+})
+
+const afterOutcome = ({ deviceOnline }: Connectivity, outcome: TransportOutcome): Connectivity => ({
+  deviceOnline: deviceOnline || !isConnectionLost(outcome),
+  lastOutcome: outcome,
+})
+
+const isFailedRead = (query: Query): boolean => query.state.status === "error"
+
+const refetchFailedReads = (client: QueryClient): Promise<void> =>
+  client.refetchQueries({ type: "active", predicate: isFailedRead }, { cancelRefetch: false })
+
+const probeReachability = (client: QueryClient): Promise<void> =>
+  client.refetchQueries({ queryKey: RECOVERY_PROBE_KEY, exact: true }, { cancelRefetch: false })
+
+const useRefetchOnRecovery = (client: QueryClient, degraded: boolean): void => {
+  const wasDegraded = useRef(degraded)
+
+  useEffect(() => {
+    const recovered = wasDegraded.current && !degraded
+    wasDegraded.current = degraded
+    if (recovered) void refetchFailedReads(client)
+  }, [client, degraded])
+}
+
+const useReachabilityProbe = (client: QueryClient, isProbing: boolean): void => {
+  useEffect(() => {
+    if (!isProbing) return undefined
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return
+      void probeReachability(client)
+    }, RECOVERY_PROBE_INTERVAL_MS)
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [client, isProbing])
+}
 
 export const NetworkStatusProvider = ({
   children,
 }: Readonly<{ children: ReactNode }>): React.ReactElement => {
-  const [online, setOnline] = useState(initialOnline)
-  const [lastOutcome, setLastOutcome] = useState<TransportOutcome | null>(null)
+  const queryClient = useQueryClient()
+  const [connectivity, setConnectivity] = useState(initialConnectivity)
 
   useEffect(() => {
     if (typeof window === "undefined") return
     const goOnline = (): void => {
-      setOnline(true)
+      setConnectivity(afterDeviceOnline)
     }
     const goOffline = (): void => {
-      setOnline(false)
+      setConnectivity(afterDeviceOffline)
     }
     window.addEventListener("online", goOnline)
     window.addEventListener("offline", goOffline)
@@ -39,20 +104,23 @@ export const NetworkStatusProvider = ({
   }, [])
 
   const report = useCallback((outcome: TransportOutcome): void => {
-    setLastOutcome(outcome)
-    if (outcome.kind === "offline") setOnline(false)
-    if (outcome.ok) setOnline(true)
+    setConnectivity((current) => afterOutcome(current, outcome))
   }, [])
 
+  const degraded = isDegraded(connectivity)
+  useRefetchOnRecovery(queryClient, degraded)
+  useReachabilityProbe(queryClient, degraded && connectivity.deviceOnline)
+
+  const { deviceOnline, lastOutcome } = connectivity
   const value = useMemo<NetworkStatus>(
     () => ({
-      online,
+      online: deviceOnline && lastOutcome?.kind !== "offline",
       lastOutcome,
-      degraded: !online || lastOutcome?.kind === "offline" || lastOutcome?.kind === "timeout",
+      degraded,
       maintenance: lastOutcome?.kind === "maintenance",
       report,
     }),
-    [online, lastOutcome, report],
+    [deviceOnline, lastOutcome, degraded, report],
   )
 
   return (
