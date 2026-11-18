@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { indiaToday } from "~/domain/dates"
 import { applyBasisPoints, toPaise } from "~/domain/money"
@@ -70,6 +70,7 @@ export type IndividualGrowthFormProps = Readonly<{
   initialFundId: string
   renderPicker: (disabled: boolean) => React.ReactNode
   onFundChange: (fundId: string) => void
+  onInvestorLock?: (isLocked: boolean) => void
 }>
 
 export const IndividualGrowthForm = ({
@@ -78,6 +79,7 @@ export const IndividualGrowthForm = ({
   initialFundId,
   renderPicker,
   onFundChange,
+  onInvestorLock,
 }: IndividualGrowthFormProps): React.ReactElement => {
   const funds = useFundNames()
   const mutation = useIndividualClientGrowth()
@@ -144,7 +146,15 @@ export const IndividualGrowthForm = ({
   }, [selectedPosition, draft.mode, signedPaise, invalidRate, rate])
 
   const unsaved = isUnsavedHold(write)
+  const isInvestorLocked = write.pending || unsaved
   useUnloadGuard(unsaved)
+
+  useEffect(() => {
+    onInvestorLock?.(isInvestorLocked)
+    return () => {
+      onInvestorLock?.(false)
+    }
+  }, [isInvestorLocked, onInvestorLock])
 
   const append = (): void => {
     setAsking(null)
@@ -267,7 +277,7 @@ export const IndividualGrowthForm = ({
             )}
           </FormField>
 
-          {renderPicker(write.pending || unsaved)}
+          {renderPicker(isInvestorLocked)}
 
           <div className={STACK_SM}>
             <FormField

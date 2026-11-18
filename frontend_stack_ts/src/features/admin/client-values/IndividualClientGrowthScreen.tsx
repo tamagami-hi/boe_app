@@ -4,17 +4,26 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 
 import { IndividualGrowthForm } from "./IndividualGrowthForm"
-import { InvestorPicker } from "./InvestorPicker"
+import { InvestorPicker, type InvestorChoice } from "./InvestorPicker"
 import { useLinkedInvestor } from "./linkedInvestor"
-import { useLinkedRecord } from "./linkedRecord"
+import { useFollowedLink, useLinkedRecord } from "./linkedRecord"
 
 const IndividualClientGrowthScreen = (): React.ReactElement => {
-  const { linked, relink } = useLinkedRecord()
+  const link = useLinkedRecord()
+  const { linked, relink } = link
   const [userId, setUserId] = useState(linked.userId)
   const [formKey, setFormKey] = useState(linked.userId)
-  const [pickedLabel, setPickedLabel] = useState("")
+  const [picked, setPicked] = useState<InvestorChoice>({ userId: "", label: "" })
+  const [isInvestorLocked, setInvestorLocked] = useState(false)
+  const pickedLabel = picked.userId === userId ? picked.label : ""
   const investor = useLinkedInvestor(userId, pickedLabel)
   const formUserId = investor.missing ? "" : userId
+
+  useFollowedLink(link, userId, isInvestorLocked, (next) => {
+    setUserId(next)
+    if (next !== "") setFormKey(next)
+    else if (investor.missing) setFormKey("")
+  })
 
   return (
     <Page width="default">
@@ -30,6 +39,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
         onFundChange={(fundId) => {
           relink({ userId, fundId })
         }}
+        onInvestorLock={setInvestorLocked}
         renderPicker={(disabled) => (
           <>
             <InvestorPicker
@@ -38,10 +48,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
               hint="Search by name, email or phone. Only investors with a holding can be adjusted."
               disabled={disabled}
               onChange={(choice) => {
-                setUserId(choice.userId)
-                setPickedLabel(choice.label)
-                if (choice.userId !== "") setFormKey(choice.userId)
-                else if (investor.missing) setFormKey("")
+                setPicked(choice)
                 relink({ userId: choice.userId, fundId: "" })
               }}
             />

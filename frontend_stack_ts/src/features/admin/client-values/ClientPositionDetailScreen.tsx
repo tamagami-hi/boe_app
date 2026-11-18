@@ -15,10 +15,10 @@ import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
 
 import { EarlierInvestmentForm, type RecordingHold } from "./EarlierInvestmentForm"
-import { InvestorPicker } from "./InvestorPicker"
+import { InvestorPicker, type InvestorChoice } from "./InvestorPicker"
 import { LedgerEntries } from "./LedgerEntries"
 import { useLinkedInvestor } from "./linkedInvestor"
-import { useLinkedRecord } from "./linkedRecord"
+import { useFollowedLink, useLinkedRecord } from "./linkedRecord"
 import { ListSkeleton } from "./ListSkeleton"
 import { MaturityPanel } from "./MaturityPanel"
 import { SipEarlyExitList } from "./SipEarlyExitList"
@@ -27,25 +27,22 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canWrite = hasAnyPermission(["client_position.write"])
   const funds = useFundNames()
-  const { linked, relink } = useLinkedRecord()
+  const link = useLinkedRecord()
 
-  const [userId, setUserId] = useState(linked.userId)
-  const [pickedLabel, setPickedLabel] = useState("")
+  const [userId, setUserId] = useState(link.linked.userId)
+  const [picked, setPicked] = useState<InvestorChoice>({ userId: "", label: "" })
   const [isMaturityUnsaved, setMaturityUnsaved] = useState(false)
   const [isLedgerUnsaved, setLedgerUnsaved] = useState(false)
   const [recordHold, setRecordHold] = useState<RecordingHold>("none")
 
+  const pickedLabel = picked.userId === userId ? picked.label : ""
   const positions = useAdminInvestorPositions(userId)
   const investor = useLinkedInvestor(userId, pickedLabel)
   const isChosen = userId !== "" && !investor.missing
   const isHolding = isMaturityUnsaved || isLedgerUnsaved || recordHold === "unsaved"
   const investorLabel = investor.label === "" ? "The selected investor" : investor.label
 
-  const resetInvestor = (next: string, label: string): void => {
-    setUserId(next)
-    setPickedLabel(label)
-    relink({ userId: next, fundId: "" })
-  }
+  useFollowedLink(link, userId, isHolding, setUserId)
 
   return (
     <Page width="wide">
@@ -66,7 +63,8 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
           hint="Search by name, email or phone."
           disabled={isHolding}
           onChange={(choice) => {
-            resetInvestor(choice.userId, choice.label)
+            setPicked(choice)
+            link.relink({ userId: choice.userId, fundId: "" })
           }}
         />
         {investor.notice}

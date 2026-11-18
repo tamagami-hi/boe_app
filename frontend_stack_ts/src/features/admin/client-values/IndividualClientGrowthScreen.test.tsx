@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { useState } from "react"
-import { MemoryRouter } from "react-router-dom"
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ApiError, TransportError } from "~/api/errors"
@@ -12,6 +12,7 @@ import IndividualClientGrowthScreen from "./IndividualClientGrowthScreen"
 type Settle = Readonly<{ onSuccess?: () => void; onError?: (error: unknown) => void }>
 
 const USER_ID = "11111111-1111-4111-8111-111111111111"
+const OTHER_USER_ID = "55555555-5555-4555-8555-555555555555"
 const FUND_ID = "22222222-2222-4222-8222-222222222222"
 
 const RECEIPT = {
@@ -116,6 +117,24 @@ vi.mock("~/features/admin/shared/queries", () => ({
   }),
 }))
 
+const LinkProbe = (): React.ReactElement => {
+  const navigate = useNavigate()
+  const { search } = useLocation()
+  return (
+    <>
+      <output aria-label="Address search">{search}</output>
+      <button type="button" onClick={() => void navigate(`/?userId=${OTHER_USER_ID}`)}>
+        Link to the other investor
+      </button>
+      <button type="button" onClick={() => void navigate("/")}>
+        Bare link
+      </button>
+    </>
+  )
+}
+
+const addressSearch = (): string => screen.getByLabelText("Address search").textContent
+
 const appendButton = (): HTMLElement | null => screen.queryByRole("button", { name: /Review the adjustment/u })
 
 const enterRate = (basisPoints: string): void => {
@@ -147,6 +166,7 @@ beforeEach(() => {
     <MemoryRouter>
       <OverlayStackProvider>
         <IndividualClientGrowthScreen />
+        <LinkProbe />
       </OverlayStackProvider>
     </MemoryRouter>,
   )
@@ -194,5 +214,34 @@ describe("appending one investor's growth after a success", () => {
     expect(sent).toHaveLength(2)
     expect(sent[1]?.idempotencyKey).not.toBe(sent[0]?.idempotencyKey)
     expect(sent[1]?.body).toEqual(sent[0]?.body)
+  })
+})
+
+describe("following a link to this screen while it is open", () => {
+  it("opens the investor a later link names, and adjusts that investor", () => {
+    fireEvent.click(screen.getByRole("button", { name: "Link to the other investor" }))
+
+    expect(addressSearch()).toBe(`?userId=${OTHER_USER_ID}`)
+    expect(screen.getByLabelText<HTMLInputElement>(/Rate in basis points/u).value).toBe("")
+    fireEvent.change(screen.getByLabelText(/^Fund/u), { target: { value: FUND_ID } })
+    enterRate("250")
+    submit()
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.body).toMatchObject({ userId: OTHER_USER_ID, fundId: FUND_ID })
+  })
+
+  it("keeps a held adjustment, its investor and its key when a link names no investor", () => {
+    nextFailure = new TransportError("timeout", "The request timed out.")
+    submit()
+    fireEvent.click(screen.getByRole("button", { name: "Bare link" }))
+
+    expect(addressSearch()).toBe(`?userId=${USER_ID}&fundId=${FUND_ID}`)
+    expect(screen.getByText("Not confirmed")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "Check again" }))
+
+    expect(sent).toHaveLength(2)
+    expect(sent[1]).toEqual(sent[0])
+    expect(sent[0]?.body).toMatchObject({ userId: USER_ID, fundId: FUND_ID })
   })
 })
