@@ -36,11 +36,11 @@ const PAID_CONFIRM = "This records that the transfer has completed."
 const FAILED_CONFIRM =
   "This records a failed transfer. The withdrawal stays in the investor's record and needs separate reconciliation."
 
-const PAYOUT_STATE_LABEL = {
+const PAYOUT_STATE_LABEL: Readonly<Record<string, string>> = {
   pending: "Pending",
   paid: "Paid",
   failed: "Failed",
-} as const satisfies Record<AdminWithdrawalPayout["state"], string>
+} satisfies Record<AdminWithdrawalPayout["state"], string>
 
 const payoutDetail = ({ state, failureCode }: Props["payout"]): string | null => {
   if (state === "pending") return "Awaiting transfer confirmation"
@@ -76,7 +76,7 @@ export const WithdrawalPayoutPanel = ({ payout, investorLabel, fundName, canWrit
     <Card>
       <div className={STACK_LG}>
         <p>
-          {fundName} · {formatDate(payout.effectiveDate)} · {PAYOUT_STATE_LABEL[payout.state]}
+          {fundName} · {formatDate(payout.effectiveDate)} · {PAYOUT_STATE_LABEL[payout.state] ?? payout.state}
         </p>
         <MoneyValue amount={toPaise(payout.amountPaise)} size="sm" showDecimals />
         {payout.state === "pending" ? null : (

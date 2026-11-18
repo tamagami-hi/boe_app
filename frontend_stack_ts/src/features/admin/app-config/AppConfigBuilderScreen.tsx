@@ -236,7 +236,7 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
                   <div className={STACK_LG}>
                     <FormField
                       label="Configuration"
-                      hint="JSON. A key you leave out is published empty, and maintenance stays off unless you turn it on."
+                      hint="JSON. This replaces the whole configuration. A key you leave out is cleared, and maintenance is off unless you turn it on."
                       {...(parsed === null && draft !== null
                         ? { error: "This is not valid JSON." }
                         : {})}

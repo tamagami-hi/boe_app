@@ -45,18 +45,18 @@ const SETTLED_TEXT = {
   reinvestment: "Reinvestment recorded. The current value is now the new invested amount.",
 } as const
 
-const MATURITY_STATE_LABEL = {
+const MATURITY_STATE_LABEL: Readonly<Record<string, string>> = {
   pending: "Awaiting settlement",
   settled: "Settled",
-} as const satisfies Record<AdminMaturity["state"], string>
+} satisfies Record<AdminMaturity["state"], string>
 
-const SETTLEMENT_LABEL = {
+const SETTLEMENT_LABEL: Readonly<Record<string, string>> = {
   withdrawal: "Settled by withdrawal",
   reinvestment: "Settled by reinvestment",
-} as const satisfies Record<NonNullable<AdminMaturity["settlement"]>, string>
+} satisfies Record<NonNullable<AdminMaturity["settlement"]>, string>
 
 const maturityStatusOf = ({ state, settlement }: Pick<AdminMaturity, "state" | "settlement">): string =>
-  settlement === null ? MATURITY_STATE_LABEL[state] : SETTLEMENT_LABEL[settlement]
+  settlement === null ? (MATURITY_STATE_LABEL[state] ?? state) : (SETTLEMENT_LABEL[settlement] ?? settlement)
 
 const noteOf = (text: string): Readonly<{ note?: string }> => (text.trim() === "" ? {} : { note: text.trim() })
 

@@ -157,7 +157,7 @@ const OverviewScreen = (): React.ReactElement => {
     <Page width="wide">
       <PageHeader
         title="Overview"
-        description="What is waiting for a decision, and where to make it. Every number is counted fresh each time this page opens."
+        description="What is waiting for a decision, and where to make it. Every number is up to date when you open this page."
       />
 
       <DailyTiles reachablePaths={reachablePaths} />
