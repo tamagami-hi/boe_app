@@ -45,27 +45,30 @@ public class MainActivity extends BridgeActivity {
 
         // Keep the interface still when the keyboard opens.
         //
-        // Capacitor's SystemBars listener pads the WebView's parent by the full IME
-        // height whenever the keyboard is visible, which shrinks the web viewport,
-        // lifts the sticky bottom navigation and reflows every dvh-based shell. The
-        // manifest's adjustNothing stops the *window* resizing and the viewport meta's
-        // interactive-widget=overlays-content stops *Chromium* resizing, but neither
-        // reaches that padding.
+        // Capacitor's SystemBars plugin sets a decor-view listener that pads the decor
+        // view by the full IME height whenever the keyboard is visible, which shrinks
+        // the web viewport, lifts the sticky bottom navigation and reflows every
+        // dvh-based shell. The manifest's adjustNothing stops the *window* resizing and
+        // the viewport meta's interactive-widget=overlays-content stops *Chromium*
+        // resizing, but neither reaches that padding.
         //
-        // Clearing the IME inset here, at the decor view where dispatch starts, makes
-        // the plugin see no keyboard at all, so it applies its system-bar padding
-        // unchanged. Insets are re-dispatched to children via onApplyWindowInsets, so
-        // safe-area handling, cutout handling and the injected --safe-area-inset-*
-        // variables all behave exactly as before.
+        // A view holds one such listener, so this one replaces the plugin's: none of
+        // its padding is applied and it injects no --safe-area-inset-* variables. The
+        // IME inset is cleared here, at the decor view where dispatch starts, and the
+        // other insets reach the WebView unchanged through onApplyWindowInsets. Below
+        // WebView 140 Chromium's env(safe-area-inset-*) leaves out the system bars, so
+        // this listener publishes the variables itself, computed as the plugin's
+        // injectSafeAreaCSS computes them; tokens-core.css reads them before env().
         //
-        // insetsHandling is deliberately left on "css": Capacitor only passes insets
-        // through to Chromium on WebView 140+, so "disable" would lose safe-area
-        // handling on the far larger population below that.
+        // insetsHandling is deliberately left on "css": only then does the plugin
+        // re-request insets once the page commits, which is when the first values
+        // published here land.
         ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), (view, insets) -> {
-            publishKeyboardHeight(
-                insets.isVisible(WindowInsetsCompat.Type.ime())
-                    ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-                    : 0
+            boolean keyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime());
+            publishKeyboardHeight(keyboardVisible ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0);
+            publishSafeArea(
+                insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()),
+                keyboardVisible
             );
 
             WindowInsetsCompat withoutIme = new WindowInsetsCompat.Builder(insets)
@@ -85,7 +88,7 @@ public class MainActivity extends BridgeActivity {
     // cover with no way to scroll to it — so the height is published as a CSS variable
     // and only that surface consumes it.
     //
-    // Density-scaled to CSS pixels, matching how Capacitor injects --safe-area-inset-*.
+    // Density-scaled to CSS pixels, like the --safe-area-inset-* values.
     //
     // Published on every dispatch rather than only on change. The first dispatch happens
     // before the document exists, so that write is lost; Capacitor re-requests insets on
@@ -94,10 +97,7 @@ public class MainActivity extends BridgeActivity {
     private void publishKeyboardHeight(int bottomPx) {
         int cssPx = Math.round(bottomPx / getResources().getDisplayMetrics().density);
 
-        Bridge bridge = getBridge();
-        if (bridge == null || bridge.getWebView() == null) return;
-
-        String script = String.format(
+        evaluateOnPage(String.format(
             Locale.US,
             "try {"
                 + " document.documentElement.style.setProperty('--be-keyboard-height', '%dpx');"
@@ -105,7 +105,31 @@ public class MainActivity extends BridgeActivity {
                 + " } catch (e) {}",
             cssPx,
             cssPx
-        );
+        ));
+    }
+
+    private void publishSafeArea(Insets safeArea, boolean keyboardVisible) {
+        float density = getResources().getDisplayMetrics().density;
+
+        evaluateOnPage(String.format(
+            Locale.US,
+            "try {"
+                + " document.documentElement.style.setProperty('--safe-area-inset-top', '%dpx');"
+                + " document.documentElement.style.setProperty('--safe-area-inset-right', '%dpx');"
+                + " document.documentElement.style.setProperty('--safe-area-inset-bottom', '%dpx');"
+                + " document.documentElement.style.setProperty('--safe-area-inset-left', '%dpx')"
+                + " } catch (e) {}",
+            (int) (safeArea.top / density),
+            (int) (safeArea.right / density),
+            (int) ((keyboardVisible ? 0 : safeArea.bottom) / density),
+            (int) (safeArea.left / density)
+        ));
+    }
+
+    private void evaluateOnPage(String script) {
+        Bridge bridge = getBridge();
+        if (bridge == null || bridge.getWebView() == null) return;
+
         bridge.getWebView().evaluateJavascript(script, null);
     }
 
