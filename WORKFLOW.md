@@ -60,6 +60,14 @@ VPS. Never report a deployment or device check from a unit-test result.
    copy follows `RULES.md` "Product, copy, and accessibility". Keep earlier
    entries in place and in order: the sheet shows every entry newer than the
    one a user last closed, so a user whose entry is gone sees only the newest.
+   Then freeze the new entries before the cut moves `VERSION`: entries at or below
+   `VERSION` are released, and `releasedNotes.test.ts` fails for any released entry
+   with no row in `releasedNotes.json` or whose text changed. With `VERSION` set to
+   the new version in your working tree only, run
+   `npx vitest run src/features/whats-new/releasedNotes.test.ts` from
+   `frontend_stack_ts`, copy the `{ id, sha256 }` rows it reports into
+   `releasedNotes.json` (newest first, per audience), restore `VERSION`, and commit
+   the notes and the rows together. A released entry is never edited afterwards.
 2. Use `release_manager/status.sh` to inspect/prepare Git and release state.
 3. Production export requires a clean, tagged, published release commit; prepare
    that through the maintainer's release flow before exporting.

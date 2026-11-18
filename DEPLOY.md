@@ -127,6 +127,15 @@ labelled `0.0.0-dev`. A value that is not `X.Y.Z`, `X.Y.Z-label` or `X.Y.Z+label
 Vite build, which checks it with the contracts' `AppVersion`, the pattern the server uses to
 refuse a version at native sign-in.
 
+The web build also writes `dist/version.json` with that version and its target (`client` or
+`admin`). From 0.18.3 the web app, never the APK, reads it when the tab regains focus and every
+five minutes, and offers a Reload banner when the deployed version differs from its own. The
+frontend container's nginx serves `index.html` and the SPA fallback with `Cache-Control:
+no-cache`, `/version.json` with `no-cache`, and `/assets/` as immutable for a year; a missing
+file under `/assets/` returns 404 instead of `index.html`. The host vhosts in
+`release_manager/nginx/` pass these headers through unchanged. Tabs opened on 0.18.2 or earlier
+have no watcher and pick up a new build on their next reload.
+
 `release_manager/verify.sh` checks the whole contract locally (108 assertions; add
 `--remote` for the VPS checks). `release_manager/status.sh` is the interactive console for
 version state, git workflow and stack status.

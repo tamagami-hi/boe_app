@@ -288,7 +288,7 @@ export const ADMIN_ROUTES: RouteManifest = [
   {
     id: "client-values-position",
     path: "/client-values/position",
-    title: "One investor's position",
+    title: "One investor's record",
     access: "session",
     role: "admin",
     permissions: ["client_position.write", "client_values.read"],

@@ -1103,7 +1103,7 @@ Phase H (DEC-34, DEC-36) was built on five lanes, each on its own tally track, a
   - **Rollback caveat:** against a rolled-back backend, the new admin build's client pickers show their error with retry, because the previous release refuses `segment`.
 - **Lane defaults for the maintainer to review:**
   - **Link lifetime:** the statement link reuses the email verification lifetime (10 minutes by default; rule 16).
-  - **Opened links:** reloading an opened statement page shows "not available", and the figures are whole rupees, as in the web print view.
+  - **Opened links:** reloading an opened statement page shows "not available". The figures were whole rupees here; from 0.18.3 every statement view (card, print view and this page) shows paise, so the month figures add up exactly (`p-invest-fixes`).
   - **Referrer-Policy:** nginx's server-level `Referrer-Policy` overrides the page's `no-referrer`. The page has no links or subresources. A dedicated location is the maintainer's call (`DEPLOY.md`).
   - **"Held" fund:** any `client_value_entries` row counts.
   - **Contact source:** the support contact comes from the investor charter's contact block.
