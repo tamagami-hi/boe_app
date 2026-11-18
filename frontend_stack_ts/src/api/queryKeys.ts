@@ -20,6 +20,7 @@ export const CLIENT_MONEY_PREFIXES = [
   ["client", "sip-early-exits"],
   ["client", "maturity-options"],
   ["client", "invested-funds"],
+  ["client", "investment-breakdown"],
 ] as const
 
 export const qk = {
@@ -41,6 +42,7 @@ export const qk = {
     fundValueUpdates: (fundId: string) => ["client", "value-updates", "fund", fundId] as const,
     investedFunds: () => ["client", "invested-funds"] as const,
     investedFund: (fundId: string) => ["client", "invested-funds", fundId] as const,
+    investmentBreakdown: () => ["client", "investment-breakdown"] as const,
     payments: (status: string) => ["client", "payments", status] as const,
     payment: (paymentId: string) => ["client", "payment", paymentId] as const,
     orders: () => ["client", "orders"] as const,

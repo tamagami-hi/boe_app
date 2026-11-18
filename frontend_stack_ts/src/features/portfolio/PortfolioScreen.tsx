@@ -18,15 +18,18 @@ import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
-import { ACTION_ROW, CARD_COLUMNS_WRAP } from "~/ui/recipes/layout"
+import { CARD_COLUMNS_WRAP } from "~/ui/recipes/layout"
 import { CARD_LINK } from "~/ui/recipes/surface"
 import { META_MUTED, META_TEXT, MONEY_BASE, MONEY_SIZE, MONEY_TONE } from "~/ui/recipes/text"
 
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
+import { TabPanel } from "~/ui/primitives/Toggle"
 
+import { BreakdownView } from "./BreakdownView"
 import { POOL_META, POOL_TOP } from "./portfolio.recipe"
+import { PORTFOLIO_VIEW_TABS_ID, PortfolioViewControl, usePortfolioView } from "./PortfolioViewControl"
 import { SipSchedulesSection } from "./SipSchedulesSection"
 
 const PortfolioScreen = (): React.ReactElement => {
@@ -35,6 +38,7 @@ const PortfolioScreen = (): React.ReactElement => {
   const sips = useSipPlans()
   const paymentsOff = useOnlinePaymentsOff()
   const showsSipPlans = (sips.data === undefined && sips.isError) || (sips.data?.items.length ?? 0) > 0
+  const { view, selectView } = usePortfolioView()
 
   return (
     <Page width="default">
@@ -100,56 +104,51 @@ const PortfolioScreen = (): React.ReactElement => {
               </div>
             </Card>
 
-            <Section
-              title="Positions"
-              actions={
-                <span className={ACTION_ROW}>
-                  <ButtonLink to="/portfolio/value-updates" tone="secondary" size="sm">
-                    Value updates
-                  </ButtonLink>
-                  {showsSipPlans ? (
-                    <ButtonLink to="/sips" tone="secondary" size="sm">
-                      SIP plans
-                    </ButtonLink>
-                  ) : null}
-                </span>
-              }
-            >
-              <FundNamesFailure names={names} />
-              <div className={CARD_COLUMNS_WRAP[3]}>
-                {data.pools.map((pool) => (
-                <Link key={pool.fundId} to={investedFundPath(pool.fundId)} className={CARD_LINK}>
-                  <Card>
-                    <div className={POOL_TOP}>
-                      <span className={ITEM_TITLE}>
-                        <FundName names={names} fundId={pool.fundId} />
-                      </span>
-                      <MoneyValue amount={toPaise(pool.currentValuePaise)} size="md" />
+            <Section title="Your investments">
+              <PortfolioViewControl showsSipPlans={showsSipPlans} view={view} onSelectView={selectView} />
+              <TabPanel id={PORTFOLIO_VIEW_TABS_ID} value={view}>
+                {view === "breakdown" ? (
+                  <BreakdownView />
+                ) : (
+                  <>
+                    <FundNamesFailure names={names} />
+                    <div className={CARD_COLUMNS_WRAP[3]}>
+                      {data.pools.map((pool) => (
+                      <Link key={pool.fundId} to={investedFundPath(pool.fundId)} className={CARD_LINK}>
+                        <Card>
+                          <div className={POOL_TOP}>
+                            <span className={ITEM_TITLE}>
+                              <FundName names={names} fundId={pool.fundId} />
+                            </span>
+                            <MoneyValue amount={toPaise(pool.currentValuePaise)} size="md" />
+                          </div>
+                          <div className={cx(POOL_META, META_MUTED)}>
+                            <span>Invested</span>
+                            <MoneyValue amount={toPaise(pool.totalInvestmentPaise)} size="sm" tone="muted" />
+                            <span>Growth</span>
+                            <MoneyValue
+                              amount={toPaise(pool.totalGrowthPaise)}
+                              size="sm"
+                              tone="signed"
+                              showSign
+                            />
+                            <span>Return</span>
+                            <span className={cx(MONEY_BASE, MONEY_SIZE.sm, MONEY_TONE.default)}>
+                              {formatPercent(pool.returnPercent, { showSign: true })}
+                            </span>
+                          </div>
+                          <span className={META_TEXT}>
+                            {pool.withdrawnTotalPaise === "0"
+                              ? countOf(pool.contributionCount, "payment")
+                              : `${countOf(pool.contributionCount, "payment")} · ${formatINR(toPaise(pool.withdrawnTotalPaise))} withdrawn`}
+                          </span>
+                        </Card>
+                        </Link>
+                      ))}
                     </div>
-                    <div className={cx(POOL_META, META_MUTED)}>
-                      <span>Invested</span>
-                      <MoneyValue amount={toPaise(pool.totalInvestmentPaise)} size="sm" tone="muted" />
-                      <span>Growth</span>
-                      <MoneyValue
-                        amount={toPaise(pool.totalGrowthPaise)}
-                        size="sm"
-                        tone="signed"
-                        showSign
-                      />
-                      <span>Return</span>
-                      <span className={cx(MONEY_BASE, MONEY_SIZE.sm, MONEY_TONE.default)}>
-                        {formatPercent(pool.returnPercent, { showSign: true })}
-                      </span>
-                    </div>
-                    <span className={META_TEXT}>
-                      {pool.withdrawnTotalPaise === "0"
-                        ? countOf(pool.contributionCount, "payment")
-                        : `${countOf(pool.contributionCount, "payment")} · ${formatINR(toPaise(pool.withdrawnTotalPaise))} withdrawn`}
-                    </span>
-                  </Card>
-                  </Link>
-                ))}
-              </div>
+                  </>
+                )}
+              </TabPanel>
             </Section>
 
             <MoneyFootnote lastUpdated={data.lastUpdated} />
