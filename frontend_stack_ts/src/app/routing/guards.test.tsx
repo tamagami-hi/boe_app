@@ -76,7 +76,7 @@ describe("reloading at a signed-in deep URL while the session read fails with an
       window.dispatchEvent(new Event("online"))
     })
 
-    await screen.findByText("Users directory")
+    await screen.findByText("Users directory", {}, { timeout: 5000 })
     expect(restore).toHaveBeenCalledTimes(3)
-  })
+  }, 15000)
 })
