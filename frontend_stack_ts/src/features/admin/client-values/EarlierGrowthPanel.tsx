@@ -1,24 +1,52 @@
+import { useEffect } from "react"
+
 import { Section } from "~/app/layouts/Section"
-import { HeldWriteNotice, UnsavedHoldNotice } from "~/features/admin/shared/HeldWriteNotice"
+import { HeldWriteNotice, isUnsavedHold, UnsavedHoldNotice } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
+import { useUnloadGuard } from "~/features/admin/shared/useUnloadGuard"
 import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { Button } from "~/ui/primitives/Button"
 import { Alert } from "~/ui/primitives/Feedback"
 
 import { EarlierGrowthFundForm } from "./EarlierGrowthFundForm"
-import { needsSplit } from "./investmentCleanup"
-import { useClientInvestments, useConfirmEarlierGrowthSplit } from "./investmentCleanupQueries"
+import { needsSplit, splitFormKeyOf } from "./investmentCleanup"
+import {
+  earlierGrowthSplitSlot,
+  parseEarlierGrowthSplit,
+  useClientInvestments,
+  useConfirmEarlierGrowthSplit,
+} from "./investmentCleanupQueries"
 import { ListSkeleton } from "./ListSkeleton"
 
 const UNSENT = "The split could not be sent. Reload the earlier growth and try again."
 const STALE_CUTOFF = "The earlier growth changed. Reload to see the new total."
 const RELOAD = "Reload"
 
-export type EarlierGrowthPanelProps = Readonly<{ userId: string; investorLabel: string }>
+export type EarlierGrowthPanelProps = Readonly<{
+  userId: string
+  investorLabel: string
+  onHoldChange?: (holding: boolean) => void
+}>
 
-export const EarlierGrowthPanel = ({ userId, investorLabel }: EarlierGrowthPanelProps): React.ReactElement | null => {
+export const EarlierGrowthPanel = ({
+  userId,
+  investorLabel,
+  onHoldChange,
+}: EarlierGrowthPanelProps): React.ReactElement | null => {
   const investments = useClientInvestments(userId)
-  const split = useHeldWrite(useConfirmEarlierGrowthSplit(userId), UNSENT)
+  const split = useHeldWrite(useConfirmEarlierGrowthSplit(userId), UNSENT, {
+    slot: earlierGrowthSplitSlot(userId),
+    parseBody: parseEarlierGrowthSplit,
+  })
+  const isHolding = isUnsavedHold(split)
+  useUnloadGuard(isHolding)
+
+  useEffect(() => {
+    onHoldChange?.(isHolding)
+    return () => {
+      onHoldChange?.(false)
+    }
+  }, [isHolding, onHoldChange])
   const busy = split.pending || split.outcome.kind === "unknown"
   const isStale = split.outcome.kind === "rejected" && split.outcome.code === "STATE_CONFLICT"
 
@@ -45,7 +73,7 @@ export const EarlierGrowthPanel = ({ userId, investorLabel }: EarlierGrowthPanel
   }
 
   const pending = investments.data.funds.filter(needsSplit)
-  if (pending.length === 0 && split.outcome.kind === "idle") return null
+  if (pending.length === 0 && split.outcome.kind === "idle" && !split.unreadable) return null
 
   return (
     <Section
@@ -74,7 +102,7 @@ export const EarlierGrowthPanel = ({ userId, investorLabel }: EarlierGrowthPanel
       <UnsavedHoldNotice write={split} />
       {pending.map((fund) => (
         <EarlierGrowthFundForm
-          key={`${fund.fundId}:${fund.earlierGrowth.cutoffEntryId}`}
+          key={splitFormKeyOf(fund)}
           fund={fund}
           investorLabel={investorLabel}
           busy={busy || isStale}

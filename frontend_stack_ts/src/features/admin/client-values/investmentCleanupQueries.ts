@@ -10,6 +10,7 @@ import type { DataOf } from "~/api/http"
 import { usePagedQuery, type PagedQuery } from "~/api/paged"
 import { STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
+import { asRecord, parseWith } from "~/features/admin/shared/heldWriteStore"
 
 import type { SplitBody } from "./earlierGrowthSplit"
 import type { InvestmentRef } from "./investmentCleanup"
@@ -23,6 +24,18 @@ export type EarlierGrowthSplitInput = SplitBody<InvestmentRef> & Readonly<{ fund
 type Keyed<T> = T & Readonly<{ idempotencyKey: string }>
 
 const TO_CATEGORISE_PAGE_LIMIT = 50
+
+export const earlierGrowthSplitSlot = (userId: string): string => `earlier-growth-split:${userId}`
+
+const parseSplitBody = parseWith<SplitBody<InvestmentRef>>(confirmAdminEarlierGrowthSplit.request.body)
+
+export const parseEarlierGrowthSplit = (value: unknown): EarlierGrowthSplitInput | null => {
+  const input = asRecord(value)
+  const fundId = input?.fundId
+  if (input === null || typeof fundId !== "string" || fundId === "") return null
+  const body = parseSplitBody(Object.fromEntries(Object.entries(input).filter(([key]) => key !== "fundId")))
+  return body === null ? null : { fundId, ...body }
+}
 
 export const useClientInvestments = (userId: string, enabled = true): UseQueryResult<AdminClientInvestments> => {
   const api = useApi()
