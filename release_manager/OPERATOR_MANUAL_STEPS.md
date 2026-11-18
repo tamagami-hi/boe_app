@@ -218,11 +218,13 @@ A   www         <STATIC_PUBLIC_IP>
 A   app         <STATIC_PUBLIC_IP>
 A   dev         <STATIC_PUBLIC_IP>
 A   dev-app     <STATIC_PUBLIC_IP>
-A   monitor     <STATIC_PUBLIC_IP>
 ```
 
-No `admin` or `dev-admin` record is needed. The admin consoles are reached only
-over Tailscale; see DEPLOY.md, "Admin consoles over Tailscale".
+No `admin`, `dev-admin` or `monitor` record is needed. The admin consoles are
+reached only over Tailscale; see DEPLOY.md, "Admin consoles over Tailscale".
+Grafana has no public host: `release_manager/nginx/` has no `monitor` site
+config. It is reached inside the dev Tailscale console (`admin.tailscale.conf`
+includes the `boe-monitor-grafana.conf` snippet) or over an SSH tunnel (MS_GUIDE.md).
 
 Confirm the public IP is not CGNAT — inbound connections must reach the router:
 
@@ -236,7 +238,7 @@ ISP is using CGNAT and inbound forwarding cannot work.
 Verify propagation before requesting certificates:
 
 ```bash
-for h in app.beonedge.in dev-app.beonedge.in monitor.beonedge.in; do
+for h in app.beonedge.in dev-app.beonedge.in; do
   printf '%-26s %s\n' "$h" "$(dig +short "$h" | tr '\n' ' ')"
 done
 ```
@@ -295,11 +297,10 @@ sudo apt install -y certbot python3-certbot-nginx
 
 sudo certbot --nginx -d app.beonedge.in
 sudo certbot --nginx -d dev-app.beonedge.in
-sudo certbot --nginx -d monitor.beonedge.in
 ```
 
-The admin consoles need no certbot certificate: their HTTPS names are
-`*.ts.net`, and Tailscale issues those. See DEPLOY.md, "Admin consoles over
+The admin consoles, and Grafana inside the dev console, need no certbot
+certificate: their HTTPS names are `*.ts.net`, and Tailscale issues those. See DEPLOY.md, "Admin consoles over
 Tailscale".
 
 Verify renewal actually works — an expired certificate is a silent outage:
@@ -309,10 +310,11 @@ systemctl status certbot.timer
 sudo certbot renew --dry-run
 ```
 
-### 5.6 Protect the development and monitoring hosts
+### 5.6 Protect the development host
 
-The dev stack is for a handful of testers, and Grafana should never be publicly
-readable. Add HTTP basic auth in front of the application's own login (plan §11).
+The dev stack is for a handful of testers. Add HTTP basic auth in front of the
+application's own login (plan §11). Grafana needs none here: it has no public
+host and is reached only over Tailscale or an SSH tunnel (§5.3).
 
 ```bash
 sudo apt install -y apache2-utils
@@ -320,14 +322,13 @@ sudo install -d -m 750 -o root -g www-data /etc/nginx/auth
 
 sudo htpasswd -c /etc/nginx/auth/dev-testers.htpasswd tester1
 sudo htpasswd    /etc/nginx/auth/dev-testers.htpasswd tester2
-sudo htpasswd -c /etc/nginx/auth/monitor.htpasswd     operator
 
 sudo chmod 640 /etc/nginx/auth/*.htpasswd
 sudo chown root:www-data /etc/nginx/auth/*.htpasswd
 ```
 
-The shipped dev and monitor configs already reference these files — uncomment the
-`auth_basic` lines once the files exist, then reload nginx.
+The shipped dev config (`dev-app.beonedge.in.conf`) already references this file —
+uncomment its `auth_basic` lines once the file exists, then reload nginx.
 
 ---
 

@@ -81,10 +81,7 @@ scrape_configs:
           # application on separate infrastructure (AWS) and is not this stack's
           # to monitor. It only posts signups to /api/newuser.
           - https://app.beonedge.in
-          - https://admin.beonedge.in
           - https://dev-app.beonedge.in
-          - https://dev-admin.beonedge.in
-          - https://monitor.beonedge.in
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

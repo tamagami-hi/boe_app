@@ -43,8 +43,9 @@ every docker command:
 The interactive menu is organized as `Git → Exports → Ship + Deploy`. Under
 `Git`, the full workflow previews and commits dirty `wt/admin` and `wt/client`
 worktrees and main (their names are historical: `frontend_stack_ts` is one
-package building both variants, so the two worktrees are parallel workspaces
-rather than per-surface silos); checks, reviews, and integrates approved PRs;
+package building both variants; they predate tally tracks, and lanes now run in
+`.temp/worktrees/<track>/` and land through the tally landing queue, see
+`WORKFLOW.md`); checks, reviews, and integrates approved PRs;
 synchronizes `origin/main`; pushes after confirmation; and fast-forwards main
 back into each dev worktree. `Sync local worktrees` runs only that final
 main-to-worktree synchronization; it also resets nothing, so if a worktree's
@@ -125,8 +126,10 @@ monitoring/operations repository. It must not gain business logic or arbitrary
 production database write access. See
 `docs/Completed/complexity-audit-2026-08-26/DEPLOYMENT_CONSTRAINTS_IMPLEMENTATION.md`.
 
-`BOE_APP/`, `recent_builds/` and `rollback/` are the **previous** single-stack
-pipeline, kept for reference. Nothing new reads them.
+`recent_builds/` and `rollback/` (each only a `.gitkeep`) are left from the
+**previous** single-stack pipeline; nothing new reads them. The old
+`release_manager/BOE_APP/` folder no longer exists. `BOE_APP` now names only the
+VPS roots: `/srv/dev_stack/BOE_APP/<stack>/` and `/srv/backup/BOE_APP/`.
 
 ---
 

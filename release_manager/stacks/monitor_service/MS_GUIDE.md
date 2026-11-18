@@ -26,7 +26,7 @@ revision's pinned tags.
 
 | Service | Exposure | Purpose |
 | --- | --- | --- |
-| `grafana` | `127.0.0.1:47430` → nginx | Dashboards. The only publicly proxied service. |
+| `grafana` | `127.0.0.1:47430` → nginx (Tailscale only) | Dashboards. Not public: nginx serves it only inside the dev Tailscale console (`admin.tailscale.conf`, `boe-monitor-grafana.conf` snippet). |
 | `prometheus` | `127.0.0.1:47431` | Metrics store. Loopback debugging only. |
 | `alertmanager` | `127.0.0.1:47432` | Alert routing. Loopback only. |
 | `blackbox_exporter` | `127.0.0.1:47433` | External HTTPS / TLS / readiness probes. |
@@ -61,7 +61,8 @@ $EDITOR .env      # GRAFANA_ADMIN_PASSWORD is required
 ./ms_deploy.sh
 ```
 
-Then reach Grafana over the tunnel or via nginx:
+Then reach Grafana over an SSH tunnel, or inside the dev Tailscale console
+(there is no public monitor host):
 
 ```bash
 ssh -L 3000:127.0.0.1:47430 beonedge
