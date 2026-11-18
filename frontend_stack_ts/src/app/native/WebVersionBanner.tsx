@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 
+import { qk } from "~/api/queryKeys"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useNetworkStatus } from "~/app/providers/NetworkStatusProvider"
 import { useHasUnsettledHeldWrite } from "~/features/admin/shared/unsettledHeldWrites"
+import type { AppConfigFeed } from "~/features/app-notice/appNoticeQuery"
+import { readAppNotices } from "~/features/app-notice/appNotices"
 import { cx } from "~/lib/cx"
 import { appTarget, buildVersion } from "~/lib/env"
 import { watchWebVersion } from "~/platform/webVersion"
@@ -37,13 +41,21 @@ const useReplacedBuild = (): boolean => {
   return isReplaced
 }
 
+const useCachedAppConfig = (): AppConfigFeed | undefined => {
+  const client = useQueryClient()
+  const subscribe = useCallback((onChange: () => void) => client.getQueryCache().subscribe(onChange), [client])
+  return useSyncExternalStore(subscribe, () => client.getQueryData<AppConfigFeed>(qk.app.config()))
+}
+
 export const WebVersionBanner = (): React.ReactElement | null => {
-  const { degraded } = useNetworkStatus()
+  const { degraded, maintenance } = useNetworkStatus()
   const isReplaced = useReplacedBuild()
   const isHoldingWrite = useHasUnsettledHeldWrite()
+  const appConfig = useCachedAppConfig()
   const [isAsking, setAsking] = useState(false)
   const banner = useRef<HTMLDivElement | null>(null)
-  const isShown = isReplaced && !degraded
+  const isNoticeShown = !maintenance && readAppNotices(appConfig?.config ?? null, new Date()).maintenance !== null
+  const isShown = isReplaced && !degraded && !isNoticeShown
 
   useChromeOffset(banner, isShown)
 

@@ -5,6 +5,7 @@ import { isNative } from "~/platform/capacitor"
 
 export const WEB_VERSION_PATH = "/version.json"
 export const WEB_VERSION_INTERVAL_MS = 5 * 60 * 1000
+export const WEB_VERSION_WAKE_GAP_MS = 30_000
 const WEB_VERSION_TIMEOUT_MS = 10_000
 
 export type RunningBuild = Readonly<{ version: string; target: string }>
@@ -60,26 +61,39 @@ export const watchWebVersion = ({ running, onDeployed, load = loadFromOrigin }: 
 
   let isChecking = false
   let isStopped = false
+  let lastCheckedAt: number | null = null
 
   const check = (): void => {
     if (isChecking || isStopped || document.visibilityState === "hidden") return
     isChecking = true
-    void readManifest(load).then((manifest) => {
-      isChecking = false
-      const deployed = compareDeployedBuild(manifest, running)
-      if (!isStopped && deployed !== "unknown") onDeployed(deployed)
-    })
+    void readManifest(load)
+      .then((manifest) => {
+        const deployed = compareDeployedBuild(manifest, running)
+        if (!isStopped && deployed !== "unknown") onDeployed(deployed)
+      })
+      .catch((error: unknown) => {
+        console.error("Web version check failed", error)
+      })
+      .finally(() => {
+        isChecking = false
+        lastCheckedAt = Date.now()
+      })
   }
 
-  document.addEventListener("visibilitychange", check)
-  window.addEventListener("focus", check)
+  const wake = (): void => {
+    if (lastCheckedAt !== null && Date.now() - lastCheckedAt < WEB_VERSION_WAKE_GAP_MS) return
+    check()
+  }
+
+  document.addEventListener("visibilitychange", wake)
+  window.addEventListener("focus", wake)
   const timer = window.setInterval(check, WEB_VERSION_INTERVAL_MS)
   check()
 
   return () => {
     isStopped = true
-    document.removeEventListener("visibilitychange", check)
-    window.removeEventListener("focus", check)
+    document.removeEventListener("visibilitychange", wake)
+    window.removeEventListener("focus", wake)
     window.clearInterval(timer)
   }
 }

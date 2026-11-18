@@ -6,6 +6,7 @@ import {
   compareDeployedBuild,
   WEB_VERSION_INTERVAL_MS,
   WEB_VERSION_PATH,
+  WEB_VERSION_WAKE_GAP_MS,
   watchWebVersion,
   type VersionLoader,
 } from "~/platform/webVersion"
@@ -22,14 +23,22 @@ const manifest = (body: unknown, status = 200): Response =>
 
 const settle = (ms = 0): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
+const clock = { now: 1_800_000_000_000 }
+
+const laterThanTheWakeGap = (): void => {
+  clock.now += WEB_VERSION_WAKE_GAP_MS
+}
+
 beforeEach(() => {
   delete window.Capacitor
   vi.mocked(isNativeShell).mockReturnValue(false)
+  vi.spyOn(Date, "now").mockImplementation(() => clock.now)
 })
 
 afterEach(() => {
   delete window.Capacitor
   vi.useRealTimers()
+  vi.mocked(Date.now).mockRestore()
 })
 
 describe("the deployed web build against the running one", () => {
@@ -99,6 +108,7 @@ describe("watching the deployed web build", () => {
     await vi.waitFor(() => {
       expect(onDeployed).toHaveBeenCalledWith("current")
     })
+    laterThanTheWakeGap()
     window.dispatchEvent(new Event("focus"))
     await vi.waitFor(() => {
       expect(onDeployed).toHaveBeenLastCalledWith("replaced")
@@ -118,8 +128,12 @@ describe("watching the deployed web build", () => {
     const onDeployed = vi.fn()
 
     const stop = watchWebVersion({ running: RUNNING, onDeployed, load })
-    for (let wake = 0; wake < 2; wake += 1) {
+    for (let wake = 1; wake <= 2; wake += 1) {
+      await vi.waitFor(() => {
+        expect(load).toHaveBeenCalledTimes(wake)
+      })
       await settle()
+      laterThanTheWakeGap()
       window.dispatchEvent(new Event("focus"))
     }
     await vi.waitFor(() => {
