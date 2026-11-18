@@ -3,10 +3,9 @@ import { useEffect, useState } from "react"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
-import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
-import { ConfigurationError, resolveApiBase } from "~/lib/env"
+import { buildVersion, ConfigurationError, resolveApiBase } from "~/lib/env"
 import { useHeldDone } from "~/features/admin/shared/useHeldDone"
 import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
@@ -15,27 +14,21 @@ import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
-import { FormField, Input } from "~/ui/primitives/FormField"
 
-import { ADMIN_CODE, ADMIN_JSON_AREA } from "~/ui/recipes/admin"
+import { ADMIN_CODE } from "~/ui/recipes/admin"
 import { PROSE_SM } from "~/ui/recipes/datalist"
-import { STACK_LG } from "~/ui/recipes/layout"
 
-import type { AdminAppConfig, AppConfigInput } from "./appConfigQueries"
-import { useAdminAppConfig, usePublishAppConfig } from "./appConfigQueries"
-
-const TEMPLATE = {
-  featureFlags: {},
-  minimumSupportedVersion: {},
-  downloads: {},
-  maintenance: { enabled: false },
-  presentation: {},
-} as const
+import { AdvancedJson } from "./AdvancedJson"
+import { ConfigFields } from "./ConfigFields"
+import type { AdminAppConfig } from "./appConfigQueries"
+import { useAdminAppConfig, useConfirmPublishPassword, usePublishAppConfig } from "./appConfigQueries"
+import { draftOf, parseDraft, serialise, type JsonRecord } from "./configDraft"
+import { checkDraft } from "./draftChecks"
+import { describeConfirmFailure, describePublishRefusal } from "./publishFailures"
+import { PublishPanel } from "./PublishPanel"
+import { PublishReviewDialog } from "./PublishReviewDialog"
 
 const UNSENT = "The configuration could not be sent. Reload the page and try again."
-
-const VALIDATION_MESSAGE =
-  "That configuration was refused. Only the keys listed under Publish a new version are accepted, and versions must be dotted numbers."
 
 const apiAddress = (): string => {
   try {
@@ -46,27 +39,19 @@ const apiAddress = (): string => {
   }
 }
 
-const draftOf = (data: AdminAppConfig): string => JSON.stringify(data.config ?? TEMPLATE, null, 2)
-
-const parseDraft = (draft: string | null): AppConfigInput | null => {
-  if (draft === null) return null
-  try {
-    const value: unknown = JSON.parse(draft)
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return null
-    return { config: value }
-  } catch {
-    return null
-  }
-}
-
 const AppConfigBuilderScreen = (): React.ReactElement => {
   const query = useAdminAppConfig()
   const publish = useHeldWrite(usePublishAppConfig(), UNSENT)
+  const confirm = useConfirmPublishPassword()
   const { hasAnyPermission } = useSession()
-  const [draft, setDraft] = useState<string | null>(null)
+  const [draft, setDraft] = useState<JsonRecord | null>(null)
+  const [basis, setBasis] = useState<JsonRecord | null>(null)
+  const [jsonText, setJsonText] = useState("")
+  const [isJsonObject, setIsJsonObject] = useState(true)
   const [editedFrom, setEditedFrom] = useState<number | null | undefined>(undefined)
   const [reason, setReason] = useState("")
-  const [confirming, setConfirming] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [localFailure, setLocalFailure] = useState<string | null>(null)
   const [isReloading, setIsReloading] = useState(false)
 
@@ -74,31 +59,42 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
   const isLocked = publish.held !== null
   const canPublish = hasAnyPermission(["config.publish"])
   const current = query.data ?? null
-  const parsed = parseDraft(draft)
-  const trimmedReason = reason.trim()
-  const body: AppConfigInput | null =
-    parsed === null || editedFrom === undefined
-      ? null
-      : { ...parsed, expectedVersion: editedFrom, ...(trimmedReason === "" ? {} : { reason: trimmedReason }) }
+  const release = buildVersion()
+  const checks = checkDraft(isJsonObject ? draft : null, basis, release)
+  const refusal = describePublishRefusal(outcome)
+  const isConflict = refusal?.kind === "conflict"
   const isDraftBehind = editedFrom !== undefined && current !== null && current.version !== editedFrom
-  const isConflict = outcome.kind === "rejected" && outcome.code === "STATE_CONFLICT"
-  const rejection =
-    outcome.kind !== "rejected" || isConflict
-      ? null
-      : outcome.code === "VALIDATION_FAILED"
-        ? VALIDATION_MESSAGE
-        : outcome.message
+
+  const loadFrom = (data: AdminAppConfig): void => {
+    const next = draftOf(data.config)
+    setBasis(data.config)
+    setDraft(next)
+    setJsonText(serialise(next))
+    setIsJsonObject(true)
+    setEditedFrom(data.version)
+  }
+
+  const editForm = (next: JsonRecord): void => {
+    setDraft(next)
+    setJsonText(serialise(next))
+    setIsJsonObject(true)
+  }
+
+  const editJson = (text: string): void => {
+    setJsonText(text)
+    const parsed = parseDraft(text)
+    setIsJsonObject(parsed !== null)
+    if (parsed !== null) setDraft(parsed)
+  }
 
   useEffect(() => {
     if (draft !== null || current === null) return
-    setDraft(draftOf(current))
-    setEditedFrom(current.version)
+    loadFrom(current)
   }, [current, draft])
 
   useHeldDone(outcome, (published) => {
     setReason("")
-    setDraft(draftOf(published))
-    setEditedFrom(published.version)
+    loadFrom(published)
   })
 
   const reload = async (): Promise<void> => {
@@ -112,18 +108,28 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
     }
     setLocalFailure(null)
     publish.reset()
-    setDraft(draftOf(result.data))
-    setEditedFrom(result.data.version)
+    loadFrom(result.data)
   }
 
-  const send = (): void => {
-    setConfirming(false)
+  const confirmAndPublish = (password: string): void => {
+    setPasswordError(null)
     setLocalFailure(null)
-    if (body === null) {
-      setLocalFailure("That is not a JSON object. Fix the syntax before publishing.")
-      return
+    if (checks.payload === null || editedFrom === undefined || !checks.isPublishable) return
+    const trimmedReason = reason.trim()
+    const body = {
+      config: checks.payload,
+      expectedVersion: editedFrom,
+      ...(trimmedReason === "" ? {} : { reason: trimmedReason }),
     }
-    publish.submit(body)
+    confirm.mutate(password, {
+      onSuccess: (issued) => {
+        setReviewing(false)
+        publish.submit({ ...body, confirmation: issued.confirmation })
+      },
+      onError: (error) => {
+        setPasswordError(describeConfirmFailure(error))
+      },
+    })
   }
 
   const reloadAction = (
@@ -163,11 +169,11 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
           reloadLabel="Reload the published version"
         />
       ) : null}
-      {rejection === null ? null : (
+      {refusal?.kind === "message" ? (
         <Alert tone="error" title="Not published">
-          {rejection}
+          {refusal.text}
         </Alert>
-      )}
+      ) : null}
       {localFailure === null ? null : (
         <Alert tone="error" title="Not published">
           {localFailure}
@@ -212,97 +218,66 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
               ) : null}
             </Card>
 
-            <Section
-              title="Environment"
-              description="Read-only. What this build of the console is talking to."
-            >
+            <Section title="Environment" description="Read-only. What this build of the console is talking to.">
               <Card>
                 <DataList>
                   <DetailRow label="API address">{apiAddress()}</DetailRow>
                   <DetailRow label="Console target">Administrator</DetailRow>
-                  <DetailRow label="Config source">
-                    The latest published version, shown above
-                  </DetailRow>
+                  <DetailRow label="Config source">The latest published version, shown above</DetailRow>
                 </DataList>
               </Card>
             </Section>
 
-            <Section
-              title="Publish a new version"
-              description="Accepted keys: featureFlags, minimumSupportedVersion, downloads, maintenance and presentation. Anything else is refused rather than silently dropped."
-            >
-              <Card>
-                {canPublish ? (
-                  <div className={STACK_LG}>
-                    <FormField
-                      label="Configuration"
-                      hint="JSON. This replaces the whole configuration. A key you leave out is cleared, and maintenance is off unless you turn it on."
-                      {...(parsed === null && draft !== null
-                        ? { error: "This is not valid JSON." }
-                        : {})}
-                    >
-                      {({ id }) => (
-                        <textarea
-                          id={id}
-                          className={ADMIN_JSON_AREA}
-                          spellCheck={false}
-                          disabled={isLocked}
-                          value={draft ?? ""}
-                          onChange={(event) => {
-                            setDraft(event.target.value)
-                          }}
-                        />
-                      )}
-                    </FormField>
+            {canPublish ? null : (
+              <Alert tone="info" title="You can read this but not publish it">
+                Your role cannot publish configuration.
+              </Alert>
+            )}
 
-                    <FormField
-                      label="Reason"
-                      hint="Recorded in the audit log. Not shown to investors."
-                    >
-                      {({ id }) => (
-                        <Input
-                          id={id}
-                          disabled={isLocked}
-                          value={reason}
-                          maxLength={2_000}
-                          onChange={(event) => {
-                            setReason(event.target.value)
-                          }}
-                        />
-                      )}
-                    </FormField>
+            {draft === null ? null : (
+              <ConfigFields
+                draft={draft}
+                disabled={!canPublish || isLocked || !isJsonObject}
+                onChange={editForm}
+                problems={checks.problems}
+                above={checks.above}
+                release={release}
+              />
+            )}
 
-                    <Button
-                      disabled={body === null || isLocked}
-                      loading={publish.pending}
-                      onClick={() => {
-                        setConfirming(true)
-                      }}
-                      trailing
-                    >
-                      Publish this configuration
-                    </Button>
-                  </div>
-                ) : (
-                  <Alert tone="info" title="You can read this but not publish it">
-                    Your role cannot publish configuration.
-                  </Alert>
-                )}
-              </Card>
-            </Section>
+            <Card>
+              <AdvancedJson text={jsonText} isObject={isJsonObject} disabled={!canPublish || isLocked} onText={editJson} />
+            </Card>
+
+            {canPublish ? (
+              <PublishPanel
+                reason={reason}
+                onReason={setReason}
+                checks={checks}
+                isJsonObject={isJsonObject}
+                disabled={isLocked || editedFrom === undefined}
+                pending={publish.pending}
+                onReview={() => {
+                  setPasswordError(null)
+                  setReviewing(true)
+                }}
+              />
+            ) : null}
           </>
         )}
       </AsyncBoundary>
 
-      <ConfirmDialog
-        open={confirming}
-        title="Publish this configuration?"
-        description="Each installed app picks it up the next time it reloads its configuration. The previous version is retired but kept."
-        confirmLabel="Publish it"
-        cancelLabel="Cancel"
-        onConfirm={send}
+      <PublishReviewDialog
+        open={reviewing}
+        changes={checks.changes}
+        above={checks.above}
+        release={release}
+        pending={confirm.isPending}
+        passwordError={passwordError}
+        onConfirm={confirmAndPublish}
         onCancel={() => {
-          setConfirming(false)
+          setReviewing(false)
+          setPasswordError(null)
         }}
       />
     </Page>

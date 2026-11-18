@@ -246,6 +246,7 @@ const READS: Readonly<Record<string, () => unknown>> = {
   getAdminApplication: () => APPLICATION,
   getAdminAppConfig: () => APP_CONFIG,
   previewAdminCollectiveAumGrowth: () => PREVIEW,
+  confirmAdminPassword: () => ({ confirmation: "c".repeat(43), action: "app_config.publish", expiresAt: AT }),
 }
 
 const request = async (operation: Operation, options: Readonly<Record<string, unknown>> = {}): Promise<unknown> => {
@@ -466,12 +467,15 @@ const ROWS: readonly Row[] = [
     path: "/app-config",
     act: async () => {
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Publish this configuration/u })).toBeEnabled()
+        expect(screen.getByRole("switch", { name: "Maintenance in progress" })).toBeEnabled()
       })
-      press(/Publish this configuration/u)
-      await confirmIn("Publish it")
+      fireEvent.click(screen.getByRole("switch", { name: "Maintenance in progress" }))
+      press("Review and publish")
+      const dialog = await screen.findByRole("dialog", {}, { timeout: 3000 })
+      fireEvent.change(within(dialog).getByLabelText(/^Your password/u), { target: { value: "the admin password" } })
+      fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }))
     },
-    locked: () => screen.getByLabelText(/^Configuration/u),
+    locked: () => screen.getByRole("switch", { name: "Maintenance in progress" }),
   },
 ]
 
