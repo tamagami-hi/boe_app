@@ -2790,6 +2790,10 @@
     {
       "commit": "926c68d",
       "note": "Maintainer's release cut v0.18.3 through release_manager/status.sh (VERSION 0.18.2 to 0.18.3, tag v0.18.3), exported and deployed to dev on 2026-11-18"
+    },
+    {
+      "commit": "311379a",
+      "note": "Release cut v0.18.4 by the maintainer (release_manager), exported and deployed to dev on 2026-11-18"
     }
   ]
 }
