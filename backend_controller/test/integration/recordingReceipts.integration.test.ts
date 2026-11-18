@@ -433,6 +433,44 @@ describe("client receipts", () => {
     expect(reversed.reversedAt).not.toBeNull()
     expect(reversed.amountPaise).toBe("900000")
   })
+
+  test("a fund filter lists only that fund's recordings on every page, and its cursors stay bound to it", async () => {
+    const client = await stack.seedUser()
+    const otherFundId = (await seedFund(finance.userId, [{ name: "Receipts Second Fund", createdAt: null }])).fundId
+    const recordIn = async (inFundId: string, amountPaise: string): Promise<Recorded> => {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/admin/clients/${client.id}/recorded-contributions`,
+        headers: adminHeaders(finance, `fund-filter-${randomUUID()}`),
+        payload: { fundId: inFundId, amountPaise, effectiveDate: EFFECTIVE_DATE, reasonCode: "recorded_offline_investment" },
+      })
+      expect(response.statusCode).toBe(201)
+      return envelopeOf<Recorded>(response).data
+    }
+    const olderInFund = await recordIn(fundId, "300000")
+    const inOtherFund = await recordIn(otherFundId, "400000")
+    const newerInFund = await recordIn(fundId, "500000")
+    const token = await clientToken(client.id)
+    const page = async (query: string) => envelopeOf<{ items: Receipt[] }>(await listReceipts(token, query))
+
+    const first = await page(`?fundId=${fundId}&limit=1`)
+    const second = await page(`?fundId=${fundId}&limit=1&after=${encodeURIComponent(first.meta.page?.nextCursor ?? "")}`)
+    expect([...first.data.items, ...second.data.items].map((item) => [item.entryId, item.fundId])).toEqual([
+      [newerInFund.entryId, fundId],
+      [olderInFund.entryId, fundId],
+    ])
+    expect(second.meta.page?.hasMore).toBe(false)
+    expect((await page(`?fundId=${otherFundId}`)).data.items.map((item) => item.entryId)).toEqual([inOtherFund.entryId])
+    expect((await page("")).data.items).toHaveLength(3)
+
+    const unfiltered = await page("?limit=1")
+    const crossed = await listReceipts(
+      token,
+      `?fundId=${fundId}&limit=1&after=${encodeURIComponent(unfiltered.meta.page?.nextCursor ?? "")}`,
+    )
+    expect(crossed.statusCode).toBe(400)
+    expect(envelopeOf(crossed).error.code).toBe("CURSOR_INVALID")
+  })
 })
 
 describe("investment added email", () => {
