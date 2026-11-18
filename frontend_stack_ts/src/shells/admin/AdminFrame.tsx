@@ -202,26 +202,31 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
           setMoreOpen(false)
         }}
       >
-        {groups.map((group) => (
-          <div key={group.domain} className={ADMIN_MORE_GROUP}>
-            {group.entries.length > 1 ? (
-              <span className={ADMIN_MORE_GROUP_LABEL}>{group.label}</span>
-            ) : null}
-            <ul className={ADMIN_MORE_LIST}>
-              {group.entries.map((entry) => (
-                <li key={entry.id}>
-                  <Link
-                    to={entry.path}
-                    className={ADMIN_MORE_LINK}
-                    aria-current={entry.id === ownerId ? "page" : undefined}
-                  >
-                    {entry.nav.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+        {groups.map((group) => {
+          const moreLabelId = group.entries.length > 1 ? `${sidebarId}-more-${group.domain}` : undefined
+          return (
+            <div key={group.domain} className={ADMIN_MORE_GROUP}>
+              {moreLabelId === undefined ? null : (
+                <span id={moreLabelId} className={ADMIN_MORE_GROUP_LABEL}>
+                  {group.label}
+                </span>
+              )}
+              <ul aria-labelledby={moreLabelId} className={ADMIN_MORE_LIST}>
+                {group.entries.map((entry) => (
+                  <li key={entry.id}>
+                    <Link
+                      to={entry.path}
+                      className={ADMIN_MORE_LINK}
+                      aria-current={entry.id === ownerId ? "page" : undefined}
+                    >
+                      {entry.nav.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        })}
       </Modal>
     </div>
   )
