@@ -1,11 +1,11 @@
 import type { Transaction, User, UserId } from "../../db/repositories.js"
 import type { ClientMaturityOption } from "../../db/types.js"
-import { formatCalendarDate } from "../../email/emailMoney.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { LockedMaturityOffer, MaturityOfferRow } from "../../repositories/clientMaturityOfferRepository.js"
 import type { LockedMaturitySchedule, MaturityScheduleRow } from "../../repositories/clientMaturityScheduleRepository.js"
 import type { NotificationWriteRepository } from "../../repositories/notificationRepository.js"
 import { queueMaturityOptionsMail, type MaturityOptionsMailDeps } from "../email/maturityOptionsMail.js"
+import { formatAppCalendarDate } from "../shared/calendarDate.js"
 import { findActiveSip, refuseInvalidExtension, type SipExtension } from "./maturityExtension.js"
 import {
   closeMaturityOffer,
@@ -110,7 +110,7 @@ const notifyClient = async (
     userId: client.id,
     kind: MATURITY_OPTIONS_NOTIFICATION_KIND,
     title: "Your maturity options are ready",
-    body: `Your investment in ${offer.fundName} matures on ${formatCalendarDate(offer.maturityDate)}. Open the app to choose what happens next.`,
+    body: `Your investment in ${offer.fundName} matures on ${formatAppCalendarDate(offer.maturityDate)}. Open the app to choose what happens next.`,
     payload: { offerId: offer.id, scheduleId: offer.maturityScheduleId, fundId: offer.fundId },
   })
   await queueMaturityOptionsMail(tx, deps, {

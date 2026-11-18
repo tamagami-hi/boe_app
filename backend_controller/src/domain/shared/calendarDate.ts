@@ -2,6 +2,15 @@ import { AppError } from "../../http/errorCatalog.js"
 
 const INDIA_UTC_OFFSET_MS = 330 * 60 * 1000
 
+const APP_DATE_FORMAT = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "Asia/Kolkata",
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+})
+
+export const formatAppCalendarDate = (date: string): string => APP_DATE_FORMAT.format(new Date(`${date}T00:00:00Z`))
+
 export const indiaCalendarDate = (now: Date): string =>
   new Date(now.getTime() + INDIA_UTC_OFFSET_MS).toISOString().slice(0, 10)
 

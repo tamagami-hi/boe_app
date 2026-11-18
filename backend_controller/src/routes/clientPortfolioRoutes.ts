@@ -30,7 +30,7 @@ import {
   deriveInvestingEligibility,
   type EligibilityInputs,
 } from "../domain/client/investingEligibility.js"
-import { derivePortfolio } from "../domain/client/portfolioLedger.js"
+import { derivePortfolio, reversedEntryIds } from "../domain/client/portfolioLedger.js"
 import { toLedgerEntries } from "../domain/client/portfolioProjection.js"
 import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
@@ -187,16 +187,18 @@ const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, 
   const summary = derivePortfolio(entries)
 
   const fundIds = [...new Set(entries.map((entry) => entry.fundId))]
+  const reversed = reversedEntryIds(entries)
   const contributionBreakdown = (sourceRows: readonly ClientValueEntryRow[]) => {
     const contributions = sourceRows.filter((row) => row.entryType === "contribution")
     const sipRows = contributions.filter((row) => row.orderType === "sip_installment")
     const oneOffRows = contributions.filter((row) => row.orderType !== "sip_installment")
     const total = (items: readonly ClientValueEntryRow[]) =>
       items.reduce((sum, row) => sum + BigInt(row.principalDeltaPaise), 0n).toString()
+    const standing = (items: readonly ClientValueEntryRow[]) => items.filter((row) => !reversed.has(row.id)).length
     return {
-      sipInstallmentCount: sipRows.length,
+      sipInstallmentCount: standing(sipRows),
       sipTotalPaise: total(sipRows),
-      lumpSumCount: oneOffRows.length,
+      lumpSumCount: standing(oneOffRows),
       lumpSumTotalPaise: total(oneOffRows),
     }
   }

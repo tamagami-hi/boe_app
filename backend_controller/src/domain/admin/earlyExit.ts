@@ -1,11 +1,11 @@
 import type { Transaction, User, UserId } from "../../db/repositories.js"
-import { formatCalendarDate, formatRupeesFromPaise } from "../../email/emailMoney.js"
+import { formatRupeesFromPaise } from "../../email/emailMoney.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { LockedSipSchedule } from "../../repositories/adminSipScheduleRepository.js"
 import type { MaturityScheduleRow } from "../../repositories/clientMaturityScheduleRepository.js"
 import type { SipEarlyExitRepository, SipEarlyExitRow } from "../../repositories/earlyExitRepository.js"
 import { queueSipEarlyExitMail, type SipEarlyExitMailDeps } from "../email/earlyExitMail.js"
-import { indiaCalendarDate } from "../shared/calendarDate.js"
+import { formatAppCalendarDate, indiaCalendarDate } from "../shared/calendarDate.js"
 import { closeAdminSipSchedule, type AdminSipScheduleDeps } from "./adminSipSchedules.js"
 import type { MaturitySettlementDeps } from "./maturitySettlement.js"
 import { cancelMaturitySchedule, type MaturityScheduleDeps } from "./maturitySchedules.js"
@@ -140,7 +140,7 @@ const tellClient = async (
     userId: client.id,
     kind: "client_value_updated",
     title: "SIP closed early",
-    body: `Your SIP in ${row.fundName} was closed early on ${formatCalendarDate(row.effectiveDate)}. ${formatRupeesFromPaise(row.amountPaise)}, the full current value, is being returned to you. The payout is awaited.`,
+    body: `Your SIP in ${row.fundName} was closed early on ${formatAppCalendarDate(row.effectiveDate)}. ${formatRupeesFromPaise(row.amountPaise)}, the full current value, is being returned to you. The payout is awaited.`,
     payload: { fundId: row.fundId, scheduleId: row.scheduleId, earlyExitId: row.id, deepLink: "/activity" },
   })
   await queueSipEarlyExitMail(tx, deps, {

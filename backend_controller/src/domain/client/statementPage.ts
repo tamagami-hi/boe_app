@@ -7,7 +7,6 @@ import type { StatementPeriod } from "./statements.js"
 const LOCALE = "en-IN"
 const TIME_ZONE = "Asia/Kolkata"
 const PAISE_PER_RUPEE = 100n
-const HALF_RUPEE = 50n
 const MARKET_RISK = "Investments are subject to market risk."
 const SOURCE = "Values recorded by BeOnEdge"
 const SEPARATOR = " · "
@@ -33,6 +32,11 @@ const STYLE = [
   ".note{margin-top:16px;font-size:13px;color:var(--muted)}",
   "@page{margin:12mm}",
   "@media print{main{padding:0;max-width:none}.scroll{overflow:visible}table{min-width:0;font-size:11px}}",
+  "@media screen and (max-width:47.99rem){.scroll{overflow-x:visible}table{min-width:0}",
+  "thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}",
+  "table,caption,tbody,tr,th,td{display:block}tbody tr{padding:8px 0;border-bottom:1px solid var(--strong)}",
+  "tbody th{padding:4px 0;border:0}td{display:flex;justify-content:space-between;gap:16px;padding:4px 0;border:0}",
+  "td::before{content:attr(data-label);color:var(--muted);text-align:left}}",
 ].join("")
 
 export const STATEMENT_PAGE_CSP = [
@@ -52,7 +56,8 @@ const formatCalendarDate = (date: string): string => dateFormatter.format(new Da
 
 const formatStatementRupees = (paise: bigint, showSign: boolean): string => {
   const magnitude = paise < 0n ? -paise : paise
-  const amount = `₹${groupIndian(((magnitude + HALF_RUPEE) / PAISE_PER_RUPEE).toString())}`
+  const fraction = (magnitude % PAISE_PER_RUPEE).toString().padStart(2, "0")
+  const amount = `₹${groupIndian((magnitude / PAISE_PER_RUPEE).toString())}.${fraction}`
   if (paise < 0n) return `-${amount}`
   return showSign && paise > 0n ? `+${amount}` : amount
 }
@@ -71,8 +76,8 @@ const COLUMNS: readonly Column[] = [
 
 const moneyCell = (column: Column, period: StatementPeriod): string => {
   const paise = column.value(period)
-  const tone = column.signed ? (paise < 0n ? " neg" : " pos") : ""
-  return `<td class="num${tone}">${escapeHtml(formatStatementRupees(paise, column.signed))}</td>`
+  const tone = !column.signed || paise === 0n ? "" : paise < 0n ? " neg" : " pos"
+  return `<td class="num${tone}" data-label="${escapeHtml(column.label)}">${escapeHtml(formatStatementRupees(paise, column.signed))}</td>`
 }
 
 const row = (period: StatementPeriod): string =>

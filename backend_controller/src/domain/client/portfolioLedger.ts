@@ -30,6 +30,7 @@ export interface LedgerEntry {
   /** Signed: moves Current Portfolio Value. */
   readonly valueDeltaPaise: bigint
   readonly effectiveDate: string
+  readonly reversesEntryId?: string | null
 }
 
 export interface PortfolioSummary {
@@ -71,8 +72,12 @@ export const returnPercent = (totalGrowthPaise: bigint, totalInvestmentPaise: bi
   return basisPoints === null ? null : Number(basisPoints) / Number(PERCENT_SCALE)
 }
 
+export const reversedEntryIds = (entries: readonly LedgerEntry[]): ReadonlySet<string> =>
+  new Set(entries.flatMap((entry) => (entry.reversesEntryId == null ? [] : [entry.reversesEntryId])))
+
 /** Fold a ledger into the dashboard figures. Order-independent by construction. */
 export const derivePortfolio = (entries: readonly LedgerEntry[]): PortfolioSummary => {
+  const reversed = reversedEntryIds(entries)
   let totalInvestmentPaise = 0n
   let currentValuePaise = 0n
   let contributionCount = 0
@@ -91,7 +96,7 @@ export const derivePortfolio = (entries: readonly LedgerEntry[]): PortfolioSumma
 
     switch (entry.entryType) {
       case "contribution":
-        contributionCount += 1
+        if (!reversed.has(entry.id)) contributionCount += 1
         contributionTotalPaise += entry.principalDeltaPaise
         break
       case "growth_adjustment":

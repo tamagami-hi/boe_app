@@ -20,6 +20,7 @@ export interface ClientValueEntryRow {
   readonly effectiveDate: string
   readonly orderId: string | null
   readonly orderType: OrderType | null
+  readonly reversesEntryId: string | null
   readonly createdAt: Date
 }
 
@@ -40,7 +41,8 @@ const ENTRY_COLUMNS = sql`
   v.effective_date::text as "effectiveDate",
   v.order_id as "orderId",
   v.created_at as "createdAt",
-  o.type as "orderType"
+  o.type as "orderType",
+  v.reverses_entry_id as "reversesEntryId"
 `
 
 export const createClientValueEntryRepository = (): ClientValueEntryRepository => ({

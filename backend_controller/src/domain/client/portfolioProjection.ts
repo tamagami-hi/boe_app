@@ -14,6 +14,7 @@ export const toLedgerEntry = (row: ClientValueEntryRow): LedgerEntry => ({
   principalDeltaPaise: BigInt(row.principalDeltaPaise),
   valueDeltaPaise: BigInt(row.valueDeltaPaise),
   effectiveDate: row.effectiveDate,
+  reversesEntryId: row.reversesEntryId,
 })
 
 export const toLedgerEntries = (rows: readonly ClientValueEntryRow[]): readonly LedgerEntry[] =>
