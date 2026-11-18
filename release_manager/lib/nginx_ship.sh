@@ -290,7 +290,7 @@ nginx_ship_guide() {
     printf '     # sign-in is rate limited, refresh is NOT (a limit there breaks the app)\n'
     printf '     grep -n "location ~ .*auth" %s/sites-enabled/*\n' "$NGINX_ETC"
     printf '     curl -s -o /dev/null -w "%%{http_code}\\n" -H "Host: dev-app.beonedge.in" http://127.0.0.1/\n'
-    printf '     curl -s -o /dev/null -w "%%{http_code}\\n" -H "Host: beonedge.in" http://127.0.0.1/\n'
+    printf '     curl -s -o /dev/null -w "%%{http_code}\\n" -H "Host: app.beonedge.in" http://127.0.0.1/\n'
 
     if [[ "$shared_changed" == true ]]; then
         printf '\n'

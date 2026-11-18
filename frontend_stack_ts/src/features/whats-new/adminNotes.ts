@@ -2,6 +2,48 @@ import type { WhatsNewNotes } from "./whatsNewEntry"
 
 export const ADMIN_NOTES: WhatsNewNotes = [
   {
+    id: "0.18.4",
+    month: "November 2026",
+    sections: [
+      {
+        heading: "New",
+        items: [
+          {
+            text: "Categorise every client's earlier recordings, corrections included, and confirm how a fund's earlier growth splits between its investments. Overview and the client page remind you until it is done.",
+          },
+          { text: "Client values > To categorise lists the clients waiting." },
+          { text: "Growth can target one investment: a client's SIP or one of their one-time investments." },
+          {
+            text: "The value sheet has one row per investment, filled from the fund's rate, and each row can be typed over.",
+          },
+        ],
+      },
+      {
+        heading: "Improved",
+        items: [
+          {
+            text: "On a computer, the sidebar sits against the edge of the page and can be hidden with Hide menu. Overview, Applications, Funds and AUM are at the top.",
+          },
+          {
+            text: "A SIP early exit returns only that SIP's value. One-time investments in the same fund stay invested.",
+          },
+          { text: "The recording form's Category hint describes the category you chose." },
+          {
+            text: "List pages keep their address in step with the filters, and audit links open the client page only for admins who can see it.",
+          },
+          { text: "Disabled buttons look disabled." },
+        ],
+      },
+      {
+        heading: "Fixed",
+        items: [
+          { text: "The SIP schedule editor's Done stays off while a change is unconfirmed." },
+          { text: "On a phone, the All sections lists are labelled by their headings." },
+        ],
+      },
+    ],
+  },
+  {
     id: "0.18.3",
     month: "November 2026",
     sections: [

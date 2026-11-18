@@ -90,11 +90,11 @@ const idsOf = (entries: WhatsNewNotes | null): readonly string[] | null =>
   entries === null ? null : entries.map((entry) => entry.id)
 
 describe.each([
-  ["client", CLIENT_NOTES, ["0.18.3", "0.18.1", "0.18.0", "0.17.0", "0.16.2", "0.16.0"]],
-  ["admin", ADMIN_NOTES, ["0.18.3", "0.18.1", "0.18.0", "0.17.0", "0.16.0"]],
+  ["client", CLIENT_NOTES, ["0.18.4", "0.18.3", "0.18.1", "0.18.0", "0.17.0", "0.16.2", "0.16.0"]],
+  ["admin", ADMIN_NOTES, ["0.18.4", "0.18.3", "0.18.1", "0.18.0", "0.17.0", "0.16.0"]],
 ] as const)("the shipped %s notes under DEC-73", (_audience, notes, everyRelease) => {
-  it("show a dev tester who last saw 0.18.1 only 0.18.3", () => {
-    expect(idsOf(unseenEntries(notes, "0.18.1"))).toEqual(["0.18.3"])
+  it("show a dev tester who last saw 0.18.3 only 0.18.4", () => {
+    expect(idsOf(unseenEntries(notes, "0.18.3"))).toEqual(["0.18.4"])
   })
 
   it("show a production upgrader with no record every release since 0.15.4", () => {

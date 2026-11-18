@@ -403,7 +403,7 @@ services:
     networks:
       - prod_frontend
 
-  # ── admin SPA (admin.beonedge.in) ─────────────────────────────────────────
+  # ── admin SPA (Tailscale console admin.boe.app.internal) ──────────────────
   # Same Dockerfile as app_frontend, built with a different app target.
   # Authorization is enforced server-side; serving admin on its own hostname is
   # isolation, never an authorization boundary.

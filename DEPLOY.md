@@ -241,6 +241,55 @@ dead-letters the two new templates. After an images-only rollback the previous r
 ignores the category table, so receipts show the earlier labels again; the links and
 categories stay and reappear on roll-forward.
 
+Migration 078 (investment breakdown, DEC-76, 0.18.4) is expand-only and not a boundary:
+`078_investment_breakdown.sql` adds four append-only tables, `client_growth_parts` (the
+per-investment parts of a growth entry), `client_earlier_growth_splits`,
+`client_earlier_growth_split_parts` and `client_earlier_growth_split_entries` (a confirmed
+split of a fund's earlier growth, its part per investment, and the growth entries it covers).
+It changes no existing row, column or constraint, and 0.18.3 runs against it and ignores the
+tables. No existing response changes: the client breakdown, the clean-up list, the split and
+per-investment growth are new routes or new optional request fields. **Deploy the API and the
+email worker together**: growth recorded per investment queues `investment_growth` v2, which
+lists each investment's change and which an email worker from before 0.18.4 cannot render (the
+`finding-26` case); the 0.18.4 worker still renders v1 rows queued earlier.
+
+After the deploy, the client's Breakdown reads "Your breakdown is being prepared by BeOnEdge."
+for every fund until admins have categorised that fund's recordings, corrections included, as
+SIP payments or one-time investments in the admin app, and confirmed the split of its earlier
+growth where the fund holds more than one investment. Portfolio's own figures do not change.
+Admins find the work from the Overview item "Investments to categorise", from Client values >
+To categorise, and from the banner on the client page, which leads to the client's Ledger tab.
+Categorising and confirming a split send no email. Until a client is done, the value sheet
+lists them as "Categorise first" for a fund with more than one investment and leaves them out
+of the batch, and a SIP early exit from a fund still being prepared is refused and writes
+nothing.
+
+Admin apps older than 0.18.4 cannot record growth for a client with more than one investment in
+a fund. The server refuses the whole write with `403 AUTHORIZATION_DENIED`, and the app shows
+"Update the admin app to record growth for clients with more than one investment in a fund.";
+growth for a fund with one investment works as before. Install the 0.18.4 admin APK on every
+admin phone before the next value update. The admin web is replaced by the deploy itself.
+
+A SIP early exit now returns only that SIP's current value; one-time investments in the same
+fund stay invested (amends DEC-41). With only the SIP in the fund, the amount is the same as in
+0.18.3. Released admin apps show and send back the amount the server works out, so they need no
+update for this. The email and the in-app notice say "the current value of your SIP". The
+exit cancels the fund's maturity date only when nothing else in the fund holds value; otherwise
+the date stays.
+
+During an images-only rollback to 0.18.3 the four tables, the categories and the confirmed
+splits stay. Clients lose the Breakdown, and an early exit returns the whole holding again.
+Growth recorded while 0.18.3 runs is untargeted, which 0.18.3 allows for any fund, so after the
+roll-forward a fund with more than one investment that took such growth reads "being prepared"
+again, and the client is back under To categorise until an admin confirms a new split. A v2
+growth email still queued at the rollback cannot be rendered by the 0.18.3 worker and is not
+re-sent after the roll-forward; the ledger rows and the in-app notice are not affected. So
+before an images-only rollback, wait until the email deliveries list shows no queued growth email.
+
+Two host steps also ship with 0.18.4, under Host nginx + TLS: the
+[default server](#default-server-0184) that refuses unknown hosts, and the
+[Grafana root URL](#grafana-root-url-0184).
+
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.
 
@@ -294,6 +343,71 @@ the site config does on top of that:
   expires after `EMAIL_VERIFICATION_CODE_TTL_MS`, the lifetime password links use.
 
 During maintenance this path answers the JSON maintenance body like every `/api/` path.
+
+### Default server (0.18.4)
+
+`boe-shared.conf` now also holds the box's default server for :80 and :443. A request whose
+`Host` or TLS server name matches no `server_name` is refused: on :80 nginx closes the
+connection (`return 444`), and on :443 it rejects the handshake (`ssl_reject_handshake`, nginx
+1.19.4 or later), so no certificate is needed. Until now such a request got whichever site
+loaded first: the production console's `.internal` redirect on :80 and the dev console's
+certificate on :443. Hosts that a site names are unchanged.
+
+nginx allows one default server per address and port. Check before installing:
+
+```bash
+sudo nginx -T 2>/dev/null | grep -n 'default_server'
+```
+
+- No output: install as below.
+- Only Debian's stock site (`/etc/nginx/sites-enabled/default`, the "Welcome to nginx" page):
+  remove its link in the same step with `sudo rm /etc/nginx/sites-enabled/default`. The file
+  stays in `sites-available`.
+- Any other site: stop. It belongs to the landing site or another tenant, and the maintainer
+  decides which default wins.
+
+After the ship step has staged the files (`nginx_ship.sh` prints the same commands):
+
+```bash
+sudo cp -a /etc/nginx /root/nginx-backup-$(date +%Y%m%dT%H%M%S)
+sudo cp /srv/dev_stack/BOE_APP/NGINX/boe-shared.conf /etc/nginx/conf.d/boe-shared.conf
+sudo cp /srv/dev_stack/BOE_APP/NGINX/admin.tailscale.conf /etc/nginx/sites-available/boe-admin-tailscale
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+If another default is still enabled, `nginx -t` fails with `a duplicate default server for
+0.0.0.0:80` and nothing is reloaded. Restore the backup if anything else goes wrong.
+
+Check it:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: app.beonedge.in' http://127.0.0.1/      # the app, as before
+curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: dev-app.beonedge.in' http://127.0.0.1/  # the dev app, as before
+curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: unknown.invalid' http://127.0.0.1/      # 000: empty reply, curl exit 52
+openssl s_client -connect 127.0.0.1:443 -servername unknown.invalid </dev/null 2>&1 | grep -m1 'alert'   # SSL alert number 112
+```
+
+Then check through the Cloudflare tunnel, from outside the box: open `https://app.beonedge.in`
+and `https://dev-app.beonedge.in`, and confirm a signup from beonedge.in still reaches
+`POST /newuser`. The default server is only safe while cloudflared passes the app's own Host
+header through (its default); if the tunnel sets another `httpHostHeader`, those requests are
+now refused, so restore the backup and tell the maintainer. Then open both admin consoles from
+a tailnet device and the client app from a phone.
+
+`nginx_ship.sh` now prints its check against `app.beonedge.in`. A request for `beonedge.in`
+itself prints `000` unless a site on this box serves that name: that is the refusal, not an
+outage.
+
+The admin console's TLS settings are now written in both `boe-shared.conf` (the default server)
+and `admin.tailscale.conf`; change them together.
+
+### Grafana root URL (0.18.4)
+
+In `monitor_service/.env` on the VPS, set `GRAFANA_ROOT_URL` to the URL the browser actually
+uses: `http://localhost:3000/` for the SSH tunnel in
+[MS_GUIDE.md](release_manager/stacks/monitor_service/MS_GUIDE.md), or the dev console URL if
+the `boe-monitor-grafana.conf` snippet serves Grafana. Then run `./ms_deploy.sh`, which also
+loads the corrected alert rules.
 
 ## Admin consoles over Tailscale
 

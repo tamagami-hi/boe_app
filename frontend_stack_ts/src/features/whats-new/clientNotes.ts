@@ -2,6 +2,44 @@ import type { WhatsNewNotes } from "./whatsNewEntry"
 
 export const CLIENT_NOTES: WhatsNewNotes = [
   {
+    id: "0.18.4",
+    month: "November 2026",
+    sections: [
+      {
+        heading: "New",
+        items: [
+          {
+            text: "Portfolio has two tabs, Positions and Breakdown, on one line with the Value updates and SIP plans links.",
+          },
+          {
+            text: "Breakdown shows each fund's SIP and each one-time investment separately, with its own invested amount, value, growth and return.",
+          },
+          { text: "Your SIP also shows its annualised return (XIRR) once it is 30 days old." },
+          { text: "While BeOnEdge is preparing a fund's breakdown, Breakdown says so instead of showing figures." },
+        ],
+      },
+      {
+        heading: "Improved",
+        items: [
+          { text: "The notice for a new investment says whether it was a SIP payment or a one-time investment." },
+          { text: "A value update email lists the change for each of your investments in that fund." },
+          {
+            text: "When BeOnEdge closes a SIP early, it returns the current value of that SIP. One-time investments in the same fund stay invested.",
+          },
+        ],
+      },
+      {
+        heading: "Fixed",
+        items: [
+          { text: "What's new no longer shows again when the app is closed straight after Done." },
+          { text: "A SIP plan shows its details only once they have loaded." },
+          { text: "After a failed password change or reset, the passwords you typed are cleared." },
+          { text: "Disabled buttons look disabled." },
+        ],
+      },
+    ],
+  },
+  {
     id: "0.18.3",
     month: "November 2026",
     sections: [
