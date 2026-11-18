@@ -17,6 +17,7 @@ import { createEmailChangeRepository } from "../repositories/emailChangeReposito
 import { createEmailVerificationRepository } from "../repositories/emailVerificationRepository.js"
 import { createMandatesRepository } from "../repositories/mandatesRepository.js"
 import { createFundAumRepository } from "../repositories/fundAumRepository.js"
+import { createInvestmentBreakdownRepository } from "../repositories/investmentBreakdownRepository.js"
 import { createMaturityRepository } from "../repositories/maturityRepository.js"
 import { createMonthlyRecordingSheetRepository } from "../repositories/monthlyRecordingSheetRepository.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
@@ -26,6 +27,7 @@ import { registerAdminAumRoutes } from "../routes/adminAumRoutes.js"
 import { registerAdminCatalogRoutes } from "../routes/adminCatalogRoutes.js"
 import { registerAdminClientErasureRoutes } from "../routes/adminClientErasureRoutes.js"
 import { registerAdminClientGrowthRoutes, type AdminClientGrowthDeps } from "../routes/adminClientGrowthRoutes.js"
+import { registerAdminInvestmentGrowthRoutes } from "../routes/adminInvestmentGrowthRoutes.js"
 import { registerAdminClientReturnRoutes, type AdminClientReturnDeps } from "../routes/adminClientReturnRoutes.js"
 import { registerAdminContentRoutes, type AdminContentDeps } from "../routes/adminContentRoutes.js"
 import { registerAdminFundGrowthPreviewRoutes } from "../routes/adminFundGrowthPreviewRoutes.js"
@@ -201,7 +203,7 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     idempotencyRepository,
   })
 
-  registerAdminClientGrowthRoutes(application, {
+  const growthDeps = {
     webAuth,
     unitOfWork,
     database,
@@ -218,7 +220,10 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     emailDeliveryRepository,
     crypto,
     clientGrowthMailRepository: createClientGrowthMailRepository(),
-  })
+    investmentBreakdownRepository: createInvestmentBreakdownRepository(),
+  }
+  registerAdminClientGrowthRoutes(application, growthDeps)
+  registerAdminInvestmentGrowthRoutes(application, growthDeps)
 
   const sipScheduleRepository = createAdminSipScheduleRepository()
 

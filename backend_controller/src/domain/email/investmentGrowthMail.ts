@@ -8,15 +8,21 @@ import type {
 import { enqueueEmail, type EnqueueEmailDeps } from "./enqueueEmail.js"
 
 export const INVESTMENT_GROWTH_TEMPLATE_VERSION = "v1"
+export const INVESTMENT_GROWTH_PARTS_TEMPLATE_VERSION = "v2"
 
 export interface InvestmentGrowthMailDeps extends EnqueueEmailDeps {
   readonly clientGrowthMailRepository: ClientGrowthMailRepository
   readonly config: Readonly<{ sesConfigurationSet: string }>
 }
 
+export type GrowthMailPart =
+  | Readonly<{ kind: "sip"; deltaPaise: bigint }>
+  | Readonly<{ kind: "one_time" | "investment"; investedPaise: bigint; effectiveDate: string; deltaPaise: bigint }>
+
 export interface WrittenGrowthEntry {
   readonly userId: string
   readonly deltaPaise: bigint
+  readonly parts?: readonly GrowthMailPart[]
 }
 
 export interface InvestmentGrowthMailInput {
@@ -30,8 +36,24 @@ export interface InvestmentGrowthMailInput {
 interface RecipientMail {
   readonly recipient: GrowthMailRecipient
   readonly fundName: string
-  readonly deltaPaise: bigint
+  readonly entry: WrittenGrowthEntry
   readonly valueAfterPaise: bigint
+}
+
+const sealedPartOf = (part: GrowthMailPart): Readonly<Record<string, string>> =>
+  part.kind === "sip"
+    ? { kind: "sip", deltaPaise: part.deltaPaise.toString() }
+    : {
+        kind: part.kind,
+        investedPaise: part.investedPaise.toString(),
+        effectiveDate: part.effectiveDate,
+        deltaPaise: part.deltaPaise.toString(),
+      }
+
+const assertPartsBalance = (entry: WrittenGrowthEntry): void => {
+  if (entry.parts === undefined) return
+  const total = entry.parts.reduce((sum, part) => sum + part.deltaPaise, 0n)
+  if (entry.parts.length === 0 || total !== entry.deltaPaise) throw new AppError("INTERNAL_ERROR")
 }
 
 const canReceiveMail = (recipient: GrowthMailRecipient): boolean =>
@@ -46,7 +68,8 @@ const queueOne = (
   enqueueEmail(tx, deps, {
     recipient: mail.recipient.email_normalized,
     template: { templateKey: INVESTMENT_GROWTH_TEMPLATE_KEY, userId: mail.recipient.id },
-    templateVersion: INVESTMENT_GROWTH_TEMPLATE_VERSION,
+    templateVersion:
+      mail.entry.parts === undefined ? INVESTMENT_GROWTH_TEMPLATE_VERSION : INVESTMENT_GROWTH_PARTS_TEMPLATE_VERSION,
     sesConfigurationSet: deps.config.sesConfigurationSet,
     eventType: "admin.investment_growth",
     eventVersion: 1,
@@ -64,8 +87,9 @@ const queueOne = (
     sealedPayload: {
       fullName: mail.recipient.full_name,
       fundName: mail.fundName,
-      deltaPaise: mail.deltaPaise.toString(),
+      deltaPaise: mail.entry.deltaPaise.toString(),
       valueAfterPaise: mail.valueAfterPaise.toString(),
+      ...(mail.entry.parts === undefined ? {} : { parts: mail.entry.parts.map(sealedPartOf) }),
     },
   })
 
@@ -74,17 +98,18 @@ export const queueInvestmentGrowthMail = async (
   deps: InvestmentGrowthMailDeps,
   input: InvestmentGrowthMailInput,
 ): Promise<void> => {
-  const deltas = new Map(input.entries.map((entry) => [entry.userId, entry.deltaPaise]))
-  if (deltas.size !== input.entries.length) throw new AppError("INTERNAL_ERROR")
-  const recipients = (await deps.clientGrowthMailRepository.listRecipients(tx, [...deltas.keys()])).filter(canReceiveMail)
+  const byUser = new Map(input.entries.map((entry) => [entry.userId, entry]))
+  if (byUser.size !== input.entries.length) throw new AppError("INTERNAL_ERROR")
+  input.entries.forEach(assertPartsBalance)
+  const recipients = (await deps.clientGrowthMailRepository.listRecipients(tx, [...byUser.keys()])).filter(canReceiveMail)
   if (recipients.length === 0) return
   const fundName = await deps.clientGrowthMailRepository.findFundName(tx, input.fundId)
   if (fundName === null) throw new AppError("INTERNAL_ERROR")
   const values = await deps.clientGrowthMailRepository.listValues(tx, input.fundId, recipients.map((recipient) => recipient.id))
   for (const recipient of recipients) {
-    const deltaPaise = deltas.get(recipient.id)
+    const entry = byUser.get(recipient.id)
     const valueAfterPaise = values.get(recipient.id)
-    if (deltaPaise === undefined || valueAfterPaise === undefined) throw new AppError("INTERNAL_ERROR")
-    await queueOne(tx, deps, input, { recipient, fundName, deltaPaise, valueAfterPaise })
+    if (entry === undefined || valueAfterPaise === undefined) throw new AppError("INTERNAL_ERROR")
+    await queueOne(tx, deps, input, { recipient, fundName, entry, valueAfterPaise })
   }
 }

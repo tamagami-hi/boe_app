@@ -29395,8 +29395,19 @@ export interface operations {
                             skipped: {
                                 /** Format: uuid */
                                 userId: string;
+                                ref: {
+                                    /** @enum {string} */
+                                    kind: "sip";
+                                    /** Format: uuid */
+                                    scheduleId: string;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "one_time";
+                                    /** Format: uuid */
+                                    allocationId: string;
+                                } | null;
                                 /** @enum {string} */
-                                reason: "categorise_first" | "zero_invested";
+                                reason: "categorise_first" | "zero_invested" | "unchanged";
                             }[];
                         };
                         error: null;
@@ -29580,8 +29591,19 @@ export interface operations {
                             skipped: {
                                 /** Format: uuid */
                                 userId: string;
+                                ref: {
+                                    /** @enum {string} */
+                                    kind: "sip";
+                                    /** Format: uuid */
+                                    scheduleId: string;
+                                } | {
+                                    /** @enum {string} */
+                                    kind: "one_time";
+                                    /** Format: uuid */
+                                    allocationId: string;
+                                } | null;
                                 /** @enum {string} */
-                                reason: "categorise_first" | "zero_invested";
+                                reason: "categorise_first" | "zero_invested" | "unchanged";
                             }[];
                         };
                         error: null;

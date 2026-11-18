@@ -17,7 +17,7 @@ const GrowthBasisPoints = z.coerce.number().int().min(CLIENT_GROWTH_MIN_BASIS_PO
 export const AdminInvestmentGrowthMode = z.enum(["percentage", "gain_since_invested"])
 export type AdminInvestmentGrowthMode = z.infer<typeof AdminInvestmentGrowthMode>
 
-export const AdminInvestmentGrowthSkipReason = z.enum(["categorise_first", "zero_invested"])
+export const AdminInvestmentGrowthSkipReason = z.enum(["categorise_first", "zero_invested", "unchanged"])
 export type AdminInvestmentGrowthSkipReason = z.infer<typeof AdminInvestmentGrowthSkipReason>
 
 export const AdminInvestmentGrowthPart = z.strictObject({
@@ -41,6 +41,7 @@ export type AdminInvestmentGrowthEntry = z.infer<typeof AdminInvestmentGrowthEnt
 
 export const AdminInvestmentGrowthSkip = z.strictObject({
   userId: Uuid,
+  ref: AdminInvestmentRef.nullable(),
   reason: AdminInvestmentGrowthSkipReason,
 })
 export type AdminInvestmentGrowthSkip = z.infer<typeof AdminInvestmentGrowthSkip>

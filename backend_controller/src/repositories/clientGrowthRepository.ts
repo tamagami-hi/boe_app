@@ -18,6 +18,7 @@ import { lockClientPosition } from "./clientPositionLock.js"
 
 import type { Transaction } from "../db/repositories.js"
 import type { GrowthInstructionType, GrowthScope, UserAccountState } from "../db/types.js"
+import type { InvestmentRef } from "../domain/client/investmentBreakdownFacts.js"
 
 export interface ClientPositionBasisRow {
   readonly userId: string
@@ -67,6 +68,13 @@ export interface InsertGrowthEntryInput {
   readonly requestId: string
 }
 
+export interface InsertGrowthPartsInput {
+  readonly entryId: string
+  readonly userId: string
+  readonly fundId: string
+  readonly parts: readonly Readonly<{ ref: InvestmentRef; deltaPaise: bigint }>[]
+}
+
 export interface ClientGrowthRepository {
   /** Blocking transaction-scoped advisory lock for one position. */
   lockPosition: (tx: Transaction, userId: string, fundId: string) => Promise<void>
@@ -98,6 +106,7 @@ export interface ClientGrowthRepository {
     tx: Transaction,
     input: InsertGrowthEntryInput,
   ) => Promise<{ readonly id: string }>
+  insertGrowthParts: (tx: Transaction, input: InsertGrowthPartsInput) => Promise<void>
   /** Back-fill the batch's idempotency record once it exists (same transaction). */
   linkBatchIdempotencyRecord: (
     tx: Transaction,
@@ -234,6 +243,24 @@ export const createClientGrowthRepository = (): ClientGrowthRepository => ({
       })
       .returning("id")
       .executeTakeFirstOrThrow(),
+
+  insertGrowthParts: async (tx, input) => {
+    if (input.parts.length === 0) throw new Error(`growth entry ${input.entryId} has no parts to write`)
+    await tx
+      .insertInto("client_growth_parts")
+      .values(
+        input.parts.map((part) => ({
+          entry_id: input.entryId,
+          user_id: input.userId,
+          fund_id: input.fundId,
+          target_kind: part.ref.kind,
+          target_sip_schedule_id: part.ref.kind === "sip" ? part.ref.scheduleId : null,
+          target_allocation_id: part.ref.kind === "one_time" ? part.ref.allocationId : null,
+          amount_paise: part.deltaPaise.toString(),
+        })),
+      )
+      .execute()
+  },
 
   linkBatchIdempotencyRecord: async (tx, batchId, idempotencyRecordId) => {
     const result = await tx

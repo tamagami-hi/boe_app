@@ -46,6 +46,7 @@ import type {
   ClientGrowthRepository,
   ClientPositionBasisRow,
 } from "../repositories/clientGrowthRepository.js"
+import { createInvestmentBreakdownRepository } from "../repositories/investmentBreakdownRepository.js"
 import type { NotificationWriteRepository } from "../repositories/notificationRepository.js"
 import {
   adminIdempotencyScope,
@@ -57,6 +58,7 @@ import {
   uuidParam,
   type AdminMutationResult,
 } from "./adminRouteKit.js"
+import { refuseSeveralInvestments, type SeveralInvestmentsDeps } from "./releasedGrowthRefusal.js"
 
 export interface AdminClientGrowthConfig {
   readonly idempotencyTtlMs: number
@@ -74,6 +76,13 @@ export interface AdminClientGrowthDeps extends InvestmentGrowthMailDeps {
   readonly idempotencyRepository: IdempotencyRepository
   readonly notificationRepository: NotificationWriteRepository
 }
+
+type GrowthRouteDeps = AdminClientGrowthDeps & SeveralInvestmentsDeps
+
+export type GrowthCommitDeps = Pick<
+  AdminClientGrowthDeps,
+  "unitOfWork" | "clock" | "config" | "idempotencyRepository" | "clientGrowthRepository"
+>
 
 const INDIVIDUAL_ROUTE = "/v1/admin/client-growth/individual"
 const INVESTOR_POSITIONS_ROUTE = "/v1/admin/client-growth/investors/:userId/positions"
@@ -93,7 +102,7 @@ const NOTIFICATION_BODY =
   "The value of one of your investments was updated. Open your portfolio to see the current value."
 const NOTIFICATION_DEEP_LINK = "/portfolio"
 
-const valueUpdatedNotice = (userId: string, fundId: string, entryId: string) => ({
+export const valueUpdatedNotice = (userId: string, fundId: string, entryId: string) => ({
   userId,
   kind: NOTIFICATION_KIND,
   title: NOTIFICATION_TITLE,
@@ -195,7 +204,7 @@ const equalBytes = (left: Uint8Array, right: Uint8Array): boolean => {
   return difference === 0
 }
 
-interface GrowthCommitExecution<TBody> {
+export interface GrowthCommitExecution<TBody> {
   readonly status: number
   readonly body: TBody
   readonly batchId: string
@@ -207,8 +216,8 @@ interface GrowthCommitExecution<TBody> {
  * the growth batch in the same transaction (§5.9 — the batch references the
  * canonical idempotency record instead of storing a free-standing raw key).
  */
-const runGrowthCommit = async <TBody extends Record<string, unknown>>(
-  deps: AdminClientGrowthDeps,
+export const runGrowthCommit = async <TBody extends Record<string, unknown>>(
+  deps: GrowthCommitDeps,
   request: FastifyRequest,
   routeTemplate: string,
   canonical: Readonly<Record<string, unknown>>,
@@ -261,7 +270,7 @@ const runGrowthCommit = async <TBody extends Record<string, unknown>>(
 }
 
 const resolveWriter = async (
-  deps: AdminClientGrowthDeps,
+  deps: GrowthRouteDeps,
   request: FastifyRequest,
 ): Promise<{ readonly userId: string }> => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
@@ -272,7 +281,7 @@ const resolveWriter = async (
 // --- handlers ---
 
 const individual = async (
-  deps: AdminClientGrowthDeps,
+  deps: GrowthRouteDeps,
   schemas: ReturnType<typeof buildClientGrowthSchemas>,
   request: FastifyRequest,
   reply: FastifyReply,
@@ -312,6 +321,7 @@ const individual = async (
         body.fundId,
       )
       if (basisRow === null) throw new AppError("RESOURCE_NOT_FOUND")
+      await refuseSeveralInvestments(deps, tx, body.fundId, [body.userId])
       const basis = toDomainBasis(basisRow)
       const plan = planIndividualGrowth(basis, instruction)
       const basisHash = computeClientGrowthBasisHash(COMMAND_INDIVIDUAL, body.fundId, [basis])
@@ -407,7 +417,7 @@ const collectiveCommand = (instruction: CollectiveGrowthInstruction): string =>
   instruction.kind === "percentage" ? COMMAND_COLLECTIVE_PERCENTAGE : COMMAND_COLLECTIVE_EXPLICIT
 
 const collectivePreview = async (
-  deps: AdminClientGrowthDeps,
+  deps: GrowthRouteDeps,
   schemas: ReturnType<typeof buildClientGrowthSchemas>,
   request: FastifyRequest,
   reply: FastifyReply,
@@ -422,6 +432,7 @@ const collectivePreview = async (
   const plan = planCollectiveClientGrowth(positions, instruction, {
     maxTargets: MAX_COLLECTIVE_CLIENT_TARGETS,
   })
+  await refuseSeveralInvestments(deps, deps.database, body.fundId, plan.targets.map((target) => target.userId))
   const basisHash = computeClientGrowthBasisHash(collectiveCommand(instruction), body.fundId, positions)
 
   const targets = plan.targets.map(mapTarget)
@@ -441,7 +452,7 @@ const collectivePreview = async (
 }
 
 const collectiveCommit = async (
-  deps: AdminClientGrowthDeps,
+  deps: GrowthRouteDeps,
   schemas: ReturnType<typeof buildClientGrowthSchemas>,
   request: FastifyRequest,
   reply: FastifyReply,
@@ -486,6 +497,7 @@ const collectiveCommit = async (
       const plan = planCollectiveClientGrowth(positions, instruction, {
         maxTargets: MAX_COLLECTIVE_CLIENT_TARGETS,
       })
+      await refuseSeveralInvestments(deps, tx, body.fundId, plan.targets.map((target) => target.userId))
 
       const batch = await deps.clientGrowthRepository.insertBatch(tx, {
         scope: "collective",
@@ -569,7 +581,7 @@ const collectiveCommit = async (
 }
 
 const investorPositions = async (
-  deps: AdminClientGrowthDeps,
+  deps: GrowthRouteDeps,
   request: FastifyRequest,
   reply: FastifyReply,
 ) => {
@@ -596,7 +608,7 @@ const investorPositions = async (
 }
 
 const fundPositions = async (
-  deps: AdminClientGrowthDeps,
+  deps: GrowthRouteDeps,
   request: FastifyRequest,
   reply: FastifyReply,
 ) => {
@@ -624,8 +636,9 @@ const fundPositions = async (
 
 export const registerAdminClientGrowthRoutes = (
   application: FastifyInstance,
-  deps: AdminClientGrowthDeps,
+  growthDeps: AdminClientGrowthDeps,
 ): void => {
+  const deps: GrowthRouteDeps = { ...growthDeps, investmentBreakdownRepository: createInvestmentBreakdownRepository() }
   const schemas = buildClientGrowthSchemas()
   application.get(INVESTOR_POSITIONS_ROUTE, (request, reply) => investorPositions(deps, request, reply))
   application.get(FUND_POSITIONS_ROUTE, (request, reply) => fundPositions(deps, request, reply))

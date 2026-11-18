@@ -1,26 +1,34 @@
-import { renderEmail, type RenderedEmail } from "./emailLayout.js"
+import { renderEmail, type EmailBlock, type RenderedEmail } from "./emailLayout.js"
 import { formatCalendarDate, formatRupeesFromPaise } from "./emailMoney.js"
 import { requiredString, webAppBlocks, type EmailTemplateModule } from "./emailTemplateParts.js"
 import type { EmailTemplateConfig } from "./emailTemplates.js"
-import { EmailValidationError } from "./emailValidation.js"
+import { growthChangeOf, growthPartLines, type GrowthChange } from "./investmentGrowthParts.js"
 
 export const INVESTMENT_GROWTH_TEMPLATE_KEY = "investment_growth"
 
-const SIGNED_NON_ZERO_PAISE = /^(-?)([1-9][0-9]{0,18})$/u
-
-interface GrowthChange {
-  readonly kind: "gain" | "loss"
-  readonly amount: string
-}
-
-const changeOf = (data: Readonly<Record<string, unknown>>): GrowthChange => {
-  const match = SIGNED_NON_ZERO_PAISE.exec(requiredString(data, "deltaPaise"))
-  if (match === null) throw new EmailValidationError("EMAIL_TEMPLATE_DATA_INVALID")
-  return { kind: match[1] === "-" ? "loss" : "gain", amount: formatRupeesFromPaise(match[2] ?? "") }
+const changeBlocks = (
+  data: Readonly<Record<string, unknown>>,
+  change: GrowthChange,
+  fundName: string,
+  date: string,
+): readonly EmailBlock[] => {
+  if (data.parts === undefined) {
+    return [
+      {
+        kind: "text",
+        text: `The value of your investment in ${fundName} was updated as of ${date}. This update is a ${change.kind} of ${change.amount}.`,
+      },
+    ]
+  }
+  return [
+    { kind: "text", text: `The value of your investments in ${fundName} was updated as of ${date}.` },
+    ...growthPartLines(data.parts, change.paise).map((text): EmailBlock => ({ kind: "text", text })),
+    { kind: "text", text: `In total, this update is a ${change.kind} of ${change.amount}.` },
+  ]
 }
 
 const render = (data: Readonly<Record<string, unknown>>, config: EmailTemplateConfig): RenderedEmail => {
-  const change = changeOf(data)
+  const change = growthChangeOf(requiredString(data, "deltaPaise"))
   const valueAfter = formatRupeesFromPaise(requiredString(data, "valueAfterPaise"))
   const date = formatCalendarDate(requiredString(data, "effectiveDate"))
   const fundName = requiredString(data, "fundName")
@@ -31,10 +39,7 @@ const render = (data: Readonly<Record<string, unknown>>, config: EmailTemplateCo
     supportAddress: config.supportAddress,
     blocks: [
       { kind: "text", text: `Hello ${requiredString(data, "fullName")},` },
-      {
-        kind: "text",
-        text: `The value of your investment in ${fundName} was updated as of ${date}. This update is a ${change.kind} of ${change.amount}.`,
-      },
+      ...changeBlocks(data, change, fundName, date),
       { kind: "text", text: `Your value in this fund is now ${valueAfter}.` },
       { kind: "text", text: "Open the BeOnEdge app and go to Portfolio to see your current value." },
       ...webAppBlocks(config),
@@ -46,6 +51,6 @@ const render = (data: Readonly<Record<string, unknown>>, config: EmailTemplateCo
 
 export const investmentGrowthTemplate: EmailTemplateModule = {
   key: INVESTMENT_GROWTH_TEMPLATE_KEY,
-  versions: ["v1"],
+  versions: ["v1", "v2"],
   render,
 }

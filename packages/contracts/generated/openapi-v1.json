@@ -53858,16 +53858,65 @@
                                 "type": "string",
                                 "format": "uuid"
                               },
+                              "ref": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "sip"
+                                        ]
+                                      },
+                                      "scheduleId": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "scheduleId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "one_time"
+                                        ]
+                                      },
+                                      "allocationId": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "allocationId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
                               "reason": {
                                 "type": "string",
                                 "enum": [
                                   "categorise_first",
-                                  "zero_invested"
+                                  "zero_invested",
+                                  "unchanged"
                                 ]
                               }
                             },
                             "required": [
                               "userId",
+                              "ref",
                               "reason"
                             ],
                             "additionalProperties": false
@@ -54308,16 +54357,65 @@
                                 "type": "string",
                                 "format": "uuid"
                               },
+                              "ref": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "sip"
+                                        ]
+                                      },
+                                      "scheduleId": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "scheduleId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "one_time"
+                                        ]
+                                      },
+                                      "allocationId": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "allocationId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
                               "reason": {
                                 "type": "string",
                                 "enum": [
                                   "categorise_first",
-                                  "zero_invested"
+                                  "zero_invested",
+                                  "unchanged"
                                 ]
                               }
                             },
                             "required": [
                               "userId",
+                              "ref",
                               "reason"
                             ],
                             "additionalProperties": false

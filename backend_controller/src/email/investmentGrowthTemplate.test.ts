@@ -72,10 +72,67 @@ describe("investment growth email", () => {
     })
   })
 
-  test("renders only the version it was queued with", () => {
-    expect(renderEmailTemplate("investment_growth", "v2", DATA, CONFIG)).toEqual({
+  test("renders only the versions it knows", () => {
+    expect(renderEmailTemplate("investment_growth", "v3", DATA, CONFIG)).toEqual({
       kind: "unrenderable",
       errorCode: "TEMPLATE_VERSION_UNSUPPORTED",
+    })
+  })
+})
+
+const PARTS_DATA = {
+  ...DATA,
+  deltaPaise: "18000",
+  valueAfterPaise: "10268000",
+  parts: [
+    { kind: "sip", deltaPaise: "12000" },
+    { kind: "one_time", investedPaise: "2500000", effectiveDate: "2026-06-02", deltaPaise: "30000" },
+    { kind: "investment", investedPaise: "100000", effectiveDate: "2026-07-15", deltaPaise: "-24000" },
+  ],
+}
+
+const renderedV2 = (data: Readonly<Record<string, unknown>>) => {
+  const result = renderEmailTemplate("investment_growth", "v2", data, CONFIG)
+  if (result.kind !== "rendered") throw new Error(`expected a rendered email, got ${result.errorCode}`)
+  return result.email
+}
+
+describe("investment growth email v2", () => {
+  test("lists each investment's change, then the net and the new value", () => {
+    const email = renderedV2(PARTS_DATA)
+
+    const text = email.text
+    expect(text).toContain("The value of your investments in Harbour Growth Fund was updated as of 20 August 2026.")
+    expect(text).toContain("Your SIP: a gain of ₹120.00.")
+    expect(text).toContain("Your one-time investment of ₹25,000.00 from 2 June 2026: a gain of ₹300.00.")
+    expect(text).toContain("Your investment of ₹1,000.00 from 15 July 2026: a loss of ₹240.00.")
+    expect(text).toContain("In total, this update is a gain of ₹180.00.")
+    expect(text).toContain("Your value in this fund is now ₹1,02,680.00.")
+    expect(text.indexOf("Your SIP")).toBeLessThan(text.indexOf("In total"))
+    expect(text.indexOf("In total")).toBeLessThan(text.indexOf("Your value in this fund"))
+    expect(text).toContain("Investments are subject to market risk.")
+    expect(text).not.toContain("-₹")
+    expect(email.html).toContain("Your SIP: a gain of ₹120.00.")
+  })
+
+  test("a v1 row queued before the upgrade still renders as one change", () => {
+    const result = renderEmailTemplate("investment_growth", "v1", DATA, CONFIG)
+
+    expect(result.kind).toBe("rendered")
+    expect(result.kind === "rendered" ? result.email.text : "").toContain("This update is a gain of ₹2,500.00.")
+  })
+
+  test.each([
+    ["parts that do not add up to the net", { deltaPaise: "18001" }],
+    ["no parts", { parts: [] }],
+    ["parts that are not a list", { parts: "12000" }],
+    ["an unknown kind", { parts: [{ kind: "bond", investedPaise: "1", effectiveDate: "2026-06-02", deltaPaise: "18000" }] }],
+    ["a zero part", { deltaPaise: "12000", parts: [{ kind: "sip", deltaPaise: "12000" }, { kind: "sip", deltaPaise: "0" }] }],
+    ["a one-time part without its date", { deltaPaise: "30000", parts: [{ kind: "one_time", investedPaise: "2500000", deltaPaise: "30000" }] }],
+  ])("refuses %s rather than guessing a figure", (_label, override) => {
+    expect(renderEmailTemplate("investment_growth", "v2", { ...PARTS_DATA, ...override }, CONFIG)).toEqual({
+      kind: "unrenderable",
+      errorCode: "EMAIL_TEMPLATE_DATA_INVALID",
     })
   })
 })
