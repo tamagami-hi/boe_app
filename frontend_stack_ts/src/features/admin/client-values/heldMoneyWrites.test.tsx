@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { ReactNode } from "react"
-import { MemoryRouter } from "react-router-dom"
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TransportError } from "~/api/errors"
@@ -11,6 +11,7 @@ import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 import { indiaToday } from "~/domain/dates"
 import { BACKEND_IDEMPOTENCY_TTL_MS } from "~/features/admin/shared/heldWriteStore"
 
+import ClientPositionDetailScreen from "./ClientPositionDetailScreen"
 import CollectiveClientGrowthScreen from "./CollectiveClientGrowthScreen"
 import { EarlierInvestmentForm, recordingSlot } from "./EarlierInvestmentForm"
 import { IndividualGrowthForm } from "./IndividualGrowthForm"
@@ -20,6 +21,7 @@ import { WithdrawalPayoutPanel } from "./WithdrawalPayoutPanel"
 
 const ADMIN_ID = "a1a1a1a1-0000-4000-8000-000000000001"
 const USER_ID = "11111111-1111-4111-8111-111111111111"
+const OTHER_USER_ID = "77777777-7777-4777-8777-777777777777"
 const FUND_ID = "22222222-2222-4222-8222-222222222222"
 const MATURITY_ID = "33333333-3333-4333-8333-333333333333"
 const PAYOUT_ID = "44444444-4444-4444-8444-444444444444"
@@ -95,6 +97,7 @@ const READS: Readonly<Record<string, () => unknown>> = {
   listAdminClientMaturities: () => ({ userId: USER_ID, items: maturities }),
   listAdminWithdrawalPayouts: () => ({ userId: USER_ID, items: [] }),
   listAdminUsers: () => ({ items: [] }),
+  getAdminUser: () => ({ user: { id: USER_ID, fullName: "Asha Verma", email: "asha@example.com" } }),
 }
 
 const TARGET = {
@@ -138,10 +141,10 @@ const request = (operation: Operation, options?: Options): Promise<unknown> => {
 
 const api = { request: request as unknown as HttpClient["request"] } satisfies HttpClient
 
-const renderWith = (node: ReactNode): (() => void) => {
+const renderWith = (node: ReactNode, entry = "/"): (() => void) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const view = render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <QueryClientProvider client={queryClient}>
         <ApiProvider value={api}>
           <OverlayStackProvider>{node}</OverlayStackProvider>
@@ -150,6 +153,19 @@ const renderWith = (node: ReactNode): (() => void) => {
     </MemoryRouter>,
   )
   return view.unmount
+}
+
+const AddressProbe = (): React.ReactElement => {
+  const navigate = useNavigate()
+  const { search } = useLocation()
+  return (
+    <>
+      <output aria-label="Address search">{search}</output>
+      <button type="button" onClick={() => void navigate(`/?userId=${OTHER_USER_ID}`)}>
+        link to another investor
+      </button>
+    </>
+  )
 }
 
 const lastButton = (name: string | RegExp): HTMLElement => {
@@ -446,6 +462,41 @@ describe("a money or ledger write whose reply is lost", () => {
     await waitFor(() => {
       expect(window.dispatchEvent(new Event("beforeunload", { cancelable: true }))).toBe(false)
     })
+  })
+})
+
+describe("a link to another investor while the investor record holds a write", () => {
+  it("keeps the investor, the reversal kept on this page only and its key, and puts the address back", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+    })
+    renderWith(
+      <>
+        <ClientPositionDetailScreen />
+        <AddressProbe />
+      </>,
+      `/?userId=${USER_ID}`,
+    )
+    fireEvent.click((await screen.findAllByRole("button", { name: "Reverse" }))[0]!)
+    fireEvent.click(lastButton("Append the reversal"))
+    expect(await screen.findByText("Kept on this page only")).toBeTruthy()
+
+    fireEvent.click(screen.getByRole("button", { name: "link to another investor" }))
+
+    expect(await screen.findAllByText("Not confirmed")).not.toHaveLength(0)
+    await waitFor(() => {
+      expect(screen.getByLabelText("Address search").textContent).toBe(`?userId=${USER_ID}`)
+    })
+    fireEvent.click(lastButton("Check again"))
+    await waitFor(() => {
+      expect(sent).toHaveLength(2)
+    })
+
+    expect(sent.map((write) => write.operationId)).toEqual(["reverseAdminClientLedgerEntry", "reverseAdminClientLedgerEntry"])
+    expect(sent[1]?.idempotencyKey).toBe(sent[0]?.idempotencyKey)
+    expect(sent[1]?.body).toEqual(sent[0]?.body)
+    expect(sent[1]?.params).toEqual(sent[0]?.params)
+    expect(sent[0]?.params).toMatchObject({ userId: USER_ID })
   })
 })
 
