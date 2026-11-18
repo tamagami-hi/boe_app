@@ -7,6 +7,7 @@ import {
   type EmailTemplateModule,
 } from "./emailTemplateParts.js"
 import { EmailValidationError } from "./emailValidation.js"
+import { investmentGrowthTemplate } from "./investmentGrowthTemplate.js"
 import { nomineeRequestDecidedTemplate } from "./nomineeRequestDecidedEmail.js"
 import { sipEarlyExitTemplate } from "./earlyExitTemplate.js"
 
@@ -36,7 +37,11 @@ const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
   ["maturity_options", ["v1"]],
 ])
 
-const TEMPLATE_MODULES: readonly EmailTemplateModule[] = [nomineeRequestDecidedTemplate, sipEarlyExitTemplate]
+const TEMPLATE_MODULES: readonly EmailTemplateModule[] = [
+  nomineeRequestDecidedTemplate,
+  sipEarlyExitTemplate,
+  investmentGrowthTemplate,
+]
 
 const MODULE_BY_KEY: ReadonlyMap<string, EmailTemplateModule> = new Map(
   TEMPLATE_MODULES.map((module) => [module.key, module]),

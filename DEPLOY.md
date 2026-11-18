@@ -198,6 +198,18 @@ app. Earlier backends ignore the header, so after an images-only rollback a stal
 again bounded only by the allowed transitions. The header is not part of the request hash,
 so a held change still replays across either move.
 
+Migration 075 (growth emails, DEC-72, 0.18.3) is expand-only and not a boundary: it re-adds
+the `email_deliveries` template check with the new key `investment_growth`, which every
+existing row already satisfies, and the previous release never writes that key. From 0.18.3
+a one-investor growth adjustment, a collective growth commit and a monthly value update
+queue one `investment_growth` email per client and fund in the same transaction as the
+ledger rows. No API response or notification kind changes, so released apps are unaffected.
+**Deploy the API and the email worker together**, as `_boe_deploy.sh` does: an email worker
+from before 0.18.3 has no `investment_growth` template and permanently dead-letters such an
+email (the `finding-26` case). For the same reason, a growth email still queued at an
+images-only rollback to a release before 0.18.3 is dead-lettered and not re-sent after the
+roll-forward; the ledger rows and the in-app notice are not affected.
+
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.
 

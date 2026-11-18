@@ -22,6 +22,7 @@ import {
   signInRoleAdmin,
   type AdminSession,
 } from "./adminSessionSupport.js"
+import { GROWTH_CONFIG, growthMailDeps } from "./growthMailSupport.js"
 import { PasswordMailStack } from "./passwordMailSupport.js"
 
 interface Envelope<T> {
@@ -219,7 +220,7 @@ beforeAll(async () => {
         clientGrowthRepository: createClientGrowthRepository(),
         notificationRepository: createNotificationRepository(),
       }
-      registerAdminClientGrowthRoutes(instance, { ...shared, clock: stack.clock, config: { idempotencyTtlMs: 86_400_000 } })
+      registerAdminClientGrowthRoutes(instance, { ...shared, ...growthMailDeps(stack.crypto), clock: stack.clock, config: GROWTH_CONFIG })
       registerAdminMaturityRoutes(instance, {
         ...shared,
         clock: stack.clock,

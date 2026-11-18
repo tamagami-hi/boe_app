@@ -16,6 +16,7 @@ import { registerAdminClientPositionRoutes } from "../../src/routes/adminClientP
 import { registerAdminReportRoutes } from "../../src/routes/adminReportRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { ADMIN_ORIGIN, adminHeaders, adminWebAuth, registerAdminLogin, signInRoleAdmin, type AdminSession } from "./adminSessionSupport.js"
+import { GROWTH_CONFIG, growthMailDeps } from "./growthMailSupport.js"
 import { PasswordMailStack } from "./passwordMailSupport.js"
 
 interface Balance {
@@ -214,7 +215,7 @@ beforeAll(async () => {
     logger: false,
     registerRoutes: (instance) => {
       registerAdminLogin(instance, stack, webAuth)
-      registerAdminClientGrowthRoutes(instance, { ...writeDeps, config: { idempotencyTtlMs: 86_400_000 } })
+      registerAdminClientGrowthRoutes(instance, { ...writeDeps, ...growthMailDeps(stack.crypto), config: GROWTH_CONFIG })
       registerAdminClientPositionRoutes(instance, {
         ...writeDeps,
         config: { idempotencyTtlMs: 86_400_000, sesConfigurationSet: "boe-transactional" },

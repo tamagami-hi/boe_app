@@ -9,6 +9,7 @@ import { createAdminSipScheduleRepository } from "../repositories/adminSipSchedu
 import { createClientErasureDeleteRepository } from "../repositories/clientErasureDeleteRepository.js"
 import { createClientErasureInspectRepository } from "../repositories/clientErasureInspectRepository.js"
 import { createClientErasureWriteRepository } from "../repositories/clientErasureWriteRepository.js"
+import { createClientGrowthMailRepository } from "../repositories/clientGrowthMailRepository.js"
 import { createClientReturnsRepository } from "../repositories/clientReturnsRepository.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { createEmailVerificationRepository } from "../repositories/emailVerificationRepository.js"
@@ -48,7 +49,7 @@ export type AdminSurfaceDeps = Omit<AdminIdentityDeps, "config" | "appUpdate"> &
   Omit<AdminOversightDeps, "config" | "oversightRepository"> &
   Omit<AdminSupportDeps, "config"> &
   Omit<AdminReviewDeps, "config"> &
-  Omit<AdminClientGrowthDeps, "config"> &
+  Omit<AdminClientGrowthDeps, "config" | "clientGrowthMailRepository"> &
   Omit<RecordingSurfaceDeps, "config" | "sipScheduleRepository"> &
   Omit<AdminClientReturnDeps, "config" | "clientReturnsRepository"> &
   Omit<AdminMaturityDeps, "config" | "maturityRepository"> &
@@ -190,11 +191,16 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     clock,
     config: {
       idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+      sesConfigurationSet: serverConfig.sesConfigurationSet,
     },
     clientGrowthRepository,
     auditRepository,
     idempotencyRepository,
     notificationRepository,
+    outboxRepository,
+    emailDeliveryRepository,
+    crypto,
+    clientGrowthMailRepository: createClientGrowthMailRepository(),
   })
 
   const sipScheduleRepository = createAdminSipScheduleRepository()

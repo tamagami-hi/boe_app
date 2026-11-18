@@ -67,6 +67,7 @@ export type UserMailTemplateKey =
   | "maturity_options"
   | "nominee_request_decided"
   | "sip_early_exit"
+  | "investment_growth"
 
 export interface CreateUserMailDeliveryInput {
   readonly outboxEventId: string

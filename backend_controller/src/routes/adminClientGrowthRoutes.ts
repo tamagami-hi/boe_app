@@ -22,6 +22,7 @@ import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository, Transaction } from "../db/repositories.js"
 import type { Database } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
+import { queueInvestmentGrowthMail, type InvestmentGrowthMailDeps } from "../domain/email/investmentGrowthMail.js"
 import {
   computeClientGrowthBasisHash,
   MAX_COLLECTIVE_CLIENT_TARGETS,
@@ -59,9 +60,10 @@ import {
 
 export interface AdminClientGrowthConfig {
   readonly idempotencyTtlMs: number
+  readonly sesConfigurationSet: string
 }
 
-export interface AdminClientGrowthDeps {
+export interface AdminClientGrowthDeps extends InvestmentGrowthMailDeps {
   readonly webAuth: WebAuthDeps
   readonly unitOfWork: UnitOfWork
   readonly database: Kysely<Database>
@@ -358,6 +360,13 @@ const individual = async (
         },
       })
       await deps.notificationRepository.create(tx, valueUpdatedNotice(body.userId, body.fundId, entry.id))
+      await queueInvestmentGrowthMail(tx, deps, {
+        batchId: batch.id,
+        fundId: body.fundId,
+        effectiveDate: body.effectiveDate,
+        requestId: request.requestId,
+        entries: [{ userId: body.userId, deltaPaise: plan.deltaPaise }],
+      })
 
       return {
         status: 201,
@@ -507,6 +516,13 @@ const collectiveCommit = async (
           valueUpdatedNotice(target.userId, body.fundId, entry.id),
         )
       }
+      await queueInvestmentGrowthMail(tx, deps, {
+        batchId: batch.id,
+        fundId: body.fundId,
+        effectiveDate: body.effectiveDate,
+        requestId: request.requestId,
+        entries: plan.targets.map((target) => ({ userId: target.userId, deltaPaise: target.deltaPaise })),
+      })
       await deps.auditRepository.append(tx, {
         actorType: "admin",
         actorUserId: principal.userId,

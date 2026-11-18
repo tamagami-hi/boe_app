@@ -16,6 +16,7 @@ import { registerAdminClientGrowthRoutes } from "../../src/routes/adminClientGro
 import { createApplication } from "../../src/runtime/application.js"
 import { registerMaturitySurface } from "../../src/runtime/maturityComposition.js"
 import { adminHeaders, adminWebAuth, registerAdminLogin, signInRoleAdmin, type AdminSession } from "./adminSessionSupport.js"
+import { GROWTH_CONFIG, growthMailDeps } from "./growthMailSupport.js"
 import { PasswordMailStack, type Row } from "./passwordMailSupport.js"
 
 interface Envelope<T> {
@@ -232,7 +233,7 @@ beforeAll(async () => {
         clientGrowthRepository: createClientGrowthRepository(),
         notificationRepository: createNotificationRepository(),
       }
-      registerAdminClientGrowthRoutes(instance, { ...shared, config: { idempotencyTtlMs: 86_400_000 } })
+      registerAdminClientGrowthRoutes(instance, { ...shared, ...growthMailDeps(stack.crypto), config: GROWTH_CONFIG })
       registerMaturitySurface(instance, {
         ...shared,
         userRepository: stack.userRepository,

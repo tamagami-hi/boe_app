@@ -21,6 +21,7 @@ import { registerAdminSipScheduleRoutes } from "../../src/routes/adminSipSchedul
 import { createApplication } from "../../src/runtime/application.js"
 import { registerSipEarlyExitSurface } from "../../src/runtime/earlyExitComposition.js"
 import { ADMIN_ORIGIN, adminHeaders, adminWebAuth, registerAdminLogin, signInRoleAdmin, type AdminSession } from "./adminSessionSupport.js"
+import { growthMailDeps } from "./growthMailSupport.js"
 import { PasswordMailStack, type Row } from "./passwordMailSupport.js"
 
 interface Envelope<T> {
@@ -252,7 +253,7 @@ beforeAll(async () => {
         sipScheduleRepository: createAdminSipScheduleRepository(),
       }
       const config = { idempotencyTtlMs: 86_400_000, cursorKey: randomBytes(32), sesConfigurationSet: "boe-transactional" }
-      registerAdminClientGrowthRoutes(instance, { ...shared, config })
+      registerAdminClientGrowthRoutes(instance, { ...shared, ...growthMailDeps(stack.crypto), config })
       registerAdminMaturityRoutes(instance, { ...shared, config })
       registerAdminSipScheduleRoutes(instance, { ...shared, config })
       registerAdminMaturityScheduleRoutes(instance, {

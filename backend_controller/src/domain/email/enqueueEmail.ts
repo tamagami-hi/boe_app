@@ -73,6 +73,7 @@ const createDelivery = (
     case "maturity_options":
     case "nominee_request_decided":
     case "sip_early_exit":
+    case "investment_growth":
       return deps.emailDeliveryRepository.createUserMailDelivery(tx, {
         templateKey: template.templateKey,
         userId: template.userId,

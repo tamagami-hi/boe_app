@@ -25,6 +25,7 @@ import { registerAdminClientOnboardingRoutes } from "../../src/routes/adminClien
 import { registerClientWebAuthRoutes } from "../../src/routes/clientWebAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { adminHeaders, adminWebAuth, registerAdminLogin, signInRoleAdmin, type AdminSession } from "./adminSessionSupport.js"
+import { GROWTH_CONFIG, growthMailDeps } from "./growthMailSupport.js"
 import { PASSWORD, PasswordMailStack, type Row } from "./passwordMailSupport.js"
 
 export const CLIENT_ORIGIN = "https://admin.beonedge.test"
@@ -85,7 +86,8 @@ export const startErasureHarness = async (): Promise<ErasureHarness> => {
         unitOfWork: stack.unitOfWork,
         database: stack.database,
         clock: stack.clock,
-        config: { idempotencyTtlMs: 86_400_000 },
+        config: GROWTH_CONFIG,
+        ...growthMailDeps(stack.crypto),
         clientGrowthRepository: createClientGrowthRepository(),
         auditRepository: stack.auditRepository,
         idempotencyRepository: createIdempotencyRepository(),

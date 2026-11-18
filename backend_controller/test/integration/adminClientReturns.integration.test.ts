@@ -35,6 +35,7 @@ import { registerWebAuthRoutes } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
+import { GROWTH_CONFIG, growthMailDeps } from "./growthMailSupport.js"
 import { CRYPTO_ENV } from "./passwordMailSupport.js"
 
 const PASSWORD = "correct horse battery staple"
@@ -252,7 +253,7 @@ beforeAll(async () => {
     logger: false,
     registerRoutes: (instance) => {
       registerWebAuthRoutes(instance, { ...webAuth, unitOfWork, loginEventRepository: createLoginEventRepository() })
-      registerAdminClientGrowthRoutes(instance, writeDeps)
+      registerAdminClientGrowthRoutes(instance, { ...writeDeps, ...growthMailDeps(), config: GROWTH_CONFIG })
       registerAdminClientPositionRoutes(instance, {
         ...writeDeps,
         config: { idempotencyTtlMs: 86_400_000, sesConfigurationSet: "boe-transactional" },

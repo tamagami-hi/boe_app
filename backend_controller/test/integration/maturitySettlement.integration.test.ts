@@ -36,6 +36,7 @@ import { registerWebAuthRoutes } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
+import { GROWTH_CONFIG, growthMailDeps } from "./growthMailSupport.js"
 import { CRYPTO_ENV } from "./passwordMailSupport.js"
 
 const PASSWORD = "correct horse battery staple"
@@ -282,7 +283,8 @@ beforeAll(async () => {
       })
       registerAdminClientGrowthRoutes(instance, {
         webAuth, unitOfWork, database, clock: () => new Date(),
-        config: { idempotencyTtlMs: 86_400_000 },
+        config: GROWTH_CONFIG,
+        ...growthMailDeps(),
         clientGrowthRepository: createClientGrowthRepository(),
         auditRepository: createAuditRepository(),
         idempotencyRepository: createIdempotencyRepository(),

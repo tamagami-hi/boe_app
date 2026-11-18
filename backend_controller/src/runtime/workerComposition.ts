@@ -8,6 +8,7 @@ import { CLAIMED_EMAIL_TOPICS } from "../domain/email/emailTopics.js"
 import { createAdminMessageGuard } from "../domain/email/adminMessageGuard.js"
 import { createAppUpdateNoticeGuard } from "../domain/email/appUpdateNoticeGuard.js"
 import { createEmailChangeMailGuard } from "../domain/email/emailChangeMailGuard.js"
+import { createInvestmentGrowthGuard } from "../domain/email/investmentGrowthGuard.js"
 import { createInvestmentRecordedGuard } from "../domain/email/investmentRecordedGuard.js"
 import { createMaturityOptionsGuard } from "../domain/email/maturityOptionsGuard.js"
 import { createNomineeRequestDecidedGuard } from "../domain/email/nomineeRequestDecidedGuard.js"
@@ -15,11 +16,13 @@ import { createSipEarlyExitGuard } from "../domain/email/earlyExitGuard.js"
 import { createPasswordLinkMailGuard } from "../domain/email/passwordLinkMailGuard.js"
 import { createAdminEmailMessageRepository } from "../repositories/adminEmailMessageRepository.js"
 import { createAppUpdateAnnouncementRepository } from "../repositories/appUpdateAnnouncementRepository.js"
+import { createClientGrowthMailRepository } from "../repositories/clientGrowthMailRepository.js"
 import { createClientMaturityOfferRepository } from "../repositories/clientMaturityOfferRepository.js"
 import { createClientReceiptRepository } from "../repositories/clientReceiptRepository.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { createEmailTemplateRepository } from "../repositories/emailTemplateRepository.js"
 import { createNomineeRequestRepository } from "../repositories/nomineeRequestRepository.js"
+import { INVESTMENT_GROWTH_TEMPLATE_KEY } from "../email/investmentGrowthTemplate.js"
 import { NOMINEE_REQUEST_DECIDED_TEMPLATE_KEY } from "../email/nomineeRequestDecidedEmail.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
 import { deriveEmailSendTiming, EMAIL_PASS_BUDGET_MS } from "../email/sendTiming.js"
@@ -143,6 +146,13 @@ export const composeEmailDispatchWorker = (
       [
         "sip_early_exit",
         createSipEarlyExitGuard({ sipEarlyExitRepository: createSipEarlyExitRepository(), userRepository: createUserRepository() }),
+      ],
+      [
+        INVESTMENT_GROWTH_TEMPLATE_KEY,
+        createInvestmentGrowthGuard({
+          clientGrowthMailRepository: createClientGrowthMailRepository(),
+          userRepository: createUserRepository(),
+        }),
       ],
     ]),
     clock: (): Date => new Date(),
