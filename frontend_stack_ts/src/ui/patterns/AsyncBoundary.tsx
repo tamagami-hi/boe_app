@@ -1,9 +1,9 @@
 import { QueryClientContext } from "@tanstack/react-query"
-import type { Query } from "@tanstack/react-query"
 import { useContext } from "react"
 import type { ReactNode } from "react"
 
 import { ApiError, isApiError, isSessionEnded, isTransportError } from "~/api/errors"
+import { refetchFailedReads } from "~/api/failedReads"
 import { Button } from "~/ui/primitives/Button"
 import { Alert, Spinner } from "~/ui/primitives/Feedback"
 import { ErrorState } from "~/ui/patterns/ErrorState"
@@ -74,14 +74,12 @@ const StaleNotice = ({ variant, isRetrying, onRetry }: StaleNoticeProps): React.
 const isStaleRefresh = (error: unknown, loadMoreError: unknown): boolean =>
   error != null && error !== loadMoreError && !isSessionEnded(error)
 
-const isFailedRead = (query: Query): boolean => query.state.status === "error"
-
 const useRetryFailedReads = (refetch: (() => void) | undefined): (() => void) | undefined => {
   const client = useContext(QueryClientContext)
   if (refetch === undefined) return undefined
   return () => {
     refetch()
-    void client?.refetchQueries({ type: "active", predicate: isFailedRead }, { cancelRefetch: false })
+    if (client !== undefined) void refetchFailedReads(client)
   }
 }
 

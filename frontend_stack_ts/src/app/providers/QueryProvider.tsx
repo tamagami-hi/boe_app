@@ -14,9 +14,11 @@ export const createQueryClient = (): QueryClient =>
         refetchOnWindowFocus: true,
         refetchOnReconnect: true,
         throwOnError: false,
+        networkMode: "always",
       },
       mutations: {
         retry: false,
+        networkMode: "always",
       },
     },
   })

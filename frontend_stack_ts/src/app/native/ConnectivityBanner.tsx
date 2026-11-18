@@ -16,7 +16,7 @@ export const ConnectivityBanner = (): React.ReactElement | null => {
 
   return (
     <div ref={banner} className={CONNECTIVITY_BANNER} role="status">
-      BeOnEdge cannot be reached. Nothing has been lost, and this screen updates once the connection is back.
+      BeOnEdge cannot be reached. Nothing has been lost. This screen updates once the connection is back, and anything marked Not confirmed waits for you to check it.
     </div>
   )
 }

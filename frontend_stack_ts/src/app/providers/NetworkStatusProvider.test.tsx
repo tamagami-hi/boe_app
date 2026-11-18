@@ -1,11 +1,12 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
+import { QueryClientProvider, onlineManager, useQuery } from "@tanstack/react-query"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { TransportError } from "~/api/errors"
 import type { TransportOutcome } from "~/api/http"
 import { qk } from "~/api/queryKeys"
 import { NetworkStatusProvider, useNetworkStatus } from "~/app/providers/NetworkStatusProvider"
+import { createQueryClient } from "~/app/providers/QueryProvider"
 import { TransportReporter } from "~/app/providers/TransportReporter"
 
 const OFFLINE: TransportOutcome = { ok: false, kind: "offline", status: null }
@@ -55,7 +56,7 @@ const Screen = ({ transport }: Readonly<{ transport: Transport }>): React.ReactE
 
 const renderApp = (transport: Transport): void => {
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={createQueryClient()}>
       <NetworkStatusProvider>
         <TransportReporter bind={transport.bind} />
         <Screen transport={transport} />
@@ -84,6 +85,7 @@ const connectionReturns = (): void => {
 
 afterEach(() => {
   cleanup()
+  onlineManager.setOnline(true)
   vi.useRealTimers()
 })
 
@@ -149,6 +151,35 @@ describe("network status after the transport loses the connection", () => {
     expect(transport.calls.config).toHaveLength(3)
     act(() => {
       transport.calls.config[2]?.answer()
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText("Connection lost")).toBeNull()
+    })
+    await waitFor(() => {
+      expect(transport.calls.plan).toHaveLength(2)
+    })
+    act(() => {
+      transport.calls.plan[1]?.answer()
+    })
+    await screen.findByText("Monthly plan")
+  })
+
+  it("keeps checking every 10 s after the browser reported offline and its online event never came, and recovers on the first answer", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    const transport = createTransport()
+    renderApp(transport)
+    await loseEverything(transport)
+    act(() => {
+      window.dispatchEvent(new Event("offline"))
+    })
+
+    act(() => {
+      vi.advanceTimersByTime(PROBE_INTERVAL_MS)
+    })
+    expect(transport.calls.config).toHaveLength(2)
+    act(() => {
+      transport.calls.config[1]?.answer()
     })
 
     await waitFor(() => {

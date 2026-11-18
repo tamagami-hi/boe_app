@@ -1,8 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query"
-import type { Query, QueryClient } from "@tanstack/react-query"
+import type { QueryClient } from "@tanstack/react-query"
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 
+import { refetchFailedReads } from "~/api/failedReads"
 import type { TransportOutcome } from "~/api/http"
 import { qk } from "~/api/queryKeys"
 
@@ -49,11 +50,6 @@ const afterOutcome = ({ deviceOnline }: Connectivity, outcome: TransportOutcome)
   deviceOnline: deviceOnline || !isConnectionLost(outcome),
   lastOutcome: outcome,
 })
-
-const isFailedRead = (query: Query): boolean => query.state.status === "error"
-
-const refetchFailedReads = (client: QueryClient): Promise<void> =>
-  client.refetchQueries({ type: "active", predicate: isFailedRead }, { cancelRefetch: false })
 
 const probeReachability = (client: QueryClient): Promise<void> =>
   client.refetchQueries({ queryKey: RECOVERY_PROBE_KEY, exact: true }, { cancelRefetch: false })
@@ -109,7 +105,7 @@ export const NetworkStatusProvider = ({
 
   const degraded = isDegraded(connectivity)
   useRefetchOnRecovery(queryClient, degraded)
-  useReachabilityProbe(queryClient, degraded && connectivity.deviceOnline)
+  useReachabilityProbe(queryClient, degraded)
 
   const { deviceOnline, lastOutcome } = connectivity
   const value = useMemo<NetworkStatus>(
