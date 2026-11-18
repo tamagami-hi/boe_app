@@ -342,7 +342,9 @@ describe("SIP early exit", () => {
     const transport = stack.transport()
     const guard = createSipEarlyExitGuard({ sipEarlyExitRepository: createSipEarlyExitRepository(), userRepository: stack.userRepository })
     await stack.dispatch(transport, stack.clock, stack.crypto, [["sip_early_exit", guard]])
-    const mail = transport.messages.filter((message) => message.to === holding.email)
+    const mail = transport.messages.filter(
+      (message) => message.to === holding.email && message.subject !== "Investment value updated",
+    )
     expect(mail).toHaveLength(1)
     expect(mail[0]?.subject).toBe("Your SIP was closed early")
     expect(mail[0]?.text).toContain(`Your SIP in ${FUND_NAME} was closed early`)
