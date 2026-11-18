@@ -2645,6 +2645,18 @@
             "frontend_stack_ts/src/features/admin"
           ],
           "landedAt": "2026-11-18T17:02:12.657Z"
+        },
+        {
+          "id": "P-prod-branch",
+          "track": "p-prod-branch",
+          "status": "planned",
+          "also": [],
+          "brief": "Production gate on the vX.Y.Z tag instead of origin/main; production export from a temporary worktree at the tag; origin/production branch fast-forwarded after each production deploy and required as an ancestor; tests with red controls; WORKFLOW, DEPLOY and release_manager README.",
+          "paths": [
+            "release_manager",
+            "WORKFLOW.md",
+            "DEPLOY.md"
+          ]
         }
       ]
     }
@@ -2813,6 +2825,10 @@
     {
       "commit": "4ab5e52",
       "note": "Release cut v0.18.5 by the maintainer (release_manager), exported and deployed to dev on 2026-11-18"
+    },
+    {
+      "commit": "468b02f",
+      "note": "Release cut v0.18.6 by the maintainer: 0.18.5's code plus two records-only commits, cut so origin/main and the tag match for the production export (0.18.6-20261118T191706Z)."
     }
   ]
 }

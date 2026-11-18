@@ -1704,6 +1704,22 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       }
+    },
+    {
+      "name": "p-prod-branch",
+      "branch": "track/p-prod-branch",
+      "worktree": ".temp/worktrees/p-prod-branch",
+      "purpose": "Production releases gated on the tag, exported from a tag worktree, with a production branch recording what is live",
+      "paths": [
+        "release_manager",
+        "WORKFLOW.md",
+        "DEPLOY.md"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T19:56:07.348Z"
     }
   ]
 }
