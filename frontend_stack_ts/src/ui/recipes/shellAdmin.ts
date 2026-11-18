@@ -20,20 +20,17 @@ export const ADMIN_TOPBAR = [
   "lg:shadow-none lg:backdrop-blur-none lg:backdrop-saturate-100",
 ].join(" ")
 
-export const ADMIN_TITLE =
-  "min-w-0 flex-1 truncate font-display text-lg font-normal tracking-display text-fg lg:hidden"
-
-export const ADMIN_ACTION = [
-  "min-h-target flex-none whitespace-nowrap rounded-full border-0 bg-parchment px-4",
-  "shadow-[0_0_0_1px_var(--be-hairline-strong),var(--be-ambient-1)]",
-  "font-ui text-sm font-semibold text-fg-muted cursor-pointer",
-  "transition-[color,transform] duration-200 ease-spring",
-  "hover:text-fg active:scale-[0.97] motion-reduce:active:scale-100",
+export const ADMIN_TITLE = [
+  "min-w-0 flex-1 line-clamp-2 [text-wrap:balance] lg:hidden",
+  "font-display text-lg font-normal leading-snug tracking-display text-fg",
 ].join(" ")
 
 export const ADMIN_ACTION_LINK = [
-  ADMIN_ACTION,
-  "inline-flex items-center no-underline",
+  "inline-flex min-h-target flex-none items-center whitespace-nowrap rounded-full bg-parchment px-4",
+  "shadow-[0_0_0_1px_var(--be-hairline-strong),var(--be-ambient-1)]",
+  "font-ui text-sm font-semibold text-fg-muted no-underline",
+  "transition-[color,transform] duration-200 ease-spring",
+  "hover:text-fg active:scale-[0.97] motion-reduce:active:scale-100",
   "aria-[current=page]:text-fg",
 ].join(" ")
 
@@ -58,7 +55,8 @@ export const ADMIN_BODY = "relative z-1 flex min-w-0 flex-1"
 export const ADMIN_CONTENT = "flex min-w-0 flex-1 flex-col"
 
 export const ADMIN_SIDEBAR = [
-  "hidden lg:sticky lg:top-6 lg:flex lg:flex-none lg:flex-col lg:gap-0.5 lg:self-start",
+  "hidden lg:sticky lg:top-6 lg:flex lg:flex-none lg:flex-col lg:gap-2 lg:self-start",
+  "lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:thin]",
   "lg:w-sidebar lg:px-4 lg:py-8 lg:my-6 lg:ml-6",
   "lg:rounded-squircle-xl",
   "lg:bg-nav-bg lg:backdrop-blur-[20px] lg:backdrop-saturate-150",
@@ -66,12 +64,15 @@ export const ADMIN_SIDEBAR = [
 ].join(" ")
 
 export const ADMIN_WORDMARK =
-  "mb-5 px-3 font-display text-md font-medium tracking-display text-nav-fg"
+  "mb-3 px-3 font-display text-md font-medium tracking-display text-nav-fg"
 
-export const ADMIN_SIDEBAR_GROUP = "flex flex-col gap-0.5"
+export const ADMIN_SIDEBAR_GROUP = [
+  "flex flex-col gap-0.5",
+  "not-first-of-type:border-t not-first-of-type:border-nav-hairline not-first-of-type:pt-2",
+].join(" ")
 
 export const ADMIN_SIDEBAR_GROUP_LABEL =
-  "mt-3 px-3 pb-1 font-ui text-2xs font-semibold uppercase tracking-eyebrow text-nav-fg-muted"
+  "px-3 pb-1 font-ui text-2xs font-semibold uppercase tracking-eyebrow text-nav-fg-muted"
 
 export const ADMIN_SIDEBAR_LINK = [
   "block rounded-full px-3 py-2 no-underline",
@@ -97,11 +98,14 @@ export const ADMIN_NAV_MORE = [
   "cursor-pointer border-0 bg-transparent no-tap-flash",
 ].join(" ")
 
-export const ADMIN_MORE_GROUP = "flex flex-col gap-2"
+export const ADMIN_MORE_GROUP = [
+  "flex flex-col gap-2",
+  "not-first-of-type:border-t not-first-of-type:border-hairline not-first-of-type:pt-3",
+].join(" ")
 
 export const ADMIN_MORE_GROUP_LABEL = ["px-1", STAT_LABEL].join(" ")
 
-export const ADMIN_MORE_LIST = "m-0 flex list-none flex-col gap-1 p-0"
+export const ADMIN_MORE_LIST = "m-0 flex list-none flex-col gap-2 p-0"
 
 export const ADMIN_MORE_LINK = [
   "flex min-h-target items-center rounded-full px-4 no-underline",

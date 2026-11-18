@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import type { ReactNode } from "react"
 
-import { ADMIN_ACCOUNT_PATH, ADMIN_LOGIN_PATH, ADMIN_NAV_DOMAINS, ADMIN_ROUTES } from "~/app/routing/adminRoutes"
+import { ADMIN_ACCOUNT_PATH, ADMIN_HOME_PATH, ADMIN_NAV_DOMAINS, ADMIN_ROUTES } from "~/app/routing/adminRoutes"
+import { resolveNavOwner } from "~/app/routing/navOwner"
 import { findRoute, navBarEntries, navGroups, navRoutes } from "~/app/routing/routeManifest"
 import { Modal } from "~/app/overlays/Modal"
 import { useSession } from "~/app/providers/SessionProvider"
 import { MaturityDuePrompt } from "~/features/admin/maturities/MaturityDuePrompt"
 import { SurvivingHeldWriteScope, useHasUnsettledHeldWrite } from "~/features/admin/shared/unsettledHeldWrites"
-import { useAuthPort } from "~/features/auth/authPort"
 import { ADMIN_NOTES } from "~/features/whats-new/adminNotes"
 import { WhatsNewPrompt } from "~/features/whats-new/WhatsNewPrompt"
 import { hasAll, hasAny } from "~/domain/permissions"
 import {
-  ADMIN_ACTION,
   ADMIN_ACTION_LINK,
   ADMIN_BODY,
   ADMIN_BOTTOM_NAV,
@@ -44,10 +43,8 @@ export type AdminFrameProps = Readonly<{ children: ReactNode }>
 
 export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement => {
   const location = useLocation()
-  const navigate = useNavigate()
   const session = useSession()
   const isHoldingWrite = useHasUnsettledHeldWrite()
-  const port = useAuthPort()
   const [moreOpen, setMoreOpen] = useState(false)
   const [maturityPromptDismissedFor, setMaturityPromptDismissedFor] = useState<string | null>(null)
 
@@ -66,6 +63,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
   )
 
   const activeId = route.id
+  const ownerId = resolveNavOwner(ADMIN_ROUTES, route, ADMIN_HOME_PATH)?.id ?? null
   const activeDomain = route.nav?.domain ?? null
   const siblings =
     activeDomain === null ? [] : permitted.filter((entry) => entry.nav.domain === activeDomain)
@@ -74,16 +72,9 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
   const inNavBar = new Set(navBar.map((entry) => entry.id))
   const hasOverflow = permitted.some((entry) => !inNavBar.has(entry.id))
   const groups = navGroups(permitted, ADMIN_NAV_DOMAINS)
-  const activeIsOverflow = permitted.some(
-    (entry) => entry.id === activeId && !inNavBar.has(entry.id),
+  const ownerIsOverflow = permitted.some(
+    (entry) => entry.id === ownerId && !inNavBar.has(entry.id),
   )
-
-  const signOut = (): void => {
-    void port.logout().finally(() => {
-      session.signedOut()
-      void navigate(ADMIN_LOGIN_PATH, { replace: true })
-    })
-  }
 
   return (
     <div className={ADMIN_SHELL}>
@@ -100,7 +91,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
                   key={entry.id}
                   to={entry.path}
                   className={ADMIN_SIDEBAR_LINK}
-                  aria-current={entry.id === activeId ? "page" : undefined}
+                  aria-current={entry.id === ownerId ? "page" : undefined}
                 >
                   {entry.nav.label}
                 </Link>
@@ -119,9 +110,6 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
             >
               Account
             </Link>
-            <button type="button" className={ADMIN_ACTION} onClick={signOut}>
-              Sign out
-            </button>
           </header>
 
           {siblings.length > 1 ? (
@@ -149,7 +137,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
             key={entry.id}
             to={entry.path}
             className={ADMIN_NAV_ITEM}
-            aria-current={entry.id === activeId ? "page" : undefined}
+            aria-current={entry.id === ownerId ? "page" : undefined}
           >
             {entry.nav.label}
           </Link>
@@ -160,7 +148,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
             className={ADMIN_NAV_MORE}
             aria-haspopup="dialog"
             aria-expanded={moreOpen}
-            aria-current={activeIsOverflow ? "page" : undefined}
+            aria-current={ownerIsOverflow ? "page" : undefined}
             onClick={() => {
               setMoreOpen(true)
             }}
@@ -200,7 +188,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
                   <Link
                     to={entry.path}
                     className={ADMIN_MORE_LINK}
-                    aria-current={entry.id === activeId ? "page" : undefined}
+                    aria-current={entry.id === ownerId ? "page" : undefined}
                   >
                     {entry.nav.label}
                   </Link>

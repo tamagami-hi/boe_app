@@ -3,7 +3,9 @@ import type { ReactNode } from "react"
 
 import { createBackPolicyResolver } from "~/app/native/backPolicy"
 import { CLIENT_HOME_PATH, CLIENT_ROUTES } from "~/app/routing/clientRoutes"
+import { resolveNavOwner } from "~/app/routing/navOwner"
 import { findRoute, navRoutes } from "~/app/routing/routeManifest"
+import type { RouteDef } from "~/app/routing/routeManifest"
 import { useSession } from "~/app/providers/SessionProvider"
 import { useNotifications } from "~/features/shared/queries"
 import { CLIENT_NOTES } from "~/features/whats-new/clientNotes"
@@ -36,6 +38,12 @@ const TABS = navRoutes(CLIENT_ROUTES)
 
 const resolveBackPolicy = createBackPolicyResolver(CLIENT_ROUTES, CLIENT_HOME_PATH)
 
+const headerBackPath = (route: RouteDef, pathname: string): string | null => {
+  if (route.nav !== undefined) return null
+  if (route.back.kind === "parent") return resolveBackPolicy({ pathname }).parentPath
+  return route.back.kind === "home" ? CLIENT_HOME_PATH : null
+}
+
 export type ClientFrameProps = Readonly<{ children: ReactNode }>
 
 export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement => {
@@ -55,13 +63,8 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
 
   if (!showsChrome) return <>{children}</>
 
-  const activeId = route.id
-  const backPath =
-    route.back.kind === "parent"
-      ? resolveBackPolicy({ pathname: location.pathname }).parentPath
-      : route.back.kind === "home"
-        ? CLIENT_HOME_PATH
-        : null
+  const ownerId = resolveNavOwner(CLIENT_ROUTES, route, CLIENT_HOME_PATH)?.id ?? null
+  const backPath = headerBackPath(route, location.pathname)
   const unreadCount = notifications.data?.unreadCount ?? 0
   const unreadLabel = unreadCount === 0
     ? "Notifications"
@@ -82,7 +85,7 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
                 <Link
                   to={tab.path}
                   className={CLIENT_TOP_NAV_ITEM}
-                  aria-current={tab.id === activeId ? "page" : undefined}
+                  aria-current={tab.id === ownerId ? "page" : undefined}
                 >
                   {tab.nav.label}
                 </Link>
@@ -138,7 +141,7 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
               key={tab.id}
               to={tab.path}
               className={CLIENT_NAV_ITEM}
-              aria-current={tab.id === activeId ? "page" : undefined}
+              aria-current={tab.id === ownerId ? "page" : undefined}
             >
               <span className={CLIENT_NAV_MARKER} aria-hidden="true" />
               {Glyph === undefined ? null : <Glyph className={CLIENT_NAV_GLYPH} />}
