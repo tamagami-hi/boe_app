@@ -7,7 +7,7 @@ import { z } from "zod"
 
 import { ADMIN_NOTES } from "./adminNotes"
 import { CLIENT_NOTES } from "./clientNotes"
-import type { WhatsNewEntry, WhatsNewNotes } from "./whatsNewEntry"
+import { unseenEntries, type WhatsNewEntry, type WhatsNewNotes } from "./whatsNewEntry"
 
 const VERSION_FILE = join("..", "VERSION")
 const FROZEN_FILE = join("src", "features", "whats-new", "releasedNotes.json")
@@ -83,5 +83,21 @@ describe.each(AUDIENCES)("released %s notes", (audience, notes) => {
       .map((entry) => ({ id: entry.id, sha256: digest(entry) }))
 
     expect(unfrozen).toEqual([])
+  })
+})
+
+const idsOf = (entries: WhatsNewNotes | null): readonly string[] | null =>
+  entries === null ? null : entries.map((entry) => entry.id)
+
+describe.each([
+  ["client", CLIENT_NOTES, ["0.18.3", "0.18.1", "0.18.0", "0.17.0", "0.16.2", "0.16.0"]],
+  ["admin", ADMIN_NOTES, ["0.18.3", "0.18.1", "0.18.0", "0.17.0", "0.16.0"]],
+] as const)("the shipped %s notes under DEC-73", (_audience, notes, everyRelease) => {
+  it("show a dev tester who last saw 0.18.1 only 0.18.3", () => {
+    expect(idsOf(unseenEntries(notes, "0.18.1"))).toEqual(["0.18.3"])
+  })
+
+  it("show a production upgrader with no record every release since 0.15.4", () => {
+    expect(idsOf(unseenEntries(notes, null))).toEqual(everyRelease)
   })
 })
