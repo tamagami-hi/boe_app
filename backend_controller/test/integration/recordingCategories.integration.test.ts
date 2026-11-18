@@ -53,7 +53,7 @@ const seedHistory = async () => {
     februaryLate: await recordOn(client.id, fundId, "2025-02-25"),
     marchEarlier: await recordOn(client.id, fundId, "2025-03-01", EARLIER),
     marchCorrection: await recordOn(client.id, fundId, "2025-03-10", CORRECTION),
-    april: await recordOn(client.id, fundId, "2025-04-02"),
+    may: await recordOn(client.id, fundId, "2025-05-02"),
   }
   const schedule = await harness.scheduleFor(client.id, fundId, "2025-01", 6)
   return { client, fundId, ids, schedule }
@@ -80,7 +80,7 @@ afterAll(async () => {
 })
 
 describe("linking earlier monthly recordings to a past-dated SIP schedule", () => {
-  test("proposes the oldest unlinked monthly recordings in month order, its own month first, and skips one-time ones", async () => {
+  test("proposes each monthly recording for its own month first, then the oldest left over in month order, skipping one-time ones", async () => {
     const { client, ids, schedule } = await seedHistory()
     expect(schedule).toMatchObject({ monthsPaid: 0, nextUnpaidMonth: "2025-01" })
 
@@ -90,15 +90,15 @@ describe("linking earlier monthly recordings to a past-dated SIP schedule", () =
       ["2025-01", 1, false, ids.january],
       ["2025-02", 2, false, ids.februaryEarly],
       ["2025-03", 3, false, ids.februaryLate],
-      ["2025-04", 4, false, ids.april],
-      ["2025-05", 5, false, null],
+      ["2025-04", 4, false, null],
+      ["2025-05", 5, false, ids.may],
       ["2025-06", 6, false, null],
     ])
     expect(proposal.candidates.map((row) => row.entryId).sort()).toEqual(
-      [ids.december, ids.january, ids.februaryEarly, ids.februaryLate, ids.marchEarlier, ids.april].sort(),
+      [ids.december, ids.january, ids.februaryEarly, ids.februaryLate, ids.marchEarlier, ids.may].sort(),
     )
 
-    expect((await harness.markOneTime(client.id, ids.april)).statusCode).toBe(201)
+    expect((await harness.markOneTime(client.id, ids.may)).statusCode).toBe(201)
     const afterOneTime = await harness.proposal(client.id, schedule.scheduleId)
     expect(afterOneTime.months.map((row) => row.proposedEntryId)).toEqual([
       ids.january,
@@ -118,7 +118,7 @@ describe("linking earlier monthly recordings to a past-dated SIP schedule", () =
       { month: "2025-01", entryId: ids.january },
       { month: "2025-02", entryId: ids.februaryEarly },
       { month: "2025-03", entryId: ids.marchEarlier },
-      { month: "2025-04", entryId: ids.april },
+      { month: "2025-05", entryId: ids.may },
     ]
 
     const response = await harness.linkMonths(client.id, schedule.scheduleId, links)
@@ -126,7 +126,7 @@ describe("linking earlier monthly recordings to a past-dated SIP schedule", () =
     expect(response.statusCode).toBe(201)
     expect(envelopeOf<{ linked: number; schedule: Schedule }>(response).data).toMatchObject({
       linked: 4,
-      schedule: { monthsPaid: 4, paidMonths: ["2025-01", "2025-02", "2025-03", "2025-04"], nextUnpaidMonth: "2025-05" },
+      schedule: { monthsPaid: 4, paidMonths: ["2025-01", "2025-02", "2025-03", "2025-05"], nextUnpaidMonth: "2025-04" },
     })
     const clientSchedules = await harness.clientGet<{ items: { scheduleId: string; monthsPaid: number; totalMonths: number }[] }>(
       client.id,
