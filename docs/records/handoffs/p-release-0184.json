@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "track": "p-release-0184",
+  "current": {
+    "task": "P-release-0184",
+    "from": "claude-opus-5-5 builder p-release-0184",
+    "track": "p-release-0184",
+    "at": "2026-11-18T14:50:44.768Z",
+    "lines": [
+      "P-release-0184 (0.18.4 release prep). Docs and copy only, no app logic. Base cb2b6477; main has moved since (V-breakdown-core landed). No file overlap with it. Nothing landed.",
+      "Commits, in order:",
+      "1b2f74b0 docs(whats-new): 0.18.4 client + admin entries (New/Improved/Fixed, November 2026). It also changes the DEC-73 block of releasedNotes.test.ts: a dev tester who last saw 0.18.3 sees only 0.18.4, and 0.18.4 is added to the every-release lists. That is the intended change, not a weakened test.",
+      "2edd6270 docs(deploy): DEPLOY.md 0.18.4 paragraphs under 'Database rollback semantics' (as 075/077 are): 078, API+email worker together (growth email v2), 'being prepared' + where admins find the work, old-admin-app 403 refusal and APK-before-value-update, SIP early exit (amends DEC-41), images-only rollback. New subsections under Host nginx + TLS: 'Default server (0.18.4)' and 'Grafana root URL (0.18.4)', linked from the 0.18.4 text.",
+      "b8d095cc docs(plan): plan section 8 '0.18.4 patch lanes': lanes, DEC-76/77/78, migration 078, the 12 accepted calls, known lows (reviews 98-102, the tailscale :80 return-before-allow note), parked items. It also fixes two lines DEC-77/78 made stale (rule 18): the status line (Phase D, G11/D2) and a 'not needed' note under the Phase D heading.",
+      "cc5592a2 fix(ops): compose admin SPA comments now name admin.boe.dev.app.internal / admin.boe.app.internal (existing text corrected, nothing added). nginx_ship.sh check now uses Host app.beonedge.in.",
+      "5a4102ba docs(whats-new): freeze rows: client 0.18.4 2d30af5b..., admin 0.18.4 36c90700.... Kept as its own last commit: if the notes change, drop it and redo the freeze per WORKFLOW.md.",
+      "Checks:",
+      "- frontend npm ci && npm run check on head 5a4102ba: green 20261118T144827Z-300396 (68 test files, 606 tests, build, boot check 62 chunks).",
+      "- contracts npm ci && npm run build: green 20261118T144813Z-295552, needed before the frontend typecheck.",
+      "- An earlier frontend run, 20261118T144723Z-271480, exited 2 because contracts dist was not built yet (TS2307 @beonedge/contracts). Recorded as 'other'. Not a code defect.",
+      "- What's new suites: 26/26 at VERSION 0.18.4 and at 0.18.3. Docs: git diff --check.",
+      "- Not run: bash -n and release_manager/verify.sh for the one-line printf change (the shell call needed an approval this run could not get). No build:client/build:admin/android, because no app code changed.",
+      "Rule 11: no schema, API or response change in this lane. Released apps are unaffected. The notes are bundled per build.",
+      "Written for the full 0.18.4 scope. Lines that depend on unlanded lanes: client New 1-4 (V1/V2) + Improved 2-3 (V4/V5); admin New 1-4 (V1/V3/V4) + Improved 2 (V5) + Fixed 1 (V3). In DEPLOY: the 078 paragraph (the V1 part has landed), growth v2/refusal (V4), early exit (V5). In the plan: the lane bullets without commit ids.",
+      "Copy calls: the draft's client 'A SIP plan's payment method shows only once it has loaded' became 'A SIP plan shows its details only once they have loaded' (no payment wording, DEC-14/22). The client early-exit line says 'When BeOnEdge closes a SIP early', as in 0.17.0. The admin 'pre-filled' line became 'filled from the fund's rate, and each row can be typed over'.",
+      "Facts were taken from the lane branches, not from main, and should be checked once those lanes land: 078 table names; the 403 text; early exit refused while preparing (v-early-exit-sip 8e971e81); 'Categorise first'; the Overview/To categorise/banner copy; 'Your breakdown is being prepared by BeOnEdge.'",
+      "Left out: what a 0.18.4 client APK shows on Breakdown against a 0.18.3 backend after a rollback (presumably an error state, 404; not verified). Whether the 0.18.3 email worker dead-letters v2 or only fails it (the DEPLOY text says only 'cannot render'). The ms_deploy.sh alert-rules claim comes from the p-carried-config parts, not checked.",
+      "p-common-0184.md says feature lanes must not touch clientNotes/adminNotes/releasedNotes. This lane's brief assigns them, so I edited them here.",
+      "Dev test checklist: .temp/p-release-0184/dev-test-0184.md in this worktree (gitignored). Rahul Kumar writes only. Section 7 (SIP early exit) is final and marked as the maintainer's call."
+    ]
+  },
+  "history": []
+}

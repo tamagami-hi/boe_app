@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "track": "v-early-exit-sip",
+  "current": {
+    "task": "V-early-exit-sip",
+    "from": "claude-opus-5-5 builder v-early-exit-sip",
+    "track": "v-early-exit-sip",
+    "at": "2026-11-18T14:52:06.462Z",
+    "lines": [
+      "V5 review fixups. Head 7480ffb7, tree clean, no rebase done.",
+      "380d9fd2 fixup! fix(early-exit): the exit cancels the fund's open maturity date only when the fold shows no other investment with value left (other SIP blocks, one-time blocks, other-adjustments line); otherwise the schedule stays and cancelledMaturityScheduleId is null.",
+      "Preview maturity now names the date the exit will cancel (null when it stays). Shape unchanged; released admin apps then read 'No maturity date is set on this holding', which understates rather than claims a cancellation.",
+      "Maturity refusals (due, settling) still use the open schedule, unchanged.",
+      "7480ffb7 fixup! fix(admin-ui): maturity line 'No maturity date is set on this holding.' -> 'No maturity date is cancelled.'; after exit 'No maturity date was set on this holding.' -> 'No maturity date was cancelled.'",
+      "New integration case: SIP + one-time + open maturity date, at a gain (120000 out, 100000 principal) and a loss (80000 out, 80000 principal, 0 growth): date stays scheduled, no cancel audit, one-time block unchanged, fund ready, sums right.",
+      "Red control (date always cancelled): 20261118T144757Z-289318.",
+      "Greens on 7480ffb7: early-exit integration suites 4 files 18 tests 20261118T144747Z-284497; backend npm ci + check 106 files 1262 tests 20261118T144812Z-295418; frontend npm ci + check + build:android + build:android:admin 68 files 606 tests 20261118T145016Z-369900.",
+      "Earlier reds still valid for unchanged code: whole holding 20261118T143929Z-100623, email wording 143946Z-112135, preparing gate 143956Z-117921.",
+      "Deploy note adds: An early exit is refused while the fund's breakdown is being prepared; categorise the client's recordings and confirm any earlier growth in the 0.18.4 admin app first. An early exit cancels the fund's maturity date only when nothing else in the fund holds value; otherwise the date stays.",
+      "Doubt 1 from the first hand-off (maturity always cancelled) is resolved; doubts 2 (created_at ordering in the loader) and 3 (negative SIP value vs Paise) stand."
+    ]
+  },
+  "history": [
+    {
+      "task": "V-early-exit-sip",
+      "from": "claude-opus-5-5 builder v-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "at": "2026-11-18T14:40:37.367Z",
+      "lines": [
+        "V5 v-early-exit-sip (DEC-76, amends DEC-41). Head daafb2ee, tree clean.",
+        "Lane commits: 8e971e81 fix(early-exit) backend + tests; 3c954fb1 fix(admin-ui) admin confirm copy only.",
+        "Cherry-picked unchanged from track/v-breakdown-core (drop on rebase): b4a77b55=9e24efe9, 65bb203e=553baeb6, 094110ac=9d760d97, c6849ca0=3c0f499a (loader), 21971476=e0f131ff, de24ee1c=53fb4d0a (lint fix), daafb2ee=0c20bd19 (guard fix). Order: my two commits sit between de24ee1c's parent chain and the last two V1 picks.",
+        "What: readSipEarlyExitHolding loads the breakdown input in the exit tx (after the position lock) and folds the schedule's fund with foldFundBreakdown; the SIP block's valuePaise is the amount and its investedPaise the principal basis. withdrawalPortions unchanged, so gain case principal = SIP invested exactly; loss case principal = amount (as 0.18.3 for the whole holding).",
+        "sip_early_exits principal_before/value_before now hold the SIP block's figures (CHECK amount = value_before still holds).",
+        "New refusal: fund breakdown not ready (uncategorised recording, uncovered growth, sum mismatch) -> nothing written. Domain code breakdown_preparing; on the wire the preview reports code principal_below_zero with its own message, because the contract enum cannot grow (finding-14). 0.19.0 forward-tolerant parsing (finding-67) can give it its own code. COORDINATOR CALL: refusing preparing funds is my conservative reading; spec 6.5 is silent on it.",
+        "Refusal copy also changed: no_value 'This SIP has no value to return.'; principal_below_zero 'This SIP's invested amount ...'; value changed 'The SIP's value changed since you opened it...'.",
+        "Copy before/after: email (sip_early_exit v1): 'The full current value of your investment in this fund, X, is being returned to you.' -> 'The current value of your SIP, X, is being returned to you.'",
+        "In-app notice body: 'X, the full current value, is being returned to you.' -> 'X, the current value of your SIP, is being returned to you.'",
+        "Admin panel: 'returns the full current value of the client's holding in this fund, with no charge. The holding's value goes to zero. If the value is below the amount invested...' -> 'returns the current value of the client's SIP, with no charge. One-time investments in this fund are not touched. The SIP's value goes to zero. If the value is below the amount the SIP invested...'",
+        "Admin confirm dialog: 'the full current value below is withdrawn from the holding as a pending payout' -> 'the current value of the SIP below is withdrawn as a pending payout'.",
+        "MaturityPanel 'reinvest its full current value' is maturity, not early exit; left alone. No contract description string changed.",
+        "Released admin apps (STATIC): v0.18.3 SipEarlyExitPanel shows preview.currentValuePaise/principalPortionPaise/growthPortionPaise and submits expectedValuePaise = currentValuePaise, so it shows and confirms the new SIP amount. Its explanatory sentence still says 'full current value of the client's holding'.",
+        "Rule 11: no route, key or enum value added; preview/exit/list shapes unchanged; no migration; email stays v1 so a rollback worker renders it. Rollback to 0.18.3 returns early exits to the whole holding (spec 7).",
+        "Tests (rule 10) in sipEarlyExit.integration.test.ts: one-time investment present -> only SIP value 120000 and principal 100000 leave, one-time block equal before/after, SIP ended 0/0; SIP only -> amount equals whole holding (sums asserted before); email and notice wording; preparing fund refused with nothing written.",
+        "Seeds changed: seedActiveSip links existing contributions to SIP months (an early exit needs a SIP block now); payoutOutcomes and finalEntryReversal suites link their contribution the same way, otherwise their exits are refused no_value.",
+        "Red controls (head daafb2ee): whole holding 20261118T143929Z-100623; old email wording 20261118T143946Z-112135; preparing gate removed 20261118T143956Z-117921. Earlier same reds at de24ee1c: 143121Z-4059712, 143134Z-4066848, 143152Z-4075562. Files restored, cmp clean.",
+        "Greens (daafb2ee): backend npm run check 20261118T143803Z-66792 (106 files, 1262 tests, build, both smokes); integration 4 suites 17 tests 20261118T143353Z-4158068; contracts npm ci+build 20261118T143417Z-4173896; frontend check + build:android + build:android:admin 20261118T143629Z-29512 (68 files, 606 tests).",
+        "Failed runs kept: 142828Z (V1 lint, fixed by 53fb4d0a), 142935Z (V1 guard, fixed by 0c20bd19), 143213Z (smoke:source 5 s timeout at load 27; dist smoke passed; green on rerun), 143435Z (frontend guards.test.tsx 5.6 s under load; 150 ms alone; green on rerun, which reused that run's npm ci).",
+        "Doubt 1: an early exit still cancels the fund's open maturity schedule even when one-time investments remain in the fund (unchanged 0.18.3 behaviour; spec silent).",
+        "Doubt 2 (V1 loader): ledger sequence orders by created_at, which is now() = tx start. A write whose tx began before the exit but waited on the position lock sorts before the exit withdrawal; the SIP then keeps a residual in its ended block. No money moves wrongly; attribution only.",
+        "Doubt 3: preview currentValuePaise/principalPortionPaise are non-negative Paise in the contract; a negative SIP block value would emit a negative string (same pre-existing risk as the whole holding, smaller block).",
+        "Deploy note: From 0.18.4 a SIP early exit returns only the current value of the SIP, with the SIP's invested amount as its principal part; one-time investments in the same fund stay invested. A fund holding only the SIP returns the whole holding as before. While a fund's investments are still being categorised, its early exit is refused until admins categorise recordings and confirm earlier growth in the client's Ledger tab. Released 0.18.3 admin apps show and confirm the new amount from the server, though their explanatory sentence still says the full holding. Deploy the API and email worker together.",
+        "Emulator steps (dev stack, Rahul Kumar only): admin app -> Clients -> Rahul Kumar -> SIP schedules -> Early exit on the active SIP. Expect 'Returned to the client' = the SIP block's current value in the client app Portfolio -> Breakdown, not the fund total, if Rahul also holds a one-time investment in that fund. If that fund shows 'being prepared', expect 'Cannot close early' with the 'not sorted yet' message and the button disabled.",
+        "Only if the coordinator accepts an irreversible dev exit: confirm; expect the client notice '..., the current value of your SIP, is being returned to you. The payout is awaited.', the dev mail 'The current value of your SIP, Rs X, is being returned to you.', and Breakdown showing Ended SIP at 0 with one-time blocks unchanged."
+      ]
+    }
+  ]
+}

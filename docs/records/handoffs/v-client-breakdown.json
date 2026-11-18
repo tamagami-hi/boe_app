@@ -5,19 +5,72 @@
     "task": "V-client-breakdown",
     "from": "claude-opus-5-5 builder v-client-breakdown",
     "track": "v-client-breakdown",
-    "at": "2026-11-18T14:12:29.641Z",
+    "at": "2026-11-18T14:39:28.142Z",
     "lines": [
-      "Commits: 7faa3cc0 feat(portfolio): add the client Breakdown view to Portfolio, on top of the cherry-picked V1 contracts commit f9d0220b (= 9e24efe9). The cherry-pick drops out when the coordinator rebases onto main after V1 lands.",
-      "Wiring: done. breakdownQueries.ts calls getClientInvestmentBreakdown; key qk.client.investmentBreakdown() = ['client','investment-breakdown'], also added to CLIENT_MONEY_PREFIXES so useInvalidateMoney refreshes it. Nothing left to wire on the client side; it only needs V1's backend route on main.",
-      "Files: features/portfolio/BreakdownView.tsx, breakdownQueries.ts, PortfolioViewControl.tsx (new); PortfolioScreen.tsx, portfolio.recipe.ts; api/queryKeys.ts.",
-      "View control: Value updates and SIP plans stay links to their screens; Breakdown is a toggle button (aria-pressed) that swaps the Positions list for the breakdown, kept in ?view=breakdown with replace (so Back from a fund returns to it, and history does not grow). 3-column equal grid on phones, a row from sm up. SIP plans still hides when the client has no SIP plans (2 columns then). No route added (routing manifests outside the lane).",
-      "Per fund: active SIP, Ended SIP, one-time newest first, then 'Other adjustments'. Client sorts too (defensive; server already orders). Amounts with paise (MoneyValue showDecimals), returns via formatBasisPoints, XIRR null shows 'Available after 30 days'. Labels: Invested, Current value, Growth, Return, 'Annualised return (XIRR)', 'X of Y months paid', Reversed badge. Preparing: 'Your breakdown is being prepared by BeOnEdge.' Failed read: AsyncBoundary error state with Try again; market-risk footnote unchanged below.",
-      "Rule 11: no response shape changed; the breakdown endpoint is new, so released apps never call it. Rule 10: no test; the switch holds display state only.",
-      "Checks (committed head 7faa3cc0, clean tree, Node 24 container): contracts npm ci && build green 20261118T140950Z-3426363; frontend npm ci && npm run check green 20261118T141001Z-3430250 (67 files, 599 tests); build:android 20261118T141134Z-3463680; build:android:admin 20261118T141139Z-3464870; build:client 20261118T141146Z-3468189; build:admin 20261118T141152Z-3470304.",
-      "Visual (RUNTIME, mock client runtime preview, fixtures; not against V1's backend): screenshots in .temp/worktrees/v-client-breakdown/.temp/v-client-breakdown/shots/ (412-positions, 412-breakdown-ready, 412-breakdown-preparing, 412-breakdown-offline, 360-breakdown-ready, 1440-positions, 1440-breakdown-ready, 1440-breakdown-preparing). At 412 px the control spans x 16 to 396.5, page scrollWidth 412 (no overflow); at 360 each pill is 104 px with no text overflow.",
-      "Emulator steps (dev stack, Rahul Kumar, after V1+V2 land): Portfolio > tap Breakdown: pill turns dark, title reads Breakdown, funds listed per block, or 'Your breakdown is being prepared by BeOnEdge.' until admins categorise. Open a fund and press Back: Breakdown still shown. Tap Breakdown again: Positions back. Airplane mode then reopen Breakdown: 'No connection' with Try again.",
-      "Doubtful: the positions JSX is re-indented inside the new branch (git diff -w shows no change). The preview harness (mock runtime + vite config) is in .temp/v-client-breakdown/preview/ for reuse."
+      "Commits: f9d0220b (cherry-picked V1 contracts 9e24efe9, drops out on rebase); 7faa3cc0 feat(portfolio): add the client Breakdown view to Portfolio; 5ca65326 and ae20af72 'amend! feat(portfolio): ...' (git --fixup=amend; the last one's message, ae20af72, becomes the final message on autosquash); a066f00d 'fixup! feat(portfolio): ...' (code only, message unchanged).",
+      "a066f00d: V1's 0c20bd19 renames oneTime[].allocationId to entryId. My only use was the React key, now `${effectiveDate}:${index}` after sorting (blocks hold no state). I typechecked locally against 0c20bd19's contract file (then restored it): it compiles with both the cherry-picked and the renamed contract, so the rebase onto V1 needs no change here.",
+      "Layout (maintainer's one-row call): under 'Your investments', one row. Left: Positions | Breakdown from the existing ui Tabs/TabPanel (tablist/tab, aria-selected, aria-controls, arrow keys), made compact from the lane recipe (text-xs, px-3) without touching shared ui. Right: quiet borderless text links to Value updates and SIP plans, same destinations and showsSipPlans rule.",
+      "Labels: below 400 px 'Updates' and 'SIPs'; from 400 px 'Value updates' and 'SIP plans'. aria-label is always 'Value updates' / 'SIP plans'. For review: 'SIPs' is not a substring of 'SIP plans' (WCAG 2.5.3 label in name); 'Updates' is.",
+      "Measured (RUNTIME, mock preview): one line (same top), 44 px, nothing cut, scrollWidth = width. 360 with SIPs: Positions 20-96, Breakdown 100-188, Updates 234-302, SIPs 302-344; 360 no SIPs: Updates 277-344; 412 with SIPs: Value updates 222-325, SIP plans 325-397; 412 no SIPs: Value updates 294-397; 1440: 44 px.",
+      "?view: Positions has no param, Breakdown sets ?view=breakdown, replace; Back from a fund returns to Breakdown; ?view=other shows Positions. L2: reversed one-time growth and return in the muted tone.",
+      "Screenshots in .temp/worktrees/v-client-breakdown/.temp/v-client-breakdown/shots/: {360,412}-row-{positions,breakdown}-{sips,nosips}.png, 1440-row-breakdown-sips.png, crop-*.png (the row only). Older *-tab-* and toggle shots are superseded.",
+      "Checks on head a066f00d, clean tree: frontend npm ci && npm run check green 20261118T143727Z-52734 (67 files, 599 tests); build:android green 20261118T143854Z-86647. Earlier: ae20af72 check 20261118T143337Z-4141132, build:android 20261118T143516Z-4192243; 7faa3cc0 build:android:admin 20261118T141139Z-3464870, build:client 20261118T141146Z-3468189, build:admin 20261118T141152Z-3470304, contracts build 20261118T140950Z-3426363.",
+      "Rebase note: queryKeys.ts is also touched by v-admin-cleanup; mine adds one CLIENT_MONEY_PREFIXES row and qk.client.investmentBreakdown.",
+      "Emulator steps (dev, Rahul Kumar, after V1+V2 land): Portfolio > 'Your investments' row: Positions | Breakdown left, Updates / SIPs (full names on wider phones) right, one line. Tap Breakdown: per-fund blocks or 'Your breakdown is being prepared by BeOnEdge.' Open a fund, Back: Breakdown still selected. Airplane mode on Breakdown: 'No connection' with Try again."
     ]
   },
-  "history": []
+  "history": [
+    {
+      "task": "V-client-breakdown",
+      "from": "claude-opus-5-5 builder v-client-breakdown",
+      "track": "v-client-breakdown",
+      "at": "2026-11-18T14:12:29.641Z",
+      "lines": [
+        "Commits: 7faa3cc0 feat(portfolio): add the client Breakdown view to Portfolio, on top of the cherry-picked V1 contracts commit f9d0220b (= 9e24efe9). The cherry-pick drops out when the coordinator rebases onto main after V1 lands.",
+        "Wiring: done. breakdownQueries.ts calls getClientInvestmentBreakdown; key qk.client.investmentBreakdown() = ['client','investment-breakdown'], also added to CLIENT_MONEY_PREFIXES so useInvalidateMoney refreshes it. Nothing left to wire on the client side; it only needs V1's backend route on main.",
+        "Files: features/portfolio/BreakdownView.tsx, breakdownQueries.ts, PortfolioViewControl.tsx (new); PortfolioScreen.tsx, portfolio.recipe.ts; api/queryKeys.ts.",
+        "View control: Value updates and SIP plans stay links to their screens; Breakdown is a toggle button (aria-pressed) that swaps the Positions list for the breakdown, kept in ?view=breakdown with replace (so Back from a fund returns to it, and history does not grow). 3-column equal grid on phones, a row from sm up. SIP plans still hides when the client has no SIP plans (2 columns then). No route added (routing manifests outside the lane).",
+        "Per fund: active SIP, Ended SIP, one-time newest first, then 'Other adjustments'. Client sorts too (defensive; server already orders). Amounts with paise (MoneyValue showDecimals), returns via formatBasisPoints, XIRR null shows 'Available after 30 days'. Labels: Invested, Current value, Growth, Return, 'Annualised return (XIRR)', 'X of Y months paid', Reversed badge. Preparing: 'Your breakdown is being prepared by BeOnEdge.' Failed read: AsyncBoundary error state with Try again; market-risk footnote unchanged below.",
+        "Rule 11: no response shape changed; the breakdown endpoint is new, so released apps never call it. Rule 10: no test; the switch holds display state only.",
+        "Checks (committed head 7faa3cc0, clean tree, Node 24 container): contracts npm ci && build green 20261118T140950Z-3426363; frontend npm ci && npm run check green 20261118T141001Z-3430250 (67 files, 599 tests); build:android 20261118T141134Z-3463680; build:android:admin 20261118T141139Z-3464870; build:client 20261118T141146Z-3468189; build:admin 20261118T141152Z-3470304.",
+        "Visual (RUNTIME, mock client runtime preview, fixtures; not against V1's backend): screenshots in .temp/worktrees/v-client-breakdown/.temp/v-client-breakdown/shots/ (412-positions, 412-breakdown-ready, 412-breakdown-preparing, 412-breakdown-offline, 360-breakdown-ready, 1440-positions, 1440-breakdown-ready, 1440-breakdown-preparing). At 412 px the control spans x 16 to 396.5, page scrollWidth 412 (no overflow); at 360 each pill is 104 px with no text overflow.",
+        "Emulator steps (dev stack, Rahul Kumar, after V1+V2 land): Portfolio > tap Breakdown: pill turns dark, title reads Breakdown, funds listed per block, or 'Your breakdown is being prepared by BeOnEdge.' until admins categorise. Open a fund and press Back: Breakdown still shown. Tap Breakdown again: Positions back. Airplane mode then reopen Breakdown: 'No connection' with Try again.",
+        "Doubtful: the positions JSX is re-indented inside the new branch (git diff -w shows no change). The preview harness (mock runtime + vite config) is in .temp/v-client-breakdown/preview/ for reuse."
+      ]
+    },
+    {
+      "task": "V-client-breakdown",
+      "from": "claude-opus-5-5 builder v-client-breakdown",
+      "track": "v-client-breakdown",
+      "at": "2026-11-18T14:30:58.513Z",
+      "lines": [
+        "Commits: f9d0220b (cherry-picked V1 contracts 9e24efe9, drops out on rebase), 7faa3cc0 feat(portfolio): add the client Breakdown view to Portfolio, 5ca65326 'amend! feat(portfolio): ...' = the L1/L2 follow-up. It is git's --fixup=amend form: rebase --autosquash folds it into 7faa3cc0 and replaces that message, because 7faa3cc0's body still describes the old toggle.",
+        "L1 (maintainer call): Portfolio's list is now two tabs, Positions | Breakdown, using the existing Tabs/TabPanel from ui/primitives/Toggle.tsx (role=tablist/tab, aria-selected, roving arrow keys, aria-controls to the panel). Positions has no view param; Breakdown sets ?view=breakdown; both setParams with replace; any other view value shows Positions. Section title is now 'Your investments' (the tabs carry Positions/Breakdown).",
+        "Links: Value updates and SIP plans are ButtonLinks (secondary, sm) in their own row above the tabs, same destinations and same showsSipPlans rule; this matches the Activity screen (Receipts link row, then tabs).",
+        "L2: a reversed one-time block shows growth with MoneyValue tone 'muted' (no sign) and return in MONEY_TONE.muted without a sign. No shared UI changed.",
+        "Measured (RUNTIME, mock runtime preview): 360 and 412 px, both tabs: Value updates x16-135, SIP plans x143-231, Positions x20-109, Breakdown x113-213, all 44 px tall, no text cut, page scrollWidth equals width. Desktop 1440: 36 px (the primitive's existing lg compact target). ArrowLeft/ArrowRight switch tab and move focus; fund then Back returns to ?view=breakdown with Breakdown selected; ?view=oops shows Positions.",
+        "Screenshots: .temp/worktrees/v-client-breakdown/.temp/v-client-breakdown/shots/360-tab-positions.png, 360-tab-breakdown.png, 412-tab-positions.png, 412-tab-breakdown.png, 1440-tab-breakdown.png (older 412/1440 toggle shots there are superseded).",
+        "Checks on head 5ca65326, clean tree: frontend npm ci && npm run check green 20261118T142927Z-4009268 (67 files, 599 tests); build:android green 20261118T143038Z-4038602. Earlier runs on 7faa3cc0: check 20261118T141001Z-3430250, build:android:admin 20261118T141139Z-3464870, build:client 20261118T141146Z-3468189, build:admin 20261118T141152Z-3470304, contracts build 20261118T140950Z-3426363.",
+        "Rebase note: tally reports queryKeys.ts also touched by v-admin-cleanup; my change adds one CLIENT_MONEY_PREFIXES row and one qk.client.investmentBreakdown line, so expect at most an adjacent-line conflict.",
+        "Emulator steps (dev, Rahul Kumar, after V1+V2 land): Portfolio shows 'Your investments' with Value updates / SIP plans links and Positions selected. Tap Breakdown: per-fund blocks or 'Your breakdown is being prepared by BeOnEdge.' Open a fund, Back: Breakdown still selected. Tap Positions: fund cards. Airplane mode on Breakdown: 'No connection' with Try again."
+      ]
+    },
+    {
+      "task": "V-client-breakdown",
+      "from": "claude-opus-5-5 builder v-client-breakdown",
+      "track": "v-client-breakdown",
+      "at": "2026-11-18T14:35:46.515Z",
+      "lines": [
+        "Commits: f9d0220b (cherry-picked V1 contracts 9e24efe9, drops out on rebase); 7faa3cc0 feat(portfolio): add the client Breakdown view to Portfolio; 5ca65326 and ae20af72, both 'amend! feat(portfolio): ...' (git --fixup=amend). rebase --autosquash folds both into 7faa3cc0, and the last one's message (ae20af72) becomes the final message, which describes the shipped layout.",
+        "Layout (maintainer's one-row call): under 'Your investments', one row. Left: Positions | Breakdown tabs from the existing ui Tabs/TabPanel (role=tablist/tab, aria-selected, aria-controls, arrow keys), made compact from the lane recipe (text-xs, px-3) without touching shared ui. Right: quiet text links (no border) to Value updates and SIP plans, same destinations and showsSipPlans rule; with no SIP plans only Value updates shows.",
+        "Labels: below 400 px the links read 'Updates' and 'SIPs'; from 400 px they read 'Value updates' and 'SIP plans'. aria-label is always 'Value updates' / 'SIP plans'. Note for review: 'SIPs' is not a substring of 'SIP plans' (WCAG 2.5.3 label-in-name for voice control); 'Updates' is.",
+        "Measured (RUNTIME, mock preview), all four controls on one line (same top), 44 px tall, nothing cut, scrollWidth = width: 360 with SIPs: Positions 20-96, Breakdown 100-188, Updates 234-302, SIPs 302-344. 360 no SIPs: Updates 277-344. 412 with SIPs: Value updates 222-325, SIP plans 325-397. 412 no SIPs: Value updates 294-397. 1440: same row, 44 px (lg compact overridden to the full target).",
+        "?view behaviour unchanged from the previous round: Positions has no param, Breakdown sets ?view=breakdown, replace; Back from a fund returns to Breakdown; ?view=other shows Positions; arrow keys switch and move focus. L2 unchanged: reversed one-time growth and return in the neutral (muted) tone.",
+        "Screenshots (.temp/worktrees/v-client-breakdown/.temp/v-client-breakdown/shots/): 360-row-positions-sips.png, 360-row-breakdown-sips.png, 360-row-positions-nosips.png, 360-row-breakdown-nosips.png, 412-row-positions-sips.png, 412-row-breakdown-sips.png, 412-row-positions-nosips.png, 412-row-breakdown-nosips.png, 1440-row-breakdown-sips.png; crop-*.png show just the row. Earlier *-tab-* and toggle shots are superseded.",
+        "Checks on head ae20af72, clean tree: frontend npm ci && npm run check green 20261118T143337Z-4141132 (67 files, 599 tests); build:android green 20261118T143516Z-4192243. Previous rounds: 5ca65326 check 20261118T142927Z-4009268, build:android 20261118T143038Z-4038602; 7faa3cc0 build:android:admin 20261118T141139Z-3464870, build:client 20261118T141146Z-3468189, build:admin 20261118T141152Z-3470304, contracts build 20261118T140950Z-3426363.",
+        "Rebase note: queryKeys.ts is also touched by v-admin-cleanup; mine adds one CLIENT_MONEY_PREFIXES row and qk.client.investmentBreakdown.",
+        "Emulator steps (dev, Rahul Kumar, after V1+V2 land): Portfolio > 'Your investments' row shows Positions | Breakdown on the left and Updates / SIPs (or full names on wider phones) on the right, on one line. Tap Breakdown: per-fund blocks or 'Your breakdown is being prepared by BeOnEdge.' Open a fund, Back: Breakdown still selected. Tap Updates: Value updates screen. Airplane mode on Breakdown: 'No connection' with Try again."
+      ]
+    }
+  ]
 }

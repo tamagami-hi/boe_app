@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 211,
+  "nextNumber": 214,
   "notes": [
     {
       "id": "note-1",
@@ -3278,6 +3278,55 @@
       "kind": "heads-up",
       "text": "the run 20261118T134708Z-2951111 (green: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund && npm run check) was not recorded: session runner is bound to track p-carried-lows and may not write track main's records; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-carried-lows/.temp/tally/results/refused/20261118T134708Z-2951111 and tried again when the ledger changes",
       "at": "2026-11-18T14:09:20.759Z",
+      "replies": []
+    },
+    {
+      "id": "note-211",
+      "from": {
+        "track": "v-breakdown-core",
+        "agent": "claude-opus-5-5 builder v-breakdown-core"
+      },
+      "to": [
+        "main",
+        "v-client-breakdown"
+      ],
+      "kind": "heads-up",
+      "text": "Contract change in 0c20bd19 (track/v-breakdown-core): getClientInvestmentBreakdown oneTime[] items use entryId (the contribution's ledger entry id) instead of allocationId. Reason: the existing investment-architecture guard forbids allocationId in client route serializers (rule 13, no bypass). Everything else in the client shape is unchanged; admin operations keep allocation refs. Rebuild contracts and regenerate after rebasing.",
+      "about": {
+        "paths": [
+          "packages/contracts/src/operations/investment-breakdown.ts"
+        ],
+        "task": "M19-patches-0-18:V-breakdown-core"
+      },
+      "at": "2026-11-18T14:31:14.819Z",
+      "replies": []
+    },
+    {
+      "id": "note-212",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "v-growth-parts"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T144527Z-209067 (check: ../tools/node24-container/run.sh sh -c npm ci --no-audit --no-fund >/dev/null && npm run typecheck && echo TYPECHECK_OK; npx eslint . --ignore-pattern test/inte…) was not recorded: 'check' is not a kind of run; the kinds are red, green, clippy, fmt, sweep, coverage, land, evidence, other; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/.temp/tally/results/refused/20261118T144527Z-209067 and tried again when the ledger changes",
+      "at": "2026-11-18T14:46:33.886Z",
+      "replies": []
+    },
+    {
+      "id": "note-213",
+      "from": {
+        "track": "main",
+        "agent": "tally"
+      },
+      "to": [
+        "v-growth-parts"
+      ],
+      "kind": "heads-up",
+      "text": "the run 20261118T145530Z-450975 (integration: tools/node24-container/run.sh sh -c set -e; cd packages/contracts && npm ci --no-audit --no-fund && npm run build; cd ../../backend_controller && npm ci --no-au…) was not recorded: 'integration' is not a kind of run; the kinds are red, green, clippy, fmt, sweep, coverage, land, evidence, other; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/.temp/tally/results/refused/20261118T145530Z-450975 and tried again when the ledger changes",
+      "at": "2026-11-18T14:56:50.123Z",
       "replies": []
     }
   ]

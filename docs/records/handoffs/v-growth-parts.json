@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "track": "v-growth-parts",
+  "current": {
+    "task": "V-growth-parts",
+    "from": "claude-opus-5-5 builder v-growth-parts",
+    "track": "v-growth-parts",
+    "at": "2026-11-18T15:06:11.391Z",
+    "lines": [
+      "V-growth-parts review fixes on the replayed track (no rebase): fixup 9ec7a0ed of 9ce895db, on top of f0bce4ed. Squash it into 9ce895db at landing.",
+      "Blocking, fixed: a closed SIP that still holds money keeps earning. InvestmentBasis.ended is now holdsNothing: true only for a SIP with zero or less invested or value. The bases are still the fold's present stakes, so an exited SIP is not a basis at all.",
+      "A closed SIP with money takes fund rates, typed gains and growth for one investor. A SIP holding nothing gets no part: a rate lists it as zero_invested, typed gains skip it as zero_invested, and naming it for one investor gets 400 'This SIP holds nothing, so it cannot take growth.' An exited SIP named as a target gets 400 (not an investment of the client in the fund).",
+      "Low, fixed: when a client's typed changes net to exactly zero, that client is skipped as {userId, ref: null, reason: unchanged}; the rest of the batch commits.",
+      "Low, fixed: CATEGORISE_FIRST_MESSAGE = 'Sort this client's investments first: categorise their recordings and confirm any earlier growth split in the Ledger tab.'",
+      "Tests: planner unit suite 11 (closed SIP takes all three kinds of growth; exited SIP gets nothing; net-zero skip). Integration suite 5 (new case: closing the schedule through the API, then a rate, a typed gain and one-investor growth all reach the SIP).",
+      "Checks: backend npm ci && npm run check green 20261118T150353Z-566440 (107 files, 1281 tests, guards included). Growth integration suites green 20261118T150503Z-581372 (16 files, 111 tests, adminSipSchedules added).",
+      "Red controls (restored, cmp identical): closed SIP treated as ended 20261118T150549Z-609859; exited SIP becomes a basis 20261118T150551Z-611128; SIP holding nothing targetable 20261118T150553Z-612062; net-zero client rejects the batch 20261118T150555Z-613684.",
+      "Earlier red controls still apply to the same code paths (parts summed, zero-invested skip, v2 email sum, released refusal, typed-gains categorise_first, stale basis); see the previous hand-off for their ids.",
+      "Contract shapes unchanged by these fixes. The UI should drop any 'ended SIP' assumption: an ended SIP that holds money now takes growth like any other investment."
+    ]
+  },
+  "history": [
+    {
+      "task": "V-growth-parts",
+      "from": "claude-opus-5-5 builder v-growth-parts",
+      "track": "v-growth-parts",
+      "at": "2026-11-18T14:52:18.476Z",
+      "lines": [
+        "V-growth-parts (DEC-76, V4 tasks 1-2). Branch track/v-growth-parts. Builder: claude-opus-5-5.",
+        "Cherry-picks of V1, unchanged, to drop on rebase: 92a381a3(9e24efe9) c328d00c(553baeb6) fb0e6c27(9d760d97) 6b97e5d2(3c0f499a) 0198fc9b(e0f131ff).",
+        "Lane commits: 48a89d60 contracts; d04bdef7 email v2; 6a23da21 planner+routes+released refusal; 41f96289 per-investment skips + commit protocol back in adminClientGrowthRoutes.ts (guard).",
+        "REBASE TODO: V1 fc3e30d8 renames FundBreakdownFact.holdings to stakes; change fund.holdings to fund.stakes in backend_controller/src/domain/admin/investmentGrowthBases.ts (one place). The guard bans the word holdings.",
+        "Operations: appendAdminIndividualInvestmentGrowth POST /v1/admin/investment-growth/individual (key); previewAdminInvestmentGrowth POST .../preview (CSRF, no key); commitAdminInvestmentGrowth POST .../commit (key + basisHash). Permission client_growth.write.",
+        "Preview body {fundId, growthBasisPoints} or {fundId, items:[{userId, ref, gainSinceInvestedPaise}]} (1-500). Commit adds basisHash, effectiveDate, reasonCode, note?.",
+        "Preview data {fundId, mode: percentage|gain_since_invested, basisHash, targetCount, totalDeltaPaise, entries, skipped}; commit data {batchId, fundId, mode, effectiveDate, targetCount, totalDeltaPaise, entries, skipped}.",
+        "entry {userId, beforePaise, deltaPaise, afterPaise, parts:[{ref, label, investedPaise, beforePaise, deltaPaise, afterPaise}]}; skipped {userId, ref|null, reason: categorise_first|zero_invested|unchanged}.",
+        "Individual body {userId, fundId, ref, growthPaise|growthBasisPoints, effectiveDate, reasonCode, note?}; data = released individual fields + part. No basisHash sent; server stores one.",
+        "DIFFS vs investmentGrowthApi.ts: (1) commit data adds skipped. (2) zero-change rows come back in skipped as unchanged, never as zero parts. (3) an ended SIP is omitted from a fund rate, refused 400 (fields.items/ref) when named. (4) categorise_first only when the fund holds more than one investment and the fold says preparing (uncategorised, uncovered growth or sum mismatch); a lone uncategorised recording takes growth, label 'Investment of Rs X from D'.",
+        "DIFFS cont.: (5) typed-gains commit naming a categorise_first client = 409 STATE_CONFLICT; commit with nothing to write = 409; stale basis = 409. (6) individual on a categorise_first fund = 409 with the Ledger-tab message; another client's ref = 400; no position = 404. (7) a typed gain on a zero-invested investment is skipped zero_invested, not refused. (8) labels: SIP, 'One-time investment of Rs 25,000.00 from 2 June 2026'.",
+        "Writes: one batch, one growth entry per client+fund (delta = sum of parts, also DB trigger), client_growth_parts rows, notice, v2 mail, audit (client_growth.individual|collective, targeting=investment), all in one tx under the shared idempotent commit.",
+        "Released routes (/v1/admin/client-growth/individual, collective/preview, collective): 403 AUTHORIZATION_DENIED 'Update the admin app to record growth for clients with more than one investment in a fund.' when any target holds >1 present investment (each uncategorised recording counts). Single-investment funds unchanged, still v1 mail.",
+        "Email investment_growth v2: fund+date line, one line per investment (Your SIP / Your one-time investment of X from D / Your investment of X from D: a gain|loss of Y), 'In total, this update is a ...', new value. Sealed payload adds parts. v1 rows still render. Dedup key unchanged (DEC-72).",
+        "Rule 11: new endpoints only; no existing response gains a key or enum; no migration (uses V1's 078). Released apps keep working except the intended 403.",
+        "Checks: contracts green 20261118T144439Z-201178 (98 tests); frontend check green 20261118T145005Z-367137 (606); integration full green 20261118T144841Z-304992 (88 files, 679); targeted growth suites green 20261118T144642Z-243981 (15 files, 102).",
+        "Backend check at 41f96289: 20261118T144527Z-209067 (kind check): typecheck OK, lint OK with V1's adminInvestmentCleanup.integration.test.ts:67 excluded, unit 1272/1274, build+smoke OK. The 2 failing guards are V1's holdings word + V1 client route allocationId, plus my one fund.holdings; V1 fixed its side in fc3e30d8. Full npm run check at 6a23da21 failed on V1's lint: 20261118T143723Z-51427.",
+        "Red controls (all restored, cmp identical): parts not summed 20261118T144727Z-273584; zero-invested errors instead of skip (RF3) 20261118T144729Z-274699; ended SIP targetable (RF2) 20261118T144742Z-281332; v2 email sum check 20261118T144743Z-282417; released refusal skipped 20261118T144745Z-283135; typed-gains categorise_first commit 20261118T144810Z-294335; stale basis 20261118T144818Z-297341.",
+        "Deploy note: deploy API and email worker together (an older worker cannot render investment_growth v2 and fails it permanently). Let queued v2 growth mail drain before an images-only rollback to 0.18.3; after rollback 0.18.3 accepts untargeted growth for any fund (needs a split later). Old admin apps get the 403 above for multi-investment clients, including a whole-fund rate if any client in the fund has several investments.",
+        "Emulator (dev, Rahul Kumar): new admin app, categorise his recordings on Ledger; One investor > his fund > pick SIP or one-time > 1% > commit: receipt shows one part, Portfolio value moves by it, dev mail lists the per-investment line. Released 0.18.3 admin app on a fund where he holds 2 investments: Value updates shows the update-the-app message; a single-investment fund works as before.",
+        "Doubtful: a closed SIP that still holds value gets no growth from a fund rate (spec says ended SIPs cannot be targeted) - maintainer to confirm. Released apps are refused for clients with several uncategorised SIP-month recordings until categorised. v2 vs v1 rendering is chosen by presence of parts (render does not see the version)."
+      ]
+    },
+    {
+      "task": "V-growth-parts",
+      "from": "claude-opus-5-5 builder v-growth-parts",
+      "track": "v-growth-parts",
+      "at": "2026-11-18T14:54:00.225Z",
+      "lines": [
+        "V-growth-parts (DEC-76, V4 tasks 1-2). Branch track/v-growth-parts. Builder: claude-opus-5-5.",
+        "Cherry-picks of V1, unchanged, to drop on rebase: 92a381a3(9e24efe9) c328d00c(553baeb6) fb0e6c27(9d760d97) 6b97e5d2(3c0f499a) 0198fc9b(e0f131ff). V1 has since landed as 8f77e87 + fc3e30d.",
+        "Lane commits: 48a89d60 contracts; d04bdef7 email v2; 6a23da21 planner+routes+released refusal; 41f96289 per-investment skips + commit protocol back in adminClientGrowthRoutes.ts (guard).",
+        "REBASE TODO: fc3e30d renames FundBreakdownFact.holdings to stakes; change fund.holdings to fund.stakes in backend_controller/src/domain/admin/investmentGrowthBases.ts (one place). The guard bans the word holdings.",
+        "Operations: appendAdminIndividualInvestmentGrowth POST /v1/admin/investment-growth/individual (key); previewAdminInvestmentGrowth POST .../preview (CSRF, no key); commitAdminInvestmentGrowth POST .../commit (key + basisHash). Permission client_growth.write.",
+        "Preview body {fundId, growthBasisPoints} or {fundId, items:[{userId, ref, gainSinceInvestedPaise}]} (1-500). Commit adds basisHash, effectiveDate, reasonCode, note?.",
+        "Preview data {fundId, mode: percentage|gain_since_invested, basisHash, targetCount, totalDeltaPaise, entries, skipped}; commit data {batchId, fundId, mode, effectiveDate, targetCount, totalDeltaPaise, entries, skipped}.",
+        "entry {userId, beforePaise, deltaPaise, afterPaise, parts:[{ref, label, investedPaise, beforePaise, deltaPaise, afterPaise}]}; skipped {userId, ref|null, reason: categorise_first|zero_invested|unchanged}.",
+        "Individual body {userId, fundId, ref, growthPaise|growthBasisPoints, effectiveDate, reasonCode, note?}; data = released individual fields + part. No basisHash sent; server stores one.",
+        "DIFFS vs investmentGrowthApi.ts: (1) commit data adds skipped. (2) zero-change rows come back in skipped as unchanged, never as zero parts. (3) an ended SIP is omitted from a fund rate, refused 400 (fields.items/ref) when named. (4) categorise_first only when the fund holds more than one investment and the fold says preparing (uncategorised, uncovered growth or sum mismatch); a lone uncategorised recording takes growth, label 'Investment of Rs X from D'.",
+        "DIFFS cont.: (5) typed-gains commit naming a categorise_first client = 409 STATE_CONFLICT; commit with nothing to write = 409; stale basis = 409. (6) individual on a categorise_first fund = 409 with the Ledger-tab message; another client's ref = 400; no position = 404. (7) a typed gain on a zero-invested investment is skipped zero_invested, not refused. (8) labels: SIP, 'One-time investment of Rs 25,000.00 from 2 June 2026'.",
+        "Writes: one batch, one growth entry per client+fund (delta = sum of parts, also DB trigger), client_growth_parts rows, notice, v2 mail, audit (client_growth.individual|collective, targeting=investment), all in one tx under the shared idempotent commit.",
+        "Released routes (/v1/admin/client-growth/individual, collective/preview, collective): 403 AUTHORIZATION_DENIED 'Update the admin app to record growth for clients with more than one investment in a fund.' when any target holds >1 present investment (each uncategorised recording counts). Single-investment funds unchanged, still v1 mail.",
+        "Email investment_growth v2: fund+date line, one line per investment (Your SIP / Your one-time investment of X from D / Your investment of X from D: a gain|loss of Y), 'In total, this update is a ...', new value. Sealed payload adds parts. v1 rows still render. Dedup key unchanged (DEC-72).",
+        "Rule 11: new endpoints only; no existing response gains a key or enum; no migration (uses V1's 078). Released apps keep working except the intended 403.",
+        "Checks: contracts green 20261118T144439Z-201178 (98 tests); frontend check green 20261118T145005Z-367137 (606); integration full green 20261118T144841Z-304992 (88 files, 679); targeted growth suites green 20261118T144642Z-243981 (15 files, 102).",
+        "Backend check steps at 41f96289: 20261118T145236Z-396439 (kind other): typecheck OK, lint OK with V1's adminInvestmentCleanup.integration.test.ts:67 excluded, unit 1272/1274, build+smoke OK. The 2 failing guard tests are V1's holdings word + V1 client route allocationId, plus my one fund.holdings; all clear after the rebase onto fc3e30d with the stakes rename. Full npm run check at 6a23da21 stopped at V1's lint: 20261118T143723Z-51427.",
+        "Red controls (all restored, cmp identical): parts not summed 20261118T144727Z-273584; zero-invested errors instead of skip (RF3) 20261118T144729Z-274699; ended SIP targetable (RF2) 20261118T144742Z-281332; v2 email sum check 20261118T144743Z-282417; released refusal skipped 20261118T144745Z-283135; typed-gains categorise_first commit 20261118T144810Z-294335; stale basis 20261118T144818Z-297341.",
+        "Deploy note: deploy API and email worker together (an older worker cannot render investment_growth v2 and fails it permanently). Let queued v2 growth mail drain before an images-only rollback to 0.18.3; after rollback 0.18.3 accepts untargeted growth for any fund (needs a split later). Old admin apps get the 403 above for multi-investment clients, including a whole-fund rate if any client in the fund has several investments.",
+        "Emulator (dev, Rahul Kumar): new admin app, categorise his recordings on Ledger; One investor > his fund > pick SIP or one-time > 1% > commit: receipt shows one part, Portfolio value moves by it, dev mail lists the per-investment line. Released 0.18.3 admin app on a fund where he holds 2 investments: Value updates shows the update-the-app message; a single-investment fund works as before.",
+        "Doubtful: a closed SIP that still holds value gets no growth from a fund rate (spec says ended SIPs cannot be targeted) - maintainer to confirm. Released apps are refused for clients with several uncategorised SIP-month recordings until categorised. v2 vs v1 rendering is chosen by presence of parts (render does not see the version)."
+      ]
+    }
+  ]
+}

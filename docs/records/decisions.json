@@ -756,10 +756,10 @@
       "group": "admin-improvements",
       "text": "Investment breakdown and per-investment growth, in 0.18.4 (design .temp/main/design-investment-breakdown-0184.md, approved 2026-11-18). A one-time investment is its contribution's allocation and a SIP is its schedule. Growth is kept per one-time investment, and a fund's SIP is one investment. Clients get a Breakdown view: SIP with simple return and XIRR, each one-time investment with growth and return. Portfolio keeps the collective figures. Admin growth targets an investment. The monthly sheet has one row per investment, typed as gain since invested, with a fund rate pre-filling every row. Growth storage is one entry per client and fund per operation, with per-investment parts beside it. Admins categorise every recording, corrections included, and confirm the earlier-growth split per multi-investment fund in the app, reminded on Overview and the client page. Clients see 'being prepared' until resolved. A SIP early exit returns only the SIP's value (amends DEC-41). Maturity stays per fund and is spread across investments by value. Released admin apps get untargeted growth refused only for multi-investment funds.",
       "since": "2026-11-18",
-      "status": "decided, not built",
-      "state": "decided, not built",
+      "status": "built",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-18T13:46:23.045Z"
+      "on": "2026-11-18T15:13:03.941Z"
     },
     {
       "id": "DEC-77",

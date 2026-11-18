@@ -1405,7 +1405,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T13:12:53.364Z"
+      "openedAt": "2026-11-18T13:12:53.364Z",
+      "closedAt": "2026-11-18T14:38:29.668Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "p-carried-lows",
@@ -1420,7 +1425,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T13:12:53.845Z"
+      "openedAt": "2026-11-18T13:12:53.845Z",
+      "closedAt": "2026-11-18T14:38:35.445Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "p-admin-sidebar",
@@ -1439,7 +1449,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T13:37:46.347Z"
+      "openedAt": "2026-11-18T13:37:46.347Z",
+      "closedAt": "2026-11-18T14:38:41.618Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "v-breakdown-core",
@@ -1455,7 +1470,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T13:48:31.645Z"
+      "openedAt": "2026-11-18T13:48:31.645Z",
+      "closedAt": "2026-11-18T14:46:10.206Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "v-client-breakdown",
@@ -1472,7 +1492,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T13:56:23.985Z"
+      "openedAt": "2026-11-18T13:56:23.985Z",
+      "closedAt": "2026-11-18T14:46:14.649Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "v-admin-cleanup",
@@ -1492,7 +1517,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T13:56:24.651Z"
+      "openedAt": "2026-11-18T13:56:24.651Z",
+      "closedAt": "2026-11-18T14:54:24.760Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "v-growth-ui",
@@ -1509,7 +1539,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T13:56:25.206Z"
+      "openedAt": "2026-11-18T13:56:25.206Z",
+      "closedAt": "2026-11-18T15:13:01.679Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "d-docs-after-lanes",
@@ -1533,7 +1568,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T13:58:02.934Z"
+      "openedAt": "2026-11-18T13:58:02.934Z",
+      "closedAt": "2026-11-18T14:39:00.029Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "p-carried-config",
@@ -1551,7 +1591,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T14:05:08.946Z"
+      "openedAt": "2026-11-18T14:05:08.946Z",
+      "closedAt": "2026-11-18T14:38:47.461Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "v-growth-parts",
@@ -1567,7 +1612,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T14:16:26.974Z"
+      "openedAt": "2026-11-18T14:16:26.974Z",
+      "closedAt": "2026-11-18T15:11:07.133Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "v-early-exit-sip",
@@ -1584,7 +1634,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T14:16:28.010Z"
+      "openedAt": "2026-11-18T14:16:28.010Z",
+      "closedAt": "2026-11-18T14:58:24.810Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     },
     {
       "name": "p-button-disabled",
@@ -1598,7 +1653,35 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T14:20:18.323Z"
+      "openedAt": "2026-11-18T14:20:18.323Z",
+      "closedAt": "2026-11-18T14:37:18.252Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
+    },
+    {
+      "name": "p-release-0184",
+      "branch": "track/p-release-0184",
+      "worktree": ".temp/worktrees/p-release-0184",
+      "purpose": "0.18.4 release prep: What's new client and admin, DEPLOY notes, plan section, stale host comments",
+      "paths": [
+        "frontend_stack_ts/src/features/whats-new",
+        "DEPLOY.md",
+        "plans/admin-improvements.md",
+        "release_manager/stacks",
+        "release_manager/lib/nginx_ship.sh"
+      ],
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "openedAt": "2026-11-18T14:39:55.939Z",
+      "closedAt": "2026-11-18T15:05:53.892Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     }
   ]
 }

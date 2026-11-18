@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextId": 99,
+  "nextId": 110,
   "reviews": [
     {
       "id": "review-1",
@@ -2151,6 +2151,235 @@
         "agent": "claude-opus-5-5 (coordinator)"
       },
       "at": "2026-11-18T14:24:46.793Z"
+    },
+    {
+      "id": "review-99",
+      "milestone": "M19-patches-0-18",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "commit": "e0f131f",
+      "reviewer": "claude-opus-5-5 ecc:security-reviewer + ecc:code-reviewer (local)",
+      "verdict": "fix",
+      "blocking": 4,
+      "findings": {
+        "medium": 6,
+        "low": 7
+      },
+      "summary": "Security: land. Client route scoped to principal.userId, admin reads client_position.write|client_values.read, confirm-split client_position.write with CSRF, one transaction, idempotent, stale cutoff STATE_CONFLICT, audited, no email; 078 expand-only and in releaseUpgrade. Money: fix. Sum invariant, reversal replay, apportion, splits, rounding and XIRR sound. To fix: red controls for fold and integration tests plus zero-paid SIP, ended SIP XIRR and corrections-only cases; invariant must also guard invested and keep principal in other_adjustments; zero-present growth stuck as uncovered; negative recordings offered to released apps as SIP-month candidates (coordinator call: never to categorise, refused, folded into other_adjustments). Known: in-memory list scan, cutoff-only basis, role holders on getClientInvestments, blank fund name, ordering ties.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:28:06.801Z"
+    },
+    {
+      "id": "review-100",
+      "milestone": "M19-patches-0-18",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "commit": "0b64ddf",
+      "reviewer": "claude-opus-5-5 ecc:react-reviewer (local)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "blocking": 1,
+        "medium": 4,
+        "low": 4
+      },
+      "summary": "applyBasisPoints symmetric half-up, BigInt gain parsing, overrides per row, categorise-first rows never committed, fan-out failure shows Sheet not loaded, reversed investments not targetable, old endpoints unused. Blocking: a 0.18.3 rate-mode collective hold in the unchanged slot parses as the new body and Check again could resend it to the new endpoint (fix: new slot names plus a red-control test). Medium: previewMatchesSheet allows fewer parts than changes; Reload does not invalidate the investments cache; the unwired refusal shows generic text on commit paths; the form shows only position totals (contract gap, known). Low: uncapped sheet rate; Fill every row pre-fills zero rows; dead old hooks; missing tests for those cases.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:30:22.145Z"
+    },
+    {
+      "id": "review-101",
+      "milestone": "M19-patches-0-18",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "commit": "fc3e30d",
+      "reviewer": "claude-opus-5-5 (coordinator)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 7
+      },
+      "summary": "Fixes verified from 0c20bd19 (squashed with the feature commits into fc3e30d8, tree identical): invariant checks invested and value; unkeyed shares carry principal into other_adjustments; growth with no investment held goes to other_adjustments and is not a split. Red controls recorded for five fold and two integration cases; zero-paid SIP, ended SIP XIRR and corrections-only cases added. Backend 20261118T143200Z-4079038, integration 20261118T143305Z-4102011, frontend 20261118T143441Z-4181441 green. Item 4 dropped: recordings cannot be negative (018 constraint, positivePaiseSchema), so released apps can only link positive corrections, which DEC-76 allows. Client one-time id is entryId (investment-architecture guard). Known lows stay.",
+      "follows": "review-99",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:38:09.141Z"
+    },
+    {
+      "id": "review-102",
+      "milestone": "M19-patches-0-18",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "commit": "a066f00",
+      "reviewer": "claude-opus-5-5 (coordinator)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 1
+      },
+      "summary": "Maintainer calls applied: Positions | Breakdown tabs (src/ui Tabs, arrow keys, ?view= replace, Back returns to the tab) and the Value updates / SIP plans links on one row; below 400 px the links read Updates and SIPs with full aria-labels. Measured 360/412 px with and without SIP plans: one row, no clipping, 44 px targets (screenshots checked). Reversed one-time growth now muted. List key no longer uses allocationId, so it compiles against V1's entryId rename. Frontend check 20261118T143727Z-52734, build:android 20261118T143854Z-86647. Known low: visible 'SIPs' is not part of the aria-label 'SIP plans' (WCAG 2.5.3).",
+      "follows": "review-94",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:40:54.346Z"
+    },
+    {
+      "id": "review-103",
+      "milestone": "M19-patches-0-18",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "commit": "3c954fb",
+      "reviewer": "claude-opus-5-5 xhigh (claude-pro account)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "medium": 2,
+        "low": 1
+      },
+      "summary": "Money paths correct: withdrawal is the SIP block's value, principal its invested on a gain or the payout on a loss; fold read after the position lock; expectedValuePaise compared with the SIP value; SIP-only fund behaves as 0.18.3; email stays v1; released apps show the server's refusal message. Medium 1 (fix): the exit cancels the fund's maturity date even when one-time money stays. Medium 2 (kept by coordinator, deploy note): a preparing fund's exit is refused, safe direction, production has no SIP schedules. Low: no loss or maturity case on a fund with a one-time investment.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-v-early-exit-sip.out.md",
+        "sha256": "8765f7b50b19f66a5f616023a2bb26f0a0947ad4b80c68bab82d7a5b807c8f60",
+        "bytes": 3894
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:45:34.158Z"
+    },
+    {
+      "id": "review-104",
+      "milestone": "M19-patches-0-18",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "commit": "e9c9270",
+      "reviewer": "claude-opus-5-5 (coordinator)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 2
+      },
+      "summary": "Fix verified: the exit cancels the fund's maturity date only when no other block or other-adjustments line holds value; the preview's maturity names only a date it will cancel; admin copy reads 'No maturity date is cancelled.' New integration case (gain and loss on a fund with a SIP, a one-time investment and an open date) with red control 20261118T144757Z-289318; backend 20261118T144812Z-295418 and frontend 20261118T145016Z-369900 green. Replayed onto main without V1's picks (V1 is on main as 8f77e87 and fc3e30d); lane files identical to 7480ffb7. Preparing refusal kept with a deploy note. Known lows: created_at ordering residual, negative SIP value vs non-negative contract fields.",
+      "follows": "review-103",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T14:53:22.025Z"
+    },
+    {
+      "id": "review-105",
+      "milestone": "M19-patches-0-18",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "commit": "9ce895d",
+      "reviewer": "claude-opus-5-5 xhigh (claude-pro account)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "blocking": 1,
+        "medium": 1,
+        "low": 3
+      },
+      "summary": "Rounding, parts summing to the entry, zero-invested skips, typed gain conversion, client_growth.write and CSRF, ref ownership, position lock, in-transaction basis recheck, idempotency over ref and items, audit, one entry and email per client per fund, released single-investment behaviour unchanged. Blocking: a closed SIP that still holds money gets no growth and no skip (coordinator: closed SIPs with value earn growth; only exited or empty ones are excluded). Medium: a 0.18.3 worker dead-letters v2 emails (deploy note: worker with API, drain before rollback). Low: released apps refused until categorised (deploy note); categorise-first message wrong for split or mismatch (fix); items limit per investment (known); a net-zero client rejects the batch (fix).",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-v-growth-parts.out.md",
+        "sha256": "485e6c85daa79dfb3c0bd0d1d83805b24b7e2ff0fc55bb6ce71d94dc937f2e2d",
+        "bytes": 4876
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T15:00:10.682Z"
+    },
+    {
+      "id": "review-106",
+      "milestone": "M19-patches-0-18",
+      "task": "P-release-0184",
+      "track": "p-release-0184",
+      "commit": "9c58889",
+      "reviewer": "claude-opus-5-5 (coordinator)",
+      "verdict": "land",
+      "blocking": 0,
+      "summary": "Docs and copy only. What's new 0.18.4 client and admin text approved by the maintainer in chat (2026-11-18 20:30 IST) and frozen in its own commit. DEPLOY 0.18.4 covers 078, API and worker together, preparing state and where admins find the work, released-admin growth refusal, early exit with the preparing refusal and maturity rule, rollback with mail drain, nginx default server and Grafana root URL. Plan section records DEC-76 to DEC-78 and the accepted calls. Compose comments name the Tailscale consoles; nginx_ship checks app.beonedge.in (bash -n clean). Frontend check 20261118T144827Z-300396 on the pre-squash head; the landing re-runs it.",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T15:01:03.042Z"
+    },
+    {
+      "id": "review-107",
+      "milestone": "M19-patches-0-18",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "commit": "4821403",
+      "reviewer": "claude-opus-5-5 (coordinator)",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "blocking": 1
+      },
+      "summary": "Review-100 fixes verified (new slots with LegacyGrowthHold sending old holds only to the old endpoint, exact preview key match with skips, investor cache invalidation on Reload, refusal text, rate cap, zero rows skipped) with red controls 20261118T150347Z-563574 and 20261118T150351Z-565206. Wiring to the generated V4 operations replaces the port and local schemas; categorise-first follows the server. To fix: the UI drops 'Ended SIP' investments, but a closed SIP still holding money must take growth (coordinator call with review-105); offer every non-reversed investment with amountPaise above zero.",
+      "follows": "review-100",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T15:05:17.487Z"
+    },
+    {
+      "id": "review-108",
+      "milestone": "M19-patches-0-18",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "commit": "07fa126",
+      "reviewer": "claude-opus-5-5 (coordinator)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 1,
+        "low": 2
+      },
+      "summary": "Review-105 fixes verified in 9ec7a0ed (squashed into 07fa126e): ended replaced by holdsNothing, so a closed SIP holding money takes rates, typed gains and individual growth while an exited or empty SIP gets nothing (skipped as zero_invested or 400); a client netting to zero is skipped as unchanged; categorise-first message covers all three causes. Red controls 20261118T150549Z-609859, -150551Z-611128, -150553Z-612062, -150555Z-613684; backend 20261118T150353Z-566440 (1281 tests), growth integration 20261118T150503Z-581372 (111 tests). Kept with deploy notes: v2 email dead-lettered by a 0.18.3 worker; released apps refused until categorised; items limit per investment.",
+      "follows": "review-105",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T15:06:40.450Z"
+    },
+    {
+      "id": "review-109",
+      "milestone": "M19-patches-0-18",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "commit": "041f0f7",
+      "reviewer": "claude-opus-5-5 (coordinator)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 3
+      },
+      "summary": "Fix verified: isTargetable is now 'not reversed and amountPaise above zero', so a closed SIP still holding money is offered and sent on One investor and the sheet, matching the backend's holdsNothing rule; exited SIPs refused by the server show its message. Frontend check 20261118T150559Z-616144 (609 tests). The skipped-row contract difference resolves once V4 lands with its final contract (the UI reads ref as optional). Known lows: position total only before writing; Fill every row replaces overrides; old hooks kept for LegacyGrowthHold.",
+      "follows": "review-107",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "at": "2026-11-18T15:07:35.389Z"
     }
   ]
 }

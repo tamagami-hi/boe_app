@@ -341,12 +341,14 @@
         {
           "id": "G-payments-off",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "cb2b647",
           "also": [],
           "brief": "DEC-78: the maintainer's payments decision for this build is that payments and AutoPay stay off (DEC-14, DEC-22); re-enabling is a later decision outside this board. Closed by the records commit that holds DEC-78.",
           "covers": [
             "G-payments"
-          ]
+          ],
+          "landedAt": "2026-11-18T14:27:46.172Z"
         }
       ]
     },
@@ -935,13 +937,15 @@
         {
           "id": "D-not-needed",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "cb2b647",
           "also": [],
           "brief": "DEC-77: Phase D is not required (maintainer, 2026-11-18). No dev cleanup command and no production reform are built; the read-only production checks found nothing to reform. Closed by the records commit that holds DEC-77.",
           "covers": [
             "D1",
             "D2"
-          ]
+          ],
+          "landedAt": "2026-11-18T14:27:45.227Z"
         }
       ]
     },
@@ -2511,70 +2515,91 @@
         {
           "id": "V-breakdown-core",
           "track": "v-breakdown-core",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "fc3e30d",
+          "also": [
+            "8f77e87"
+          ],
           "brief": "DEC-76 lane V1 (plan .temp/main/plan-investment-breakdown-0184.md, Tasks 1-4): migration 078 growth parts and earlier-growth splits; pure investmentBreakdown fold with SIP XIRR, attribution, maturity spread, sum invariant; GET /v1/client/investment-breakdown; admin to-categorise list, per-client investments with proposed split, confirm split; categorising widened to corrections and AutoPay collections.",
           "paths": [
             "backend_controller",
             "packages/contracts",
             "frontend_stack_ts/src/api/generated"
-          ]
+          ],
+          "landedAt": "2026-11-18T14:43:15.178Z"
         },
         {
           "id": "V-client-breakdown",
           "track": "v-client-breakdown",
-          "status": "planned",
+          "status": "landed",
+          "commit": "c27a269",
           "also": [],
           "brief": "DEC-76 lane V2: client Breakdown view on Portfolio (three-way view control at 412 px, SIP blocks with simple return and XIRR, one-time blocks, preparing state).",
           "paths": [
             "frontend_stack_ts/src/features/portfolio"
-          ]
+          ],
+          "landedAt": "2026-11-18T14:45:55.937Z"
         },
         {
           "id": "V-admin-cleanup",
           "track": "v-admin-cleanup",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "d9d0031",
+          "also": [
+            "955566c",
+            "c806a6a"
+          ],
           "brief": "DEC-76 lane V3: categorise list widened to corrections, Earlier growth panel with sum gating and held write, Overview follow-up item and list screen, client page banner.",
           "paths": [
             "frontend_stack_ts/src/features/admin/client-values",
             "frontend_stack_ts/src/features/admin/users",
             "frontend_stack_ts/src/features/admin/overview"
-          ]
+          ],
+          "landedAt": "2026-11-18T14:54:14.779Z"
         },
         {
           "id": "V-growth-ui",
           "track": "v-growth-ui",
-          "status": "planned",
+          "status": "landed",
+          "commit": "fca60e7",
           "also": [],
           "brief": "DEC-76 lane V4 task 3: target choice on One investor, monthly sheet one row per investment with fund-rate pre-fill and overrides as gain since invested, Categorise first rows, whole-fund per-investment preview.",
           "paths": [
             "frontend_stack_ts/src/features/admin/client-values"
-          ]
+          ],
+          "landedAt": "2026-11-18T15:13:01.121Z"
         },
         {
           "id": "V-growth-parts",
           "track": "v-growth-parts",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "07fa126",
+          "also": [
+            "3c08416"
+          ],
           "brief": "DEC-76 V4 Tasks 1-2: planInvestmentGrowth, /v1/admin/investment-growth/individual|preview|commit, released-app 403 for multi-investment funds, investment_growth email v2",
           "paths": [
             "backend_controller",
             "packages/contracts",
             "frontend_stack_ts/src/api/generated"
-          ]
+          ],
+          "landedAt": "2026-11-18T15:10:40.679Z"
         },
         {
           "id": "V-early-exit-sip",
           "track": "v-early-exit-sip",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "dbc692b",
+          "also": [
+            "de1426c"
+          ],
           "brief": "DEC-76 V5: SIP early exit withdraws only the SIP block's value and principal; copy 'the current value of your SIP' (amends DEC-41)",
           "paths": [
             "backend_controller",
             "packages/contracts",
             "frontend_stack_ts/src/features/admin/users"
-          ]
+          ],
+          "landedAt": "2026-11-18T14:58:24.100Z"
         },
         {
           "id": "P-button-disabled",
@@ -2587,6 +2612,24 @@
             "frontend_stack_ts/src/ui/primitives/Button.tsx"
           ],
           "landedAt": "2026-11-18T14:27:03.735Z"
+        },
+        {
+          "id": "P-release-0184",
+          "track": "p-release-0184",
+          "status": "landed",
+          "commit": "9c58889",
+          "also": [
+            "1ce08a7"
+          ],
+          "brief": "Release prep for 0.18.4: What's new 0.18.4 client and admin entries checked against what lands, frozen last; DEPLOY.md 0.18.4 (078, preparing state, released-admin growth refusal, nginx default server, Grafana root URL, rollback); plans 0.18.4 section with DEC-76 to DEC-78 and accepted calls; stale admin host comments in the compose files and the nginx_ship check host.",
+          "paths": [
+            "frontend_stack_ts/src/features/whats-new",
+            "DEPLOY.md",
+            "plans/admin-improvements.md",
+            "release_manager/stacks",
+            "release_manager/lib/nginx_ship.sh"
+          ],
+          "landedAt": "2026-11-18T15:05:45.141Z"
         }
       ]
     }

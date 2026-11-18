@@ -14112,6 +14112,1919 @@
       "note": "recorded as other, not green: it exited 1",
       "head": "e0f131ff5902ebc809aba3dabf2e7cd5ec07fa61",
       "dirty": false
+    },
+    {
+      "id": "a9f60ec6-e491-46a2-9e76-b9d0b4b12989",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:27:06Z",
+      "seconds": 43,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T142706Z-3947286-green.log",
+        "sha256": "5c48ea3966919c4f8a31d6ce1267b5bea3eabe03c60b39e191fded2dc25d0c0f",
+        "bytes": 12036
+      },
+      "summary": {
+        "passed": 1250,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "recorded as other, not green: it exited 1",
+      "head": "53fb4d0aa7588fd65c3802811d30520b738af0e6",
+      "dirty": false
+    },
+    {
+      "id": "01e9e0ec-c96a-4000-b2ae-ff86e1f9b685",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:28:28Z",
+      "seconds": 33,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T142828Z-3984679-green.log",
+        "sha256": "5567f9fcbe0b056170fb42d864e19d0aff542584bf822af924472a037589726e",
+        "bytes": 1000
+      },
+      "note": "recorded as other, not green: it exited 1",
+      "head": "3c954fb1625d072ae4521eac2676810545911424",
+      "dirty": false
+    },
+    {
+      "id": "c0cc44e3-f7b4-46d5-b0ab-773ed0a48674",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:29:35Z",
+      "seconds": 58,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T142935Z-4012767-green.log",
+        "sha256": "6ee6a288c934f16c3a574e6fb0d432f40248805449f6133c8db8d35c3fd59325",
+        "bytes": 12865
+      },
+      "summary": {
+        "passed": 1255,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "recorded as other, not green: it exited 1",
+      "head": "de24ee1c897a760f753b3a018d2e1423668875ef",
+      "dirty": false
+    },
+    {
+      "id": "9975ebba-40fd-4fe8-a546-9c7ac8cf90e5",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:29:27Z",
+      "seconds": 71,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T142927Z-4009268-green.log",
+        "sha256": "3f9c1d3b4101dd0ee4b4f692e35f6e0288bad65a352bb682a342293e8382d0d2",
+        "bytes": 21150
+      },
+      "summary": {
+        "passed": 599,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "5ca65326ae6bb81751f1361340609716238599e0",
+      "dirty": false
+    },
+    {
+      "id": "cbfe6c18-6ff0-4797-b9a1-31267c59a268",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:30:38Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T143038Z-4038602-green.log",
+        "sha256": "b65c5197d6d6ce6df3e8f899613d6b869a99019cd9b9b991434a07ed5d67d071",
+        "bytes": 7716
+      },
+      "head": "5ca65326ae6bb81751f1361340609716238599e0",
+      "dirty": false
+    },
+    {
+      "id": "f948acb1-6cb8-4877-9d8a-34a18f6a757e",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts test/integration/payoutOutcomes.integration.test.ts test/integration/finalEntryReversal.integration.test.ts test/integration/clientInvestmentBreakdown.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:31:07Z",
+      "seconds": 9,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143107Z-4051764-green.log",
+        "sha256": "51b2efc487ca8da51d705afbf9e1e9cf294d252cc48e900364fca7b2d0c186b4",
+        "bytes": 1090
+      },
+      "summary": {
+        "passed": 17,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "early-exit integration tests and the two sibling suites that drive an early exit",
+      "head": "de24ee1c897a760f753b3a018d2e1423668875ef",
+      "dirty": false
+    },
+    {
+      "id": "82fca2d6-7ea5-4a33-b1d5-84535a271086",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/domain/client/investmentBreakdown.test.ts -t \"invested sum unbalanced\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:31:26Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T143126Z-4062056-red.log",
+        "sha256": "7812e886e921954afdd4844e1395cd4bb84b44b89a4feba3272fed421fdbc2da",
+        "bytes": 3309
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 18
+      },
+      "head": "0c20bd199a0499d0db8fb6b3425c5ba38f8e394d",
+      "dirty": true
+    },
+    {
+      "id": "d44a4d27-152f-41df-8989-d1f7b3bf2084",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/domain/client/investmentBreakdown.test.ts -t \"no investment held\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:31:27Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T143127Z-4063220-red.log",
+        "sha256": "2e2d35fb8f2d3cd9d3aa3344a0dc6194b9597064edfe12ee455035fdc3c3f1f1",
+        "bytes": 3361
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 18
+      },
+      "head": "0c20bd199a0499d0db8fb6b3425c5ba38f8e394d",
+      "dirty": true
+    },
+    {
+      "id": "950e758f-56e2-4189-9173-60123366ed2b",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts -t 'with a one-time investment'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:31:21Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143121Z-4059712-red.log",
+        "sha256": "9ce5a795062a16ccd7bf0387841b41cc30f3fbce4a65f637534fc9b98b99a08b",
+        "bytes": 2857
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 6
+      },
+      "note": "red control whole-holding: with a one-time investment",
+      "head": "de24ee1c897a760f753b3a018d2e1423668875ef",
+      "dirty": true
+    },
+    {
+      "id": "26d1bc5f-f9c0-4999-94f0-82da1a4a83d4",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/adminInvestmentCleanup.integration.test.ts -t \"cutoff went stale\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:31:38Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T143138Z-4068714-red.log",
+        "sha256": "693edb895fb92f53af4d323f75333a592b88e22496f6d167e6e0ebd683f50bd5",
+        "bytes": 1679
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 2
+      },
+      "head": "0c20bd199a0499d0db8fb6b3425c5ba38f8e394d",
+      "dirty": true
+    },
+    {
+      "id": "30259afb-7aa0-4601-ac55-cc6406a0894f",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts -t 'with only the SIP in the fund'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:31:34Z",
+      "seconds": 11,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143134Z-4066848-red.log",
+        "sha256": "a661114d6030b06a14460656df73967fa9e62b56b49422c6863bbacf2e32e4b7",
+        "bytes": 3180
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 6
+      },
+      "note": "red control email-text: with only the SIP in the fund",
+      "head": "de24ee1c897a760f753b3a018d2e1423668875ef",
+      "dirty": true
+    },
+    {
+      "id": "a79f6977-144c-4428-9d30-66131554b1e0",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/adminInvestmentCleanup.integration.test.ts -t \"cutoff went stale\""
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:31:45Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T143145Z-4072102-red.log",
+        "sha256": "6295d54dd6f76698c1539c06313a05507fdbf925f03f369fec7a447811947f59",
+        "bytes": 1746
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 2
+      },
+      "head": "0c20bd199a0499d0db8fb6b3425c5ba38f8e394d",
+      "dirty": true
+    },
+    {
+      "id": "4b9d844d-b26b-4644-81c3-cc420735a32b",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts -t 'recording without a category'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:31:52Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143152Z-4075562-red.log",
+        "sha256": "69e68e57f1a53c86ce9b9601b679c111eb44b9e5319505f772f9838b8c579edb",
+        "bytes": 2347
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 6
+      },
+      "note": "red control preparing-gate: recording without a category",
+      "head": "de24ee1c897a760f753b3a018d2e1423668875ef",
+      "dirty": true
+    },
+    {
+      "id": "5e73069d-b51a-43ae-99d9-ac6549dfddf8",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:32:00Z",
+      "seconds": 58,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T143200Z-4079038-green.log",
+        "sha256": "d00d61897e2f4d26e4bc055c2428d55d660ca4d5d91526c982484f02b0e6fd3b",
+        "bytes": 17846
+      },
+      "summary": {
+        "passed": 1257,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "0c20bd199a0499d0db8fb6b3425c5ba38f8e394d",
+      "dirty": false
+    },
+    {
+      "id": "42c98c97-b8b5-40da-92c1-ee6c6337d95a",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:32:13Z",
+      "seconds": 66,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143213Z-4084181-green.log",
+        "sha256": "e03b84014e0a2b8521bed85d5ee1ab3b5d2e3885a28f707dc7a2058702039f23",
+        "bytes": 18088
+      },
+      "summary": {
+        "passed": 1262,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "recorded as other, not green: it exited 1",
+      "head": "daafb2eea906fe5a0e3c8c208121db9300eae704",
+      "dirty": false
+    },
+    {
+      "id": "dc0a4edb-0eb5-4f92-bae0-a6ac2677e1e9",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/backend_controller",
+      "started": "2026-11-18T14:33:05Z",
+      "seconds": 60,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T143305Z-4102011-green.log",
+        "sha256": "bdb7ac69e8227bb5a3651ab58ebcff6918b1dec297a45d2fdb8f9dc41e8972c4",
+        "bytes": 27667
+      },
+      "summary": {
+        "passed": 674,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "0c20bd199a0499d0db8fb6b3425c5ba38f8e394d",
+      "dirty": false
+    },
+    {
+      "id": "468d4bfe-fef1-4ee6-a404-10103a9b9683",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts test/integration/payoutOutcomes.integration.test.ts test/integration/finalEntryReversal.integration.test.ts test/integration/clientInvestmentBreakdown.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:33:53Z",
+      "seconds": 16,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143353Z-4158068-green.log",
+        "sha256": "90f6b502bd83a4e296d3c055dda33b738cc760a2d470babdffbb704c6b274695",
+        "bytes": 1237
+      },
+      "summary": {
+        "passed": 17,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "early-exit integration tests and the sibling suites, on the head with V1's 0c20bd19",
+      "head": "daafb2eea906fe5a0e3c8c208121db9300eae704",
+      "dirty": false
+    },
+    {
+      "id": "91212fd8-a6c4-4cdb-ad76-6224a81c58e9",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/packages/contracts",
+      "started": "2026-11-18T14:33:19Z",
+      "seconds": 68,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T143319Z-4118702-green.log",
+        "sha256": "bfccbc26b15a2afe7ec59a894b91d11991812714641222ccfec778331a83f40f",
+        "bytes": 8658
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "0c20bd199a0499d0db8fb6b3425c5ba38f8e394d",
+      "dirty": false
+    },
+    {
+      "id": "23b4070b-1757-4f9a-84b0-90e1aa6c03e0",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/packages/contracts",
+      "started": "2026-11-18T14:34:17Z",
+      "seconds": 11,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143417Z-4173896-green.log",
+        "sha256": "86e422c45b60a332428e8ecdefb182d3a6994dabeb4e09aab5179d88409efb84",
+        "bytes": 568
+      },
+      "note": "contracts build before the frontend check",
+      "head": "daafb2eea906fe5a0e3c8c208121db9300eae704",
+      "dirty": false
+    },
+    {
+      "id": "6f627b6a-64c8-40e5-896e-3809e71f1df6",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:33:37Z",
+      "seconds": 99,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T143337Z-4141132-green.log",
+        "sha256": "fab8e395e3c8ff76834f9161167d93fbfb44234c84efecfdfba2a40e59e78b2d",
+        "bytes": 20847
+      },
+      "summary": {
+        "passed": 599,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "ae20af72b982a89f23a312e8bc4d397c3b7e7b0f",
+      "dirty": false
+    },
+    {
+      "id": "433a4f74-56f1-4b6e-84b4-0591642dd387",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:35:16Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T143516Z-4192243-green.log",
+        "sha256": "99a6c387649bc3e7ea254bde0197c0e42a50fcd48b9690671580ba79daff1fb3",
+        "bytes": 7716
+      },
+      "head": "ae20af72b982a89f23a312e8bc4d397c3b7e7b0f",
+      "dirty": false
+    },
+    {
+      "id": "fe0f5f34-488e-4cfe-8d6d-7dd65e622f63",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check && npm run build:android && npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/frontend_stack_ts",
+      "started": "2026-11-18T14:34:35Z",
+      "seconds": 92,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143435Z-4178709-green.log",
+        "sha256": "10d78b990946ccf00e5aedc409de08af1657dcaa6bfdd10c42b9afdec47561fa",
+        "bytes": 23929
+      },
+      "summary": {
+        "passed": 605,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "recorded as other, not green: it exited 1; frontend check and both Android builds after the admin early-exit copy",
+      "head": "daafb2eea906fe5a0e3c8c208121db9300eae704",
+      "dirty": false
+    },
+    {
+      "id": "419dfabf-620b-43a5-bf3b-1964158dd8d7",
+      "task": "V-breakdown-core",
+      "track": "v-breakdown-core",
+      "agent": "claude-opus-5-5 builder v-breakdown-core",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-breakdown-core/frontend_stack_ts",
+      "started": "2026-11-18T14:34:41Z",
+      "seconds": 96,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-breakdown-core/20261118T143441Z-4181441-green.log",
+        "sha256": "6f5c9261a892c44501753920a29e6de550d38d2010df7a978e3a2189a55ae5cc",
+        "bytes": 20029
+      },
+      "summary": {
+        "passed": 596,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "0c20bd199a0499d0db8fb6b3425c5ba38f8e394d",
+      "dirty": false
+    },
+    {
+      "id": "1b42ca3a-4698-4103-8b4b-90521717b824",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/client-values/heldMoneyWrites.test.tsx",
+        "-t",
+        "never sends a whole-fund hold saved by 0.18.3"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:37:46Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T143746Z-58940-red.log",
+        "sha256": "7feb1c3ef1694e7231eb1e2e1432ed23069d74a699010d6143f8d7d7a8e8ecac",
+        "bytes": 4409
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 16
+      },
+      "head": "5187924e90181e4c92a07b7ff5ebd6764ec78ef3",
+      "dirty": true
+    },
+    {
+      "id": "511834f2-057b-4ded-85bf-70b6bafc49b0",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/client-values/valueUpdateSheet.test.ts",
+        "-t",
+        "refuses a preview that drops or repeats"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:37:52Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T143752Z-61676-red.log",
+        "sha256": "c4a1932d5bc451df66345f6940f456d73f1574a8bddb1838fec7435dadd737b0",
+        "bytes": 2575
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 6
+      },
+      "head": "5187924e90181e4c92a07b7ff5ebd6764ec78ef3",
+      "dirty": true
+    },
+    {
+      "id": "152a67a6-e0f2-4175-abec-020a25e4695a",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check && npm run build:android && npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/frontend_stack_ts",
+      "started": "2026-11-18T14:36:29Z",
+      "seconds": 83,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143629Z-29512-green.log",
+        "sha256": "48e548256dbc306a5ff8e05be4c0d443abc796f526ecf44876a67709a696fe2d",
+        "bytes": 36193
+      },
+      "summary": {
+        "passed": 606,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend check and both Android builds, rerun after a load timeout in guards.test.tsx (passes alone in 150 ms)",
+      "head": "daafb2eea906fe5a0e3c8c208121db9300eae704",
+      "dirty": false
+    },
+    {
+      "id": "513e2feb-1f91-4d0e-b8ed-3ebab8d7a3e8",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:37:23Z",
+      "seconds": 52,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T143723Z-51427-green.log",
+        "sha256": "13ff71af853982e242778dd34be14ddb86472a6247a94be89f4c8880d4ee891e",
+        "bytes": 998
+      },
+      "note": "recorded as other, not green: it exited 1",
+      "head": "6a23da215355a75c575356cb548fce8e92955cbc",
+      "dirty": false
+    },
+    {
+      "id": "435dffd6-c878-453e-a048-d86420724f7b",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:37:27Z",
+      "seconds": 87,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T143727Z-52734-green.log",
+        "sha256": "1b8946d3b4ef89556d30d6eb24cbb57d9c3a7875c2a7758d5c3f05eeeae3d2e7",
+        "bytes": 20003
+      },
+      "summary": {
+        "passed": 599,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "a066f00da3519fdfb5542b205e6880e071c5d2aa",
+      "dirty": false
+    },
+    {
+      "id": "70affae7-cf76-4d49-b223-f25593061fbe",
+      "task": "V-client-breakdown",
+      "track": "v-client-breakdown",
+      "agent": "claude-opus-5-5 builder v-client-breakdown",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-client-breakdown/frontend_stack_ts",
+      "started": "2026-11-18T14:38:54Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-client-breakdown/20261118T143854Z-86647-green.log",
+        "sha256": "4240aeb9924895ac428dd8a03be3fc9cce18e4f34eb5e019d47449c663a81521",
+        "bytes": 7716
+      },
+      "head": "a066f00da3519fdfb5542b205e6880e071c5d2aa",
+      "dirty": false
+    },
+    {
+      "id": "2cff643f-11ca-4453-b587-04f7775d8166",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:38:03Z",
+      "seconds": 79,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143803Z-66792-green.log",
+        "sha256": "413f3a27a8db76ade5e06c82817c547a66d0cfc88b5e7430c1d7b34771ec88f6",
+        "bytes": 18331
+      },
+      "summary": {
+        "passed": 1262,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend check rerun; the previous run failed only smoke:source (5 s start timeout) at load average 27",
+      "head": "daafb2eea906fe5a0e3c8c208121db9300eae704",
+      "dirty": false
+    },
+    {
+      "id": "a50aade2-480d-4833-9f7f-e3a3829668aa",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts -t 'with a one-time investment'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:39:29Z",
+      "seconds": 17,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143929Z-100623-red.log",
+        "sha256": "ef99fa7a8c644a4324194114d10f65518abb33e24a7b49e192ebae543e1860e2",
+        "bytes": 2859
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 6
+      },
+      "note": "red control whole-holding: with a one-time investment",
+      "head": "daafb2eea906fe5a0e3c8c208121db9300eae704",
+      "dirty": true
+    },
+    {
+      "id": "0446d8fc-701d-43ac-8b0e-991af51a5afe",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:38:06Z",
+      "seconds": 103,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T143806Z-67770-green.log",
+        "sha256": "dffc1990c44f371b8c3b7aa8a91430c50c4d2886c6dc50f40c2b3660fd3d50c2",
+        "bytes": 20223
+      },
+      "summary": {
+        "passed": 602,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "5187924e90181e4c92a07b7ff5ebd6764ec78ef3",
+      "dirty": false
+    },
+    {
+      "id": "b499d389-72ea-4421-92a8-b2e44527f6fc",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run typecheck && npx eslint . --ignore-pattern test/integration/adminInvestmentCleanup.integration.test.ts && npm run test:coverage && npm run build && npm run smoke:source && npm run smoke:dist"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:38:32Z",
+      "seconds": 77,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T143832Z-77782-green.log",
+        "sha256": "104d0b8acabf2f88a433e43add9e7b303313ca21c36130f69b8b6830df3e1d1c",
+        "bytes": 33211
+      },
+      "summary": {
+        "passed": 1271,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "recorded as other, not green: it exited 1; npm run check steps with V1's lint error in adminInvestmentCleanup.integration.test.ts:67 excluded; V1 fixed it in fc3e30d8",
+      "head": "6a23da215355a75c575356cb548fce8e92955cbc",
+      "dirty": false
+    },
+    {
+      "id": "84ccd849-ba95-491d-9cfa-1756ee27d410",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T14:39:49Z",
+      "seconds": 8,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T143949Z-113393-green.log",
+        "sha256": "7195e0edcb8643b223e636d7a22df69c8b75b8670cfb0387e79bdec621f31465",
+        "bytes": 10760
+      },
+      "head": "5187924e90181e4c92a07b7ff5ebd6764ec78ef3",
+      "dirty": false
+    },
+    {
+      "id": "a84e9ae5-2d7b-40ce-acc1-ed193140af57",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts -t 'with only the SIP in the fund'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:39:46Z",
+      "seconds": 10,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143946Z-112135-red.log",
+        "sha256": "55fb6d325ecdcf7cb5c4e8fd4464efa31b89dba22ee9b3548d10d007c6c30e73",
+        "bytes": 3180
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 6
+      },
+      "note": "red control email-text: with only the SIP in the fund",
+      "head": "daafb2eea906fe5a0e3c8c208121db9300eae704",
+      "dirty": true
+    },
+    {
+      "id": "b9c6d03d-56ec-4475-b7c1-6fca8fb58e52",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts -t 'recording without a category'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:39:56Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T143956Z-117921-red.log",
+        "sha256": "f0794cae43b65bac1cbfb8f60d1a5073215518df124df54e60edb8edd039ad9e",
+        "bytes": 2348
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 6
+      },
+      "note": "red control preparing-gate: recording without a category",
+      "head": "daafb2eea906fe5a0e3c8c208121db9300eae704",
+      "dirty": true
+    },
+    {
+      "id": "68b8d820-39d2-481e-9583-25b3af9feacc",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/packages/contracts",
+      "started": "2026-11-18T14:44:39Z",
+      "seconds": 38,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T144439Z-201178-green.log",
+        "sha256": "fe62b70e9ee221837a3514d54b8411c0cce380d66e2d49819005d81c85d0d548",
+        "bytes": 9000
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": false
+    },
+    {
+      "id": "987b8671-0ad3-4b94-9993-096e47fa3819",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/investmentGrowth.integration.test.ts test/integration/finalEntryReversal.integration.test.ts test/integration/accountingReports.integration.test.ts test/integration/adminClientReturns.integration.test.ts test/integration/maturitySchedules.integration.test.ts test/integration/growthEmails.integration.test.ts test/integration/clientGrowth.integration.test.ts test/integration/maturitySettlement.integration.test.ts test/integration/sipEarlyExit.integration.test.ts test/integration/valueUpdates.integration.test.ts test/integration/clientErasure.integration.test.ts test/integration/adminInvestmentCleanup.integration.test.ts test/integration/clientInvestmentBreakdown.integration.test.ts test/integration/investmentBreakdownSchema.integration.test.ts test/integration/recordingCategories.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:46:42Z",
+      "seconds": 16,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T144642Z-243981-green.log",
+        "sha256": "9596efc96b7f17473c9d701b2109ff97567da5b151372cd5b0e92b2c1cd23d5a",
+        "bytes": 5933
+      },
+      "summary": {
+        "passed": 102,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": false
+    },
+    {
+      "id": "a0af7edb-5d96-436a-86e4-afadfdfd46fc",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run --config vitest.config.ts src/domain/admin/investmentGrowth.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:47:27Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T144727Z-273584-red.log",
+        "sha256": "ab0ba3bd9a2bebc0aa2c65e7d50c7cfdb6c79881f4bca7e08f861cba863e700c",
+        "bytes": 3178
+      },
+      "summary": {
+        "passed": 7,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control: entry delta not summed from its parts",
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": true
+    },
+    {
+      "id": "20c0b3b6-e166-405d-a8fd-192ab0bc399b",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run --config vitest.config.ts src/domain/admin/investmentGrowth.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:47:29Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T144729Z-274699-red.log",
+        "sha256": "fccae0a2147cd86d24a87f4c6537c7ff23a22228e54a078f74ee72780dcc028f",
+        "bytes": 3768
+      },
+      "summary": {
+        "passed": 7,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "red control (Review Focus 3): a fund rate errors on a zero-invested investment instead of skipping it",
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": true
+    },
+    {
+      "id": "cbae37ff-9867-4ab3-b8ad-d57931163484",
+      "task": "P-release-0184",
+      "track": "p-release-0184",
+      "agent": "claude-opus-5-5 builder p-release-0184",
+      "kind": "other",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-release-0184/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-release-0184/frontend_stack_ts",
+      "started": "2026-11-18T14:47:23Z",
+      "seconds": 15,
+      "exit": 2,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-release-0184/20261118T144723Z-271480-green.log",
+        "sha256": "7ac84ab1eacf981c004296a08d9ad6f99425cc1d98e57d891ea41ce58391171a",
+        "bytes": 60795
+      },
+      "note": "recorded as other, not green: it exited 2",
+      "head": "5a4102ba9e3b8dd45b4f437c7b81d32e246b6b99",
+      "dirty": false
+    },
+    {
+      "id": "6b4a749a-6ba3-476e-8e42-65042a68c29b",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run --config vitest.config.ts src/domain/admin/investmentGrowth.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:47:42Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T144742Z-281332-red.log",
+        "sha256": "556ef6289e86ad103eb47c17512f7e24e3f018385c74f80b2f79a3e665d120aa",
+        "bytes": 2121
+      },
+      "summary": {
+        "passed": 8,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control (Review Focus 2): an ended SIP can be targeted",
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": true
+    },
+    {
+      "id": "c2a5774f-366a-4586-a468-65b581bbf1d4",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run --config vitest.config.ts src/email/investmentGrowthTemplate.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:47:44Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T144743Z-282417-red.log",
+        "sha256": "c4e37d1420d5ab8f02d90fc02e10d4d582fa26f6d7428f8352579a2bcc185c8c",
+        "bytes": 9982
+      },
+      "summary": {
+        "passed": 21,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: v2 email renders parts that do not add up to the net",
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": true
+    },
+    {
+      "id": "943d2d2b-4197-4f3e-868d-a46daa033803",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/investmentGrowth.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:47:45Z",
+      "seconds": 9,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T144745Z-283135-red.log",
+        "sha256": "34c7e578ac6652d98202c3167003445238e333e42ef3e50f117bca581ad137f8",
+        "bytes": 2101
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: released growth routes skip the multi-investment refusal",
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": true
+    },
+    {
+      "id": "ad63f598-4180-4a1b-8f3a-2103af90596e",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts test/integration/payoutOutcomes.integration.test.ts test/integration/finalEntryReversal.integration.test.ts test/integration/clientInvestmentBreakdown.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:47:47Z",
+      "seconds": 10,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T144747Z-284497-green.log",
+        "sha256": "4784eed0606eae43a320e4116b85d060b593760a272621954fb39a2785f41c72",
+        "bytes": 1090
+      },
+      "summary": {
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "early-exit integration suites after the maturity fixup",
+      "head": "7480ffb7fd729976585a3fa596cc36d81eaf1a39",
+      "dirty": false
+    },
+    {
+      "id": "6519027e-8677-4a89-9258-9c7c348a9947",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts -t 'keeps the date and the one-time block'"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:47:57Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T144757Z-289318-red.log",
+        "sha256": "384fcf7ff59a1594196d3edeaf5afa1f49fdd06925a71e73956cdd6923d75621",
+        "bytes": 3034
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 7
+      },
+      "note": "red control always-cancel: keeps the date and the one-time block",
+      "head": "7480ffb7fd729976585a3fa596cc36d81eaf1a39",
+      "dirty": true
+    },
+    {
+      "id": "9910fbc2-f7da-4ddd-9480-b44659230bca",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/investmentGrowth.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:48:10Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T144810Z-294335-red.log",
+        "sha256": "8531f790466d8cc2a61a8f63da2d06d78140595cd544fad04247512299184e83",
+        "bytes": 2161
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: a typed-gains commit naming a client to categorise is not refused",
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": true
+    },
+    {
+      "id": "a4d3ee4c-1216-40c0-8225-ce99f942ede1",
+      "task": "P-release-0184",
+      "track": "p-release-0184",
+      "agent": "claude-opus-5-5 builder p-release-0184",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-release-0184/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run build"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-release-0184/packages/contracts",
+      "started": "2026-11-18T14:48:13Z",
+      "seconds": 11,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-release-0184/20261118T144813Z-295552-green.log",
+        "sha256": "c8064694624569571498f752db919f8aaae8905d44d6767cf7684046779602c2",
+        "bytes": 568
+      },
+      "head": "5a4102ba9e3b8dd45b4f437c7b81d32e246b6b99",
+      "dirty": false
+    },
+    {
+      "id": "3653871d-0859-40f0-b6fb-ab2db89e6b83",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/investmentGrowth.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:48:18Z",
+      "seconds": 15,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T144818Z-297341-red.log",
+        "sha256": "5faee5743e7763860d5114fb3ce6bd274be2701c28fef9a419806cac883927fd",
+        "bytes": 2131
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: the per-investment commit skips the stale-basis check",
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": true
+    },
+    {
+      "id": "761d097c-578d-4dcd-abab-b39d5755fdac",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:48:41Z",
+      "seconds": 66,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T144841Z-304992-green.log",
+        "sha256": "af886b53ed58ac61394c1f06e8599ec0f9afa3276796c666269d42009bbb7389",
+        "bytes": 29363
+      },
+      "summary": {
+        "passed": 679,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "full integration suite, coverage off (finding-22)",
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": false
+    },
+    {
+      "id": "f1f55296-f3c8-46ea-a20d-7912b2b56187",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/backend_controller",
+      "started": "2026-11-18T14:48:12Z",
+      "seconds": 111,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T144812Z-295418-green.log",
+        "sha256": "a615011f930fcc0757c526395e6827b5e919753760e61fffc17259b4defda2c1",
+        "bytes": 19505
+      },
+      "summary": {
+        "passed": 1262,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend check after the maturity fixup",
+      "head": "7480ffb7fd729976585a3fa596cc36d81eaf1a39",
+      "dirty": false
+    },
+    {
+      "id": "ddf06042-4624-4741-bc60-3ed1ed9e521a",
+      "task": "P-release-0184",
+      "track": "p-release-0184",
+      "agent": "claude-opus-5-5 builder p-release-0184",
+      "kind": "green",
+      "command": [
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-release-0184/tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-release-0184/frontend_stack_ts",
+      "started": "2026-11-18T14:48:27Z",
+      "seconds": 113,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-release-0184/20261118T144827Z-300396-green.log",
+        "sha256": "1e04336d6a63d7600ad2481eddda6e2706efb964c54675abda9541d18a001469",
+        "bytes": 20114
+      },
+      "summary": {
+        "passed": 606,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "5a4102ba9e3b8dd45b4f437c7b81d32e246b6b99",
+      "dirty": false
+    },
+    {
+      "id": "c9d83206-fe1d-45ab-9f52-08e96eac304d",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund >/dev/null && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/frontend_stack_ts",
+      "started": "2026-11-18T14:50:05Z",
+      "seconds": 82,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T145005Z-367137-green.log",
+        "sha256": "5b6e97afdcf63564abd8b7421369b2f82cd90a7b21a8f9bdef9798bd4c602ba7",
+        "bytes": 18745
+      },
+      "summary": {
+        "passed": 606,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend check after regenerating src/api/generated only",
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": false
+    },
+    {
+      "id": "744c6d3d-edf3-4474-928a-2c2be28f41be",
+      "task": "V-early-exit-sip",
+      "track": "v-early-exit-sip",
+      "agent": "claude-opus-5-5 builder v-early-exit-sip",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check && npm run build:android && npm run build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-early-exit-sip/frontend_stack_ts",
+      "started": "2026-11-18T14:50:16Z",
+      "seconds": 91,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-early-exit-sip/20261118T145016Z-369900-green.log",
+        "sha256": "b4aa94ae838e5397c884555481d4b74b48b7a00c9c69b51d038840f2c6fdf44d",
+        "bytes": 37995
+      },
+      "summary": {
+        "passed": 606,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend check and both Android builds after the maturity-line copy fixup",
+      "head": "7480ffb7fd729976585a3fa596cc36d81eaf1a39",
+      "dirty": false
+    },
+    {
+      "id": "d5837c4a-4747-458c-9fe6-aa7c46a807b6",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "other",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund >/dev/null && npm run typecheck && echo TYPECHECK_OK; npx eslint . --ignore-pattern test/integration/adminInvestmentCleanup.integration.test.ts && echo LINT_OK; npm run test:coverage; npm run build && npm run smoke:source && npm run smoke:dist && echo BUILD_SMOKE_OK"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T14:52:36Z",
+      "seconds": 62,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T145236Z-396439-other.log",
+        "sha256": "252f5aeb65b9f46c46cdd93341a4b25b08d04024464a20901962e031fba60d09",
+        "bytes": 12200
+      },
+      "summary": {
+        "passed": 1272,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "each npm run check step in turn at 41f96289; lint excludes V1's adminInvestmentCleanup.integration.test.ts:67 (fixed by V1 in fc3e30d8); the 2 failing guard tests are V1's holdings/allocationId plus fund.holdings in investmentGrowthBases.ts, fixed by the stakes rename on rebase",
+      "head": "41f962898c695cc672f9416d6b8a273a21813708",
+      "dirty": false
+    },
+    {
+      "id": "f9727b4a-ec10-4f9b-824d-e64dbc17bf03",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T15:02:21Z",
+      "seconds": 68,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T150221Z-546826-green.log",
+        "sha256": "d5ec9463ec6c238911f63540d62ecdeaa77e9c9dd662eebb3f57d283e9a9255f",
+        "bytes": 18618
+      },
+      "summary": {
+        "passed": 609,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "482140374ea8accf67eae6b72e59f3f15058571e",
+      "dirty": false
+    },
+    {
+      "id": "cdfdac85-482a-4fa2-b4d2-0ef0743ec270",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npm",
+        "run",
+        "build:android:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T15:03:29Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T150329Z-558636-green.log",
+        "sha256": "744319732d7b161365e5fde785224b0fbe6b8ef65048e4e82cf9b53b52a7a2a7",
+        "bytes": 10760
+      },
+      "head": "482140374ea8accf67eae6b72e59f3f15058571e",
+      "dirty": false
+    },
+    {
+      "id": "03129eb6-342a-43a8-b3d0-c5d7645ea259",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/client-values/heldMoneyWrites.test.tsx",
+        "-t",
+        "never sends a whole-fund hold saved by 0.18.3"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T15:03:47Z",
+      "seconds": 4,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T150347Z-563574-red.log",
+        "sha256": "df87016c371a295c23de55abeca880fdfa42dda9d7708b2bc1ff1ba88dfda27d",
+        "bytes": 4584
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 17
+      },
+      "head": "482140374ea8accf67eae6b72e59f3f15058571e",
+      "dirty": true
+    },
+    {
+      "id": "550a5729-1701-4bb4-aaaa-d8fc41ffe75f",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "claude-opus-5-5 builder v-growth-ui",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "npx",
+        "vitest",
+        "run",
+        "src/features/admin/client-values/valueUpdateSheet.test.ts",
+        "-t",
+        "refuses a preview that drops or repeats"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T15:03:51Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T150351Z-565206-red.log",
+        "sha256": "bf58651f55af7295064af68c7cfc4c7e2ccb129bbd928b9c013a46003eb178ed",
+        "bytes": 2575
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 6
+      },
+      "head": "482140374ea8accf67eae6b72e59f3f15058571e",
+      "dirty": true
+    },
+    {
+      "id": "636b83d6-63ca-455a-a174-ffb575bda564",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T15:03:53Z",
+      "seconds": 59,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T150353Z-566440-green.log",
+        "sha256": "8ade0c21553e115de1a929e1cf88e5db322000afe0941927f224223b272bf630",
+        "bytes": 17945
+      },
+      "summary": {
+        "passed": 1281,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "9ec7a0ed64f9492cfc7c401799471741aa7646c4",
+      "dirty": false
+    },
+    {
+      "id": "d8d9d130-d902-40e8-93db-14d68c835f29",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/investmentGrowth.integration.test.ts test/integration/finalEntryReversal.integration.test.ts test/integration/accountingReports.integration.test.ts test/integration/adminClientReturns.integration.test.ts test/integration/maturitySchedules.integration.test.ts test/integration/growthEmails.integration.test.ts test/integration/clientGrowth.integration.test.ts test/integration/maturitySettlement.integration.test.ts test/integration/sipEarlyExit.integration.test.ts test/integration/valueUpdates.integration.test.ts test/integration/clientErasure.integration.test.ts test/integration/adminInvestmentCleanup.integration.test.ts test/integration/clientInvestmentBreakdown.integration.test.ts test/integration/investmentBreakdownSchema.integration.test.ts test/integration/recordingCategories.integration.test.ts test/integration/adminSipSchedules.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T15:05:03Z",
+      "seconds": 23,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T150503Z-581372-green.log",
+        "sha256": "6698e1f8a36fe5b9f4195beb8b293d8a0b9fcc29ed902e68274a265c0a57d4f1",
+        "bytes": 10309
+      },
+      "summary": {
+        "passed": 111,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "9ec7a0ed64f9492cfc7c401799471741aa7646c4",
+      "dirty": false
+    },
+    {
+      "id": "1057f4d3-d585-489d-bc34-b92e1e741f14",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run --config vitest.config.ts src/domain/admin/investmentGrowth.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T15:05:49Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T150549Z-609859-red.log",
+        "sha256": "0967ca401bffc412ddcc78f355fb8f4648decd01018bae0ad4d2308e6e1686e8",
+        "bytes": 3018
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control (review blocking): a closed SIP that still holds money is treated as ended",
+      "head": "9ec7a0ed64f9492cfc7c401799471741aa7646c4",
+      "dirty": true
+    },
+    {
+      "id": "0959a718-13fb-44ce-aa67-95d244d58bd7",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run --config vitest.config.ts src/domain/admin/investmentGrowth.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T15:05:51Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T150551Z-611128-red.log",
+        "sha256": "394ba285ee640c2772b00d50c43e71d7eab01e32399b712b8f0c5fb88732ebe7",
+        "bytes": 2956
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: an exited SIP becomes a growth basis",
+      "head": "9ec7a0ed64f9492cfc7c401799471741aa7646c4",
+      "dirty": true
+    },
+    {
+      "id": "ccbdf070-0802-4c4a-aa63-e22ed5b4baef",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run --config vitest.config.ts src/domain/admin/investmentGrowth.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T15:05:53Z",
+      "seconds": 2,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T150553Z-612062-red.log",
+        "sha256": "7edafb8055783a95fc28577f071c413fbe742a9c4ba3984332e060e899b27083",
+        "bytes": 2390
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control: a SIP holding nothing can be targeted for one investor",
+      "head": "9ec7a0ed64f9492cfc7c401799471741aa7646c4",
+      "dirty": true
+    },
+    {
+      "id": "a91122a5-961a-4609-b052-328963167fb9",
+      "task": "V-growth-parts",
+      "track": "v-growth-parts",
+      "agent": "claude-opus-5-5 builder v-growth-parts",
+      "kind": "red",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run --config vitest.config.ts src/domain/admin/investmentGrowth.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/backend_controller",
+      "started": "2026-11-18T15:05:55Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-parts/20261118T150555Z-613684-red.log",
+        "sha256": "908fcf5901e058b25f8f3c6436816da2dd9676f29de58a57580141e84aadf166",
+        "bytes": 2726
+      },
+      "summary": {
+        "passed": 10,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "red control (review low): a client netting to zero rejects the whole batch",
+      "head": "9ec7a0ed64f9492cfc7c401799471741aa7646c4",
+      "dirty": true
+    },
+    {
+      "id": "2b9b8ffd-bf36-42b8-bcef-413f3a838ee0",
+      "task": "V-growth-ui",
+      "track": "v-growth-ui",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-ui/frontend_stack_ts",
+      "started": "2026-11-18T15:05:59Z",
+      "seconds": 53,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/v-growth-ui/20261118T150559Z-616144-green.log",
+        "sha256": "d956f89f6457cd78dce9dd51067cd596d37fe34ce736aef888451fc8ecbac257",
+        "bytes": 17795
+      },
+      "summary": {
+        "passed": 609,
+        "failed": 0,
+        "ignored": 0
+      },
+      "head": "041f0f7b5df4c8a58dfc129ce02fe4125f61c112",
+      "dirty": false
     }
   ]
 }
