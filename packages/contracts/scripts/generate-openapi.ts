@@ -13,6 +13,7 @@ import { ADMIN_CLIENT_RETURN_OPERATIONS } from "../src/operations/admin-client-r
 import { ADMIN_CONTENT_OPERATIONS } from "../src/operations/admin-content.js"
 import { ADMIN_EMAIL_OPERATIONS } from "../src/operations/admin-email.js"
 import { ADMIN_FUND_AUM_OPERATIONS } from "../src/operations/admin-fund-aum.js"
+import { ADMIN_INVESTMENT_OPERATIONS } from "../src/operations/admin-investments.js"
 import { ADMIN_MATURITY_OPERATIONS } from "../src/operations/admin-maturity.js"
 import { ADMIN_MATURITY_SCHEDULE_OPERATIONS } from "../src/operations/admin-maturity-schedules.js"
 import { ADMIN_MONEY_OPERATIONS } from "../src/operations/admin-money.js"
@@ -35,6 +36,7 @@ import { CLIENT_SIP_OPERATIONS } from "../src/operations/client-sips.js"
 import { CLIENT_STATEMENT_LINK_OPERATIONS } from "../src/operations/client-statement-links.js"
 import { CLIENT_WEB_AUTH_OPERATIONS } from "../src/operations/client-web-auth.js"
 import { CLIENT_OPERATIONS } from "../src/operations/client.js"
+import { INVESTMENT_BREAKDOWN_OPERATIONS } from "../src/operations/investment-breakdown.js"
 import { NATIVE_AUTH_OPERATIONS } from "../src/operations/native-auth.js"
 import { NOMINEE_OPERATIONS } from "../src/operations/nominee.js"
 import { OPS_OPERATIONS } from "../src/operations/ops.js"
@@ -106,6 +108,8 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...ADMIN_MATURITY_SCHEDULE_OPERATIONS,
   ...CLIENT_MATURITY_OPERATIONS,
   ...CLIENT_STATEMENT_LINK_OPERATIONS,
+  ...INVESTMENT_BREAKDOWN_OPERATIONS,
+  ...ADMIN_INVESTMENT_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]

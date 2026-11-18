@@ -2996,6 +2996,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/client/investment-breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getClientInvestmentBreakdown"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/investments/to-categorise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAdminInvestmentsToCategorise"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{userId}/investments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAdminClientInvestments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{userId}/funds/{fundId}/earlier-growth-split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["confirmAdminEarlierGrowthSplit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -28465,6 +28529,554 @@ export interface operations {
                 };
                 content: {
                     "text/html": string;
+                };
+            };
+        };
+    };
+    getClientInvestmentBreakdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            asOfDate: string;
+                            funds: {
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                /** @enum {string} */
+                                status: "ready" | "preparing";
+                                sips: {
+                                    /** Format: uuid */
+                                    scheduleId: string;
+                                    /** @enum {string} */
+                                    state: "active" | "ended";
+                                    investedPaise: string;
+                                    valuePaise: string;
+                                    growthPaise: string;
+                                    simpleReturnBasisPoints: string | null;
+                                    xirrBasisPoints: string | null;
+                                    monthsPaid: number;
+                                    monthsTotal: number;
+                                }[];
+                                oneTime: {
+                                    /** Format: uuid */
+                                    allocationId: string;
+                                    effectiveDate: string;
+                                    investedPaise: string;
+                                    valuePaise: string;
+                                    growthPaise: string;
+                                    simpleReturnBasisPoints: string | null;
+                                    reversed: boolean;
+                                }[];
+                                lines: {
+                                    /** @enum {string} */
+                                    kind: "other_adjustments";
+                                    valuePaise: string;
+                                }[];
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAdminInvestmentsToCategorise: {
+        parameters: {
+            query?: {
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            clientCount: number;
+                            items: {
+                                /** Format: uuid */
+                                userId: string;
+                                name: string;
+                                waitingRecordings: number;
+                                fundsNeedingSplit: number;
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAdminClientInvestments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            /** Format: uuid */
+                            userId: string;
+                            funds: {
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                /** @enum {string} */
+                                status: "ready" | "preparing";
+                                investments: {
+                                    ref: {
+                                        /** @enum {string} */
+                                        kind: "sip";
+                                        /** Format: uuid */
+                                        scheduleId: string;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "one_time";
+                                        /** Format: uuid */
+                                        allocationId: string;
+                                    };
+                                    label: string;
+                                    date: string | null;
+                                    amountPaise: string;
+                                    reversed: boolean;
+                                }[];
+                                uncategorised: {
+                                    /** Format: uuid */
+                                    entryId: string;
+                                    effectiveDate: string;
+                                    amountPaise: string;
+                                    reasonLabel: string;
+                                }[];
+                                earlierGrowth: {
+                                    totalPaise: string;
+                                    /** Format: uuid */
+                                    cutoffEntryId: string;
+                                    needsConfirmation: boolean;
+                                    proposal: {
+                                        ref: {
+                                            /** @enum {string} */
+                                            kind: "sip";
+                                            /** Format: uuid */
+                                            scheduleId: string;
+                                        } | {
+                                            /** @enum {string} */
+                                            kind: "one_time";
+                                            /** Format: uuid */
+                                            allocationId: string;
+                                        };
+                                        amountPaise: string;
+                                    }[];
+                                    confirmed: {
+                                        /** Format: uuid */
+                                        splitId: string;
+                                        /** Format: uuid */
+                                        cutoffEntryId: string;
+                                        totalPaise: string;
+                                        parts: {
+                                            ref: {
+                                                /** @enum {string} */
+                                                kind: "sip";
+                                                /** Format: uuid */
+                                                scheduleId: string;
+                                            } | {
+                                                /** @enum {string} */
+                                                kind: "one_time";
+                                                /** Format: uuid */
+                                                allocationId: string;
+                                            };
+                                            amountPaise: string;
+                                        }[];
+                                        /** Format: date-time */
+                                        confirmedAt: string;
+                                    } | null;
+                                } | null;
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    confirmAdminEarlierGrowthSplit: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path: {
+                userId: string;
+                fundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    cutoffEntryId: string;
+                    parts: {
+                        ref: {
+                            /** @enum {string} */
+                            kind: "sip";
+                            /** Format: uuid */
+                            scheduleId: string;
+                        } | {
+                            /** @enum {string} */
+                            kind: "one_time";
+                            /** Format: uuid */
+                            allocationId: string;
+                        };
+                        amountPaise: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            /** Format: uuid */
+                            fundId: string;
+                            split: {
+                                /** Format: uuid */
+                                splitId: string;
+                                /** Format: uuid */
+                                cutoffEntryId: string;
+                                totalPaise: string;
+                                parts: {
+                                    ref: {
+                                        /** @enum {string} */
+                                        kind: "sip";
+                                        /** Format: uuid */
+                                        scheduleId: string;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "one_time";
+                                        /** Format: uuid */
+                                        allocationId: string;
+                                    };
+                                    amountPaise: string;
+                                }[];
+                                /** Format: date-time */
+                                confirmedAt: string;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
