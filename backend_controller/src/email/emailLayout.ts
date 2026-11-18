@@ -39,15 +39,21 @@ const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial
 const SERIF = "Georgia,'Times New Roman',serif"
 const MONO = "ui-monospace,'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace"
 
+const CARD_MAX_WIDTH = 720
+const WIDE_SCREEN_MIN_WIDTH = 760
+const WIDE_SIDE_PADDING = 40
+const SIDE = "boe-side"
+const WIDE_SCREEN_STYLE = `<style>@media screen and (min-width:${String(WIDE_SCREEN_MIN_WIDTH)}px){.${SIDE}{padding-left:${String(WIDE_SIDE_PADDING)}px !important;padding-right:${String(WIDE_SIDE_PADDING)}px !important}}</style>`
+
 const row = (content: string, padding: string, extraStyle = ""): string =>
-  `<tr><td style="padding:${padding};font-family:${SANS};font-size:16px;line-height:24px;color:${COLOR.ink};${extraStyle}">${content}</td></tr>`
+  `<tr><td class="${SIDE}" style="padding:${padding};font-family:${SANS};font-size:16px;line-height:24px;color:${COLOR.ink};${extraStyle}">${content}</td></tr>`
 
 const anchor = (href: string, label: string, extraStyle = ""): string =>
   `<a href="${escapeHtml(href)}" style="color:${COLOR.link};text-decoration:underline;${extraStyle}">${escapeHtml(label)}</a>`
 
 const actionRows = (label: string, url: string): string =>
   [
-    `<tr><td style="padding:8px 28px 20px 28px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="${COLOR.button}" style="background-color:${COLOR.button};border-radius:6px;"><a href="${escapeHtml(url)}" style="display:inline-block;padding:14px 28px;font-family:${SANS};font-size:16px;line-height:20px;font-weight:700;color:${COLOR.buttonText};text-decoration:none;">${escapeHtml(label)}</a></td></tr></table></td></tr>`,
+    `<tr><td class="${SIDE}" style="padding:8px 28px 20px 28px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="${COLOR.button}" style="background-color:${COLOR.button};border-radius:6px;"><a href="${escapeHtml(url)}" style="display:inline-block;padding:14px 28px;font-family:${SANS};font-size:16px;line-height:20px;font-weight:700;color:${COLOR.buttonText};text-decoration:none;">${escapeHtml(label)}</a></td></tr></table></td></tr>`,
     row(
       `If the button does not work, copy and paste this link into your browser:<br>${anchor(url, url, "word-break:break-all;")}`,
       "0 28px 20px 28px",
@@ -58,7 +64,7 @@ const actionRows = (label: string, url: string): string =>
 const codeRows = (lead: string, code: string): string =>
   [
     row(`${escapeHtml(lead)}:`, "0 28px 8px 28px"),
-    `<tr><td style="padding:0 28px 20px 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="${COLOR.codeBackground}" style="background-color:${COLOR.codeBackground};border:1px solid ${COLOR.codeBorder};border-radius:6px;padding:18px 12px;font-family:${MONO};font-size:32px;line-height:40px;font-weight:700;letter-spacing:4px;color:${COLOR.ink};-webkit-user-select:all;user-select:all;">${escapeHtml(code)}</td></tr></table></td></tr>`,
+    `<tr><td class="${SIDE}" style="padding:0 28px 20px 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="${COLOR.codeBackground}" style="background-color:${COLOR.codeBackground};border:1px solid ${COLOR.codeBorder};border-radius:6px;padding:18px 12px;font-family:${MONO};font-size:32px;line-height:40px;font-weight:700;letter-spacing:4px;color:${COLOR.ink};-webkit-user-select:all;user-select:all;">${escapeHtml(code)}</td></tr></table></td></tr>`,
   ].join("\n")
 
 const blockRows = (block: EmailBlock): string => {
@@ -112,8 +118,8 @@ const renderHtml = (
   supportAddress: string | null,
 ): string => {
   const rows = [
-    `<tr><td style="padding:24px 28px 4px 28px;font-family:${SERIF};font-size:24px;line-height:30px;font-weight:700;color:${COLOR.ink};">BeOnEdge</td></tr>`,
-    `<tr><td style="padding:8px 28px 16px 28px;font-family:${SANS};"><h1 style="margin:0;font-size:22px;line-height:28px;font-weight:700;color:${COLOR.ink};">${escapeHtml(content.heading)}</h1></td></tr>`,
+    `<tr><td class="${SIDE}" style="padding:24px 28px 4px 28px;font-family:${SERIF};font-size:24px;line-height:30px;font-weight:700;color:${COLOR.ink};">BeOnEdge</td></tr>`,
+    `<tr><td class="${SIDE}" style="padding:8px 28px 16px 28px;font-family:${SANS};"><h1 style="margin:0;font-size:22px;line-height:28px;font-weight:700;color:${COLOR.ink};">${escapeHtml(content.heading)}</h1></td></tr>`,
     ...blocks.map(blockRows),
     ...(supportAddress === null ? [] : [supportRow(supportAddress)]),
     row("Regards,<br>BeOnEdge Team", "8px 28px 28px 28px"),
@@ -122,11 +128,11 @@ const renderHtml = (
   return [
     "<!DOCTYPE html>",
     '<html lang="en" dir="ltr">',
-    `<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escapeHtml(subject)}</title></head>`,
+    `<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escapeHtml(subject)}</title>${WIDE_SCREEN_STYLE}</head>`,
     `<body style="margin:0;padding:0;background-color:${COLOR.page};">`,
     `<div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;">${escapeHtml(content.preheader)}</div>`,
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${COLOR.page}" style="background-color:${COLOR.page};"><tr><td align="center" style="padding:24px 12px;">`,
-    `<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background-color:${COLOR.card};border:1px solid ${COLOR.border};border-top:3px solid ${COLOR.accent};">`,
+    `<table role="presentation" width="${String(CARD_MAX_WIDTH)}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${String(CARD_MAX_WIDTH)}px;background-color:${COLOR.card};border:1px solid ${COLOR.border};border-top:3px solid ${COLOR.accent};">`,
     rows,
     "</table>",
     "</td></tr></table>",
