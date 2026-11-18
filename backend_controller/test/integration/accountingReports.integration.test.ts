@@ -8,6 +8,7 @@ import { createAdminSipScheduleRepository } from "../../src/repositories/adminSi
 import { createAuditTrailRepository } from "../../src/repositories/auditTrailRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
+import { createRecordingCategoryRepository } from "../../src/repositories/recordingCategoryRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { registerAdminAuditTrailRoutes } from "../../src/routes/adminAuditTrailRoutes.js"
@@ -223,6 +224,7 @@ beforeAll(async () => {
         emailDeliveryRepository: stack.emailDeliveryRepository,
         crypto: stack.crypto,
         clientPositionRepository: createClientPositionRepository(),
+        recordingCategoryRepository: createRecordingCategoryRepository(),
         userRepository: stack.userRepository,
         sipScheduleRepository: createAdminSipScheduleRepository(),
       })

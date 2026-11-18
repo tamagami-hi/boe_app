@@ -24,6 +24,8 @@ import { createEmailTemplateRepository } from "../repositories/emailTemplateRepo
 import { createNomineeRequestRepository } from "../repositories/nomineeRequestRepository.js"
 import { INVESTMENT_GROWTH_TEMPLATE_KEY } from "../email/investmentGrowthTemplate.js"
 import { NOMINEE_REQUEST_DECIDED_TEMPLATE_KEY } from "../email/nomineeRequestDecidedEmail.js"
+import { ONE_TIME_INVESTMENT_TEMPLATE_KEY } from "../email/oneTimeInvestmentTemplate.js"
+import { SIP_PAYMENT_TEMPLATE_KEY } from "../email/sipPaymentTemplate.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
 import { deriveEmailSendTiming, EMAIL_PASS_BUDGET_MS } from "../email/sendTiming.js"
 import { createDatabase, createUnitOfWork } from "../db/database.js"
@@ -97,6 +99,10 @@ export const composeEmailDispatchWorker = (
 
   const passwordLinkGuard = createPasswordLinkMailGuard({ passwordTokenRepository: createPasswordTokenRepository() })
   const emailChangeGuard = createEmailChangeMailGuard({ emailChangeRepository: createEmailChangeRepository() })
+  const recordedInvestmentGuard = createInvestmentRecordedGuard({
+    clientReceiptRepository: createClientReceiptRepository(),
+    userRepository: createUserRepository(),
+  })
   const adminMessageGuard = createAdminMessageGuard({
     adminEmailMessageRepository: createAdminEmailMessageRepository(),
     emailTemplateRepository: createEmailTemplateRepository(),
@@ -122,13 +128,9 @@ export const composeEmailDispatchWorker = (
           userRepository: createUserRepository(),
         }),
       ],
-      [
-        "investment_recorded",
-        createInvestmentRecordedGuard({
-          clientReceiptRepository: createClientReceiptRepository(),
-          userRepository: createUserRepository(),
-        }),
-      ],
+      ["investment_recorded", recordedInvestmentGuard],
+      [SIP_PAYMENT_TEMPLATE_KEY, recordedInvestmentGuard],
+      [ONE_TIME_INVESTMENT_TEMPLATE_KEY, recordedInvestmentGuard],
       [
         "maturity_options",
         createMaturityOptionsGuard({

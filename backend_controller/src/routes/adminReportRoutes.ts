@@ -6,7 +6,7 @@ import type { Database } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { refuseFutureDate } from "../domain/shared/calendarDate.js"
-import { RECORDING_CATEGORY_TEXT, recordingCategoryOf } from "../domain/shared/recordingCategory.js"
+import { assignedCategoryOf, recordingLabelOf } from "../domain/shared/recordingCategory.js"
 import { createdAtKeyset, paginate, readKeyset, readKeysetValues } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type {
@@ -43,7 +43,9 @@ const balancesQuerySchema = z.object({ asOfDate: calendarDateSchema, ...pageQuer
 const contributionsQuerySchema = z.object({ month: calendarMonthSchema, ...pageQuery }).strict()
 
 const categoryLabelOf = (row: MonthContributionRow): string => {
-  if (row.orderType === "recorded_offline") return RECORDING_CATEGORY_TEXT[recordingCategoryOf(row.reasonCode)].label
+  if (row.orderType === "recorded_offline") {
+    return recordingLabelOf(row.reasonCode, assignedCategoryOf({ linked: row.sipLinked, oneTime: row.oneTime }))
+  }
   return ONLINE_ORDER_LABEL[row.orderType ?? ""] ?? UNLINKED_CONTRIBUTION_LABEL
 }
 

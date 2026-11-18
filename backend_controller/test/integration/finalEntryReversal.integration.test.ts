@@ -9,6 +9,7 @@ import { createAdminSipScheduleRepository } from "../../src/repositories/adminSi
 import { createClientGrowthMailRepository } from "../../src/repositories/clientGrowthMailRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
+import { createRecordingCategoryRepository } from "../../src/repositories/recordingCategoryRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createMaturityRepository } from "../../src/repositories/maturityRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
@@ -242,7 +243,12 @@ beforeAll(async () => {
       const config = { idempotencyTtlMs: 86_400_000, cursorKey: randomBytes(32), sesConfigurationSet: "boe-transactional" }
       registerAdminClientGrowthRoutes(instance, { ...shared, config })
       registerAdminMaturityRoutes(instance, { ...shared, config })
-      registerAdminClientPositionRoutes(instance, { ...shared, clientPositionRepository: createClientPositionRepository(), config })
+      registerAdminClientPositionRoutes(instance, {
+        ...shared,
+        clientPositionRepository: createClientPositionRepository(),
+        recordingCategoryRepository: createRecordingCategoryRepository(),
+        config,
+      })
       registerSipEarlyExitSurface(instance, { ...shared, accessTokenService, clientWeb: { originAllowlist: [] }, config })
     },
   })

@@ -21,6 +21,7 @@ import { createAuditRepository } from "../../src/repositories/auditRepository.js
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
+import { createRecordingCategoryRepository } from "../../src/repositories/recordingCategoryRepository.js"
 import { createClientReturnsRepository } from "../../src/repositories/clientReturnsRepository.js"
 import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliveryRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
@@ -261,6 +262,7 @@ beforeAll(async () => {
         emailDeliveryRepository: createEmailDeliveryRepository(),
         crypto: createCryptoContext(parseCryptoKeys(CRYPTO_ENV)),
         clientPositionRepository: createClientPositionRepository(),
+        recordingCategoryRepository: createRecordingCategoryRepository(),
         userRepository: createUserRepository(),
         sipScheduleRepository: createAdminSipScheduleRepository(),
       })

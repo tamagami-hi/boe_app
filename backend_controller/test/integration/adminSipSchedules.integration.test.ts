@@ -8,6 +8,7 @@ import { createAccessTokenService, type AccessTokenService } from "../../src/aut
 import { createAdminSipScheduleRepository } from "../../src/repositories/adminSipScheduleRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
+import { createRecordingCategoryRepository } from "../../src/repositories/recordingCategoryRepository.js"
 import { createClientReceiptRepository } from "../../src/repositories/clientReceiptRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
@@ -206,6 +207,7 @@ beforeAll(async () => {
         emailDeliveryRepository: stack.emailDeliveryRepository,
         crypto: stack.crypto,
         clientPositionRepository: createClientPositionRepository(),
+        recordingCategoryRepository: createRecordingCategoryRepository(),
         clientGrowthRepository: createClientGrowthRepository(),
         notificationRepository: createNotificationRepository(),
       })

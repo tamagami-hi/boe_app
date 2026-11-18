@@ -89,6 +89,8 @@ export const AdminEmailTemplateKey = z.enum([
   "nominee_request_decided",
   "sip_early_exit",
   "investment_growth",
+  "sip_payment_recorded",
+  "one_time_investment_recorded",
 ])
 export type AdminEmailTemplateKey = z.infer<typeof AdminEmailTemplateKey>
 

@@ -75,7 +75,12 @@ export const commitSipMonthLink = async (
   tx: Transaction,
   deps: SipMonthLinkDeps,
   prepared: PreparedSipMonthLink,
-  input: Readonly<{ entryId: string; actorUserId: string; requestId: string }>,
+  input: Readonly<{
+    entryId: string
+    actorUserId: string
+    requestId: string
+    context?: Readonly<Record<string, unknown>>
+  }>,
 ): Promise<void> => {
   const link = await deps.sipScheduleRepository.insertLink(tx, {
     scheduleId: prepared.scheduleId,
@@ -101,6 +106,7 @@ export const commitSipMonthLink = async (
       sipMonth: prepared.month,
       entryId: input.entryId,
       linkId: link.id,
+      ...input.context,
     },
   })
 }

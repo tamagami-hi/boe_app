@@ -49,3 +49,24 @@ export const RECORDING_CATEGORY_TEXT: Readonly<Record<RecordingCategory, Recordi
 
 export const recordingCategoryOf = (reasonCode: string): RecordingCategory =>
   CATEGORY_BY_REASON_CODE.get(reasonCode) ?? DEFAULT_CATEGORY
+
+export type AssignedRecordingCategory = "sip" | "one_time"
+
+export const ASSIGNED_CATEGORY_LABEL: Readonly<Record<AssignedRecordingCategory, string>> = Object.freeze({
+  sip: "SIP payment",
+  one_time: "One-time investment",
+})
+
+export const MONTHLY_RECORDING_REASON: RecordingReasonCode = "recorded_offline_monthly_investment"
+
+export const isInvestmentRecording = (reasonCode: string): boolean => recordingCategoryOf(reasonCode) !== "correction"
+
+export const assignedCategoryOf = (
+  input: Readonly<{ linked: boolean; oneTime: boolean }>,
+): AssignedRecordingCategory | null => {
+  if (input.linked) return "sip"
+  return input.oneTime ? "one_time" : null
+}
+
+export const recordingLabelOf = (reasonCode: string, assigned: AssignedRecordingCategory | null): string =>
+  assigned === null ? RECORDING_CATEGORY_TEXT[recordingCategoryOf(reasonCode)].label : ASSIGNED_CATEGORY_LABEL[assigned]

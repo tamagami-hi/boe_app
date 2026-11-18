@@ -40,6 +40,7 @@ import { NOMINEE_OPERATIONS } from "../src/operations/nominee.js"
 import { OPS_OPERATIONS } from "../src/operations/ops.js"
 import { PUBLIC_CONTENT_OPERATIONS } from "../src/operations/public-content.js"
 import { PUBLIC_OPERATIONS } from "../src/operations/public.js"
+import { RECORDING_CATEGORY_OPERATIONS } from "../src/operations/recording-categories.js"
 import { RECORDING_SHEET_OPERATIONS } from "../src/operations/recording-sheet.js"
 import { SIP_EARLY_EXIT_OPERATIONS } from "../src/operations/sip-early-exits.js"
 import { SIP_SCHEDULE_OPERATIONS } from "../src/operations/sip-schedules.js"
@@ -101,6 +102,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...SIP_EARLY_EXIT_OPERATIONS,
   ...CLIENT_REVIEW_OPERATIONS,
   ...RECORDING_SHEET_OPERATIONS,
+  ...RECORDING_CATEGORY_OPERATIONS,
   ...ADMIN_MATURITY_SCHEDULE_OPERATIONS,
   ...CLIENT_MATURITY_OPERATIONS,
   ...CLIENT_STATEMENT_LINK_OPERATIONS,

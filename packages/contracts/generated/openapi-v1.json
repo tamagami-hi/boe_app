@@ -19516,6 +19516,13 @@
                       "month"
                     ],
                     "additionalProperties": false
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "sip",
+                      "one_time"
+                    ]
                   }
                 },
                 "required": [
@@ -19711,6 +19718,233 @@
             }
           },
           "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listAdminClientRecordings",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "fundId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entryId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fundId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "amountPaise": {
+                                "type": "string",
+                                "pattern": "^(0|[1-9][0-9]*)$/u"
+                              },
+                              "effectiveDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                              },
+                              "reasonCode": {
+                                "type": "string"
+                              },
+                              "recordedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "reversed": {
+                                "type": "boolean"
+                              },
+                              "category": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "sip",
+                                  "one_time",
+                                  null
+                                ]
+                              },
+                              "categoryLabel": {
+                                "type": "string"
+                              },
+                              "sipScheduleId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "sipMonth": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                              },
+                              "sipLinkAllowed": {
+                                "type": "boolean"
+                              },
+                              "oneTimeAllowed": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "entryId",
+                              "fundId",
+                              "amountPaise",
+                              "effectiveDate",
+                              "reasonCode",
+                              "recordedAt",
+                              "reversed",
+                              "category",
+                              "categoryLabel",
+                              "sipScheduleId",
+                              "sipMonth",
+                              "sipLinkAllowed",
+                              "oneTimeAllowed"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
             "description": "Error",
             "content": {
               "application/json": {
@@ -26789,7 +27023,9 @@
                 "maturity_options",
                 "nominee_request_decided",
                 "sip_early_exit",
-                "investment_growth"
+                "investment_growth",
+                "sip_payment_recorded",
+                "one_time_investment_recorded"
               ]
             },
             "required": false,
@@ -45291,6 +45527,1044 @@
             }
           },
           "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/clients/{userId}/sip-schedules/{scheduleId}/link-proposal": {
+      "get": {
+        "operationId": "getAdminSipLinkProposal",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "scheduleId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "scheduleId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "months": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "month": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                              },
+                              "monthNumber": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "paid": {
+                                "type": "boolean"
+                              },
+                              "linkedEntryId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "proposedEntryId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              }
+                            },
+                            "required": [
+                              "month",
+                              "monthNumber",
+                              "paid",
+                              "linkedEntryId",
+                              "proposedEntryId"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "candidates": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entryId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fundId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "amountPaise": {
+                                "type": "string",
+                                "pattern": "^(0|[1-9][0-9]*)$/u"
+                              },
+                              "effectiveDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                              },
+                              "reasonCode": {
+                                "type": "string"
+                              },
+                              "recordedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "reversed": {
+                                "type": "boolean"
+                              },
+                              "category": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "sip",
+                                  "one_time",
+                                  null
+                                ]
+                              },
+                              "categoryLabel": {
+                                "type": "string"
+                              },
+                              "sipScheduleId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "sipMonth": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                              },
+                              "sipLinkAllowed": {
+                                "type": "boolean"
+                              },
+                              "oneTimeAllowed": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "entryId",
+                              "fundId",
+                              "amountPaise",
+                              "effectiveDate",
+                              "reasonCode",
+                              "recordedAt",
+                              "reversed",
+                              "category",
+                              "categoryLabel",
+                              "sipScheduleId",
+                              "sipMonth",
+                              "sipLinkAllowed",
+                              "oneTimeAllowed"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "schedule": {
+                          "type": "object",
+                          "properties": {
+                            "scheduleId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "clientName": {
+                              "type": "string"
+                            },
+                            "fundId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundName": {
+                              "type": "string"
+                            },
+                            "monthlyAmountPaise": {
+                              "type": "string",
+                              "pattern": "^(0|[1-9][0-9]*)$/u"
+                            },
+                            "startMonth": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                            },
+                            "endMonth": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                            },
+                            "monthCount": {
+                              "type": "integer"
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "monthsPaid": {
+                              "type": "integer"
+                            },
+                            "monthsDue": {
+                              "type": "integer"
+                            },
+                            "nextUnpaidMonth": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                            },
+                            "paidMonths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                              }
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "scheduleId",
+                            "userId",
+                            "clientName",
+                            "fundId",
+                            "fundName",
+                            "monthlyAmountPaise",
+                            "startMonth",
+                            "endMonth",
+                            "monthCount",
+                            "state",
+                            "version",
+                            "monthsPaid",
+                            "monthsDue",
+                            "nextUnpaidMonth",
+                            "paidMonths",
+                            "createdAt",
+                            "updatedAt",
+                            "closedAt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "scheduleId",
+                        "months",
+                        "candidates",
+                        "schedule"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/clients/{userId}/sip-schedules/{scheduleId}/month-links": {
+      "post": {
+        "operationId": "linkAdminSipScheduleMonths",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "scheduleId",
+            "in": "path"
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "links": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string",
+                          "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                        },
+                        "entryId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "entryId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 600
+                  }
+                },
+                "required": [
+                  "links"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "linked": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "schedule": {
+                          "type": "object",
+                          "properties": {
+                            "scheduleId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "clientName": {
+                              "type": "string"
+                            },
+                            "fundId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundName": {
+                              "type": "string"
+                            },
+                            "monthlyAmountPaise": {
+                              "type": "string",
+                              "pattern": "^(0|[1-9][0-9]*)$/u"
+                            },
+                            "startMonth": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                            },
+                            "endMonth": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                            },
+                            "monthCount": {
+                              "type": "integer"
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "monthsPaid": {
+                              "type": "integer"
+                            },
+                            "monthsDue": {
+                              "type": "integer"
+                            },
+                            "nextUnpaidMonth": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                            },
+                            "paidMonths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                              }
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "closedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "scheduleId",
+                            "userId",
+                            "clientName",
+                            "fundId",
+                            "fundName",
+                            "monthlyAmountPaise",
+                            "startMonth",
+                            "endMonth",
+                            "monthCount",
+                            "state",
+                            "version",
+                            "monthsPaid",
+                            "monthsDue",
+                            "nextUnpaidMonth",
+                            "paidMonths",
+                            "createdAt",
+                            "updatedAt",
+                            "closedAt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "linked",
+                        "schedule"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/clients/{userId}/recorded-contributions/{entryId}/category": {
+      "post": {
+        "operationId": "setAdminRecordingCategory",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "entryId",
+            "in": "path"
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "one_time"
+                    ]
+                  }
+                },
+                "required": [
+                  "category"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "recording": {
+                          "type": "object",
+                          "properties": {
+                            "entryId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "amountPaise": {
+                              "type": "string",
+                              "pattern": "^(0|[1-9][0-9]*)$/u"
+                            },
+                            "effectiveDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                            },
+                            "reasonCode": {
+                              "type": "string"
+                            },
+                            "recordedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "reversed": {
+                              "type": "boolean"
+                            },
+                            "category": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "sip",
+                                "one_time",
+                                null
+                              ]
+                            },
+                            "categoryLabel": {
+                              "type": "string"
+                            },
+                            "sipScheduleId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "sipMonth": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$/u"
+                            },
+                            "sipLinkAllowed": {
+                              "type": "boolean"
+                            },
+                            "oneTimeAllowed": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "entryId",
+                            "fundId",
+                            "amountPaise",
+                            "effectiveDate",
+                            "reasonCode",
+                            "recordedAt",
+                            "reversed",
+                            "category",
+                            "categoryLabel",
+                            "sipScheduleId",
+                            "sipMonth",
+                            "sipLinkAllowed",
+                            "oneTimeAllowed"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "recording"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
             "description": "Error",
             "content": {
               "application/json": {

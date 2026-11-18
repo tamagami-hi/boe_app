@@ -105,6 +105,8 @@ const templateKeyEnum = z.enum([
   "nominee_request_decided",
   "sip_early_exit",
   "investment_growth",
+  "sip_payment_recorded",
+  "one_time_investment_recorded",
 ])
 const limitSchema = z.coerce.number().int().min(1).max(100).default(25)
 

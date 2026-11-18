@@ -26,6 +26,8 @@ export interface MonthContributionRow {
   readonly effectiveDate: string
   readonly recordedAt: Date
   readonly reversedAt: Date | null
+  readonly sipLinked: boolean
+  readonly oneTime: boolean
 }
 
 export interface ClientBalanceQuery {
@@ -92,6 +94,8 @@ export const createAccountingReportRepository = (): AccountingReportRepository =
         to_char(e.effective_date, 'YYYY-MM-DD') as "effectiveDate",
         e.created_at as "recordedAt",
         r.created_at as "reversedAt",
+        exists (select 1 from admin_sip_schedule_months l where l.entry_id = e.id) as "sipLinked",
+        exists (select 1 from client_value_entry_categories c where c.entry_id = e.id) as "oneTime",
         ${cursorTime("e.created_at")} as "cursorAt"
       from client_value_entries e
       join users u on u.id = e.user_id

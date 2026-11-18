@@ -37,3 +37,12 @@ export const formatCalendarDate = (date: string): string => {
   }
   return `${String(day)} ${month} ${match[1] ?? ""}`
 }
+
+const CALENDAR_MONTH = /^([0-9]{4})-([0-9]{2})$/u
+
+export const formatCalendarMonth = (month: string): string => {
+  const match = CALENDAR_MONTH.exec(month)
+  const name = match === null ? undefined : MONTH_NAMES[Number(match[2]) - 1]
+  if (match === null || name === undefined) throw new EmailValidationError("EMAIL_TEMPLATE_DATA_INVALID")
+  return `${name} ${match[1] ?? ""}`
+}

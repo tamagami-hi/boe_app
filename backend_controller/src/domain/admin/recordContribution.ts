@@ -5,21 +5,20 @@ import type { AuditWriteRepository } from "../../repositories/auditRepository.js
 import type { ClientGrowthRepository } from "../../repositories/clientGrowthRepository.js"
 import type { ClientPositionRepository } from "../../repositories/clientPositionRepository.js"
 import type { NotificationWriteRepository } from "../../repositories/notificationRepository.js"
+import type { RecordingCategoryRepository } from "../../repositories/recordingCategoryRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
 import type { UserId } from "../../db/repositories.js"
 import type { UserAccountState } from "../../db/types.js"
-import {
-  queueInvestmentRecordedMail,
-  type EmailedRecordingCategory,
-  type InvestmentRecordedMailDeps,
-} from "../email/investmentRecordedMail.js"
+import type { InvestmentRecordedMailDeps } from "../email/investmentRecordedMail.js"
 import {
   RECORDING_CATEGORY_TEXT,
   recordingCategoryOf,
+  type AssignedRecordingCategory,
   type RecordingCategory,
   type RecordingReasonCode,
 } from "../shared/recordingCategory.js"
 import { refuseErasedClient } from "../shared/erasedClient.js"
+import { queueRecordingMail } from "./recordingMail.js"
 import { commitSipMonthLink, prepareSipMonthLink, type SipMonthLinkInput } from "./sipMonthLink.js"
 
 export interface RecordContributionDeps extends InvestmentRecordedMailDeps {
@@ -29,6 +28,7 @@ export interface RecordContributionDeps extends InvestmentRecordedMailDeps {
   readonly auditRepository: AuditWriteRepository
   readonly notificationRepository: NotificationWriteRepository
   readonly sipScheduleRepository: AdminSipScheduleRepository
+  readonly recordingCategoryRepository: Pick<RecordingCategoryRepository, "insertOneTime">
   readonly clock: () => Date
 }
 
@@ -40,6 +40,7 @@ export interface RecordContributionInput {
   readonly reasonCode: RecordingReasonCode
   readonly note: string | null
   readonly sipLink?: SipMonthLinkInput | null
+  readonly assignedCategory?: AssignedRecordingCategory | null
   readonly actorUserId: string
   readonly requestId: string
 }
@@ -64,8 +65,23 @@ const RECORDABLE_ACCOUNT_STATES: ReadonlySet<UserAccountState> = new Set(["activ
 const NOT_RECORDABLE_STATE_MESSAGE = "Investments can only be recorded for an active or suspended client account."
 const NOT_A_CLIENT_MESSAGE = "Investments can only be recorded for client accounts."
 
-const emailedCategory = (category: RecordingCategory): EmailedRecordingCategory | null =>
-  category === "correction" ? null : category
+const refuseField = (field: string, message: string): AppError =>
+  new AppError("VALIDATION_FAILED", { fields: { [field]: [message] } })
+
+const refuseInconsistentCategory = (
+  category: RecordingCategory,
+  assigned: AssignedRecordingCategory | null,
+  hasLink: boolean,
+): void => {
+  if (assigned === null) return
+  if (category === "correction") {
+    throw refuseField("category", "a correction is neither a SIP payment nor a one-time investment")
+  }
+  if (assigned === "sip" && !hasLink) throw refuseField("sipScheduleLink", "is required for a SIP payment")
+  if (assigned === "one_time" && hasLink) {
+    throw refuseField("sipScheduleLink", "must be left out for a one-time investment")
+  }
+}
 
 const canReceiveMail = (user: User): boolean => user.account_state === "active" && user.pii_tombstoned_at === null
 
@@ -93,6 +109,9 @@ export const recordContribution = async (
   input: RecordContributionInput,
 ): Promise<RecordedContribution> => {
   const category = recordingCategoryOf(input.reasonCode)
+  const requestedLink = input.sipLink ?? null
+  const assigned = input.assignedCategory ?? null
+  refuseInconsistentCategory(category, assigned, requestedLink !== null)
   await deps.clientGrowthRepository.lockPosition(tx, input.userId, input.fundId)
   const client = await requireRecordableClient(tx, deps, input.userId as UserId)
 
@@ -103,13 +122,13 @@ export const recordContribution = async (
   if (version === null) throw new AppError("RESOURCE_NOT_FOUND")
 
   const sipLink =
-    input.sipLink === undefined || input.sipLink === null
+    requestedLink === null
       ? null
       : await prepareSipMonthLink(tx, deps, {
           userId: input.userId,
           fundId: input.fundId,
           category,
-          link: input.sipLink,
+          link: requestedLink,
         })
 
   const occurredAt = midday(input.effectiveDate)
@@ -156,6 +175,15 @@ export const recordContribution = async (
       requestId: input.requestId,
     })
   }
+  if (assigned === "one_time") {
+    await deps.recordingCategoryRepository.insertOneTime(tx, {
+      entryId: entry.id,
+      userId: input.userId,
+      fundId: input.fundId,
+      actorUserId: input.actorUserId,
+      requestId: input.requestId,
+    })
+  }
 
   const basis = await deps.clientGrowthRepository.findPositionBasis(tx, input.userId, input.fundId)
   if (basis === null) throw new AppError("INTERNAL_ERROR")
@@ -181,6 +209,7 @@ export const recordContribution = async (
       recordedAt: deps.clock().toISOString(),
       reasonCode: input.reasonCode,
       category,
+      assignedCategory: sipLink === null ? assigned : "sip",
       fundVersionId: version.fundVersionId,
       fundVersionEffectiveOnDate: version.historical,
       paymentAttemptCreated: false,
@@ -202,16 +231,17 @@ export const recordContribution = async (
     },
   })
 
-  const mailCategory = emailedCategory(category)
-  if (mailCategory !== null && canReceiveMail(client)) {
-    await queueInvestmentRecordedMail(tx, deps, {
+  if (canReceiveMail(client)) {
+    await queueRecordingMail(tx, deps, {
       recipient: client,
       entryId: entry.id,
       fundName: version.fundName,
       amountPaise: input.amountPaise,
       effectiveDate: input.effectiveDate,
-      category: mailCategory,
       requestId: input.requestId,
+      category,
+      assignedCategory: assigned,
+      sipLink,
     })
   }
 

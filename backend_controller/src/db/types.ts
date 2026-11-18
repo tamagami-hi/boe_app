@@ -11,6 +11,7 @@ import type { ClientStatementLinksTable } from "./schema/statementLinks.js"
 import type { ClientNomineeRequestsTable } from "./schema/nomineeRequests.js"
 import type { SipEarlyExitsTable } from "./schema/sipEarlyExits.js"
 import type { AdminStepUpConfirmationsTable } from "./schema/stepUp.js"
+import type { ClientValueEntryCategoriesTable } from "./schema/recordingCategories.js"
 
 export type * from "./schema/identity.js"
 export type * from "./schema/platform.js"
@@ -25,6 +26,7 @@ export type * from "./schema/statementLinks.js"
 export type * from "./schema/nomineeRequests.js"
 export type * from "./schema/sipEarlyExits.js"
 export type * from "./schema/stepUp.js"
+export type * from "./schema/recordingCategories.js"
 
 export interface Database {
   applications: ApplicationsTable
@@ -96,4 +98,5 @@ export interface Database {
   client_nominee_requests: ClientNomineeRequestsTable
   sip_early_exits: SipEarlyExitsTable
   admin_step_up_confirmations: AdminStepUpConfirmationsTable
+  client_value_entry_categories: ClientValueEntryCategoriesTable
 }

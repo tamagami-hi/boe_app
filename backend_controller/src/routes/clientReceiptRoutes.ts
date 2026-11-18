@@ -4,7 +4,7 @@ import { z } from "zod"
 
 import type { Database } from "../db/types.js"
 import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
-import { RECORDING_CATEGORY_TEXT, recordingCategoryOf } from "../domain/shared/recordingCategory.js"
+import { assignedCategoryOf, recordingCategoryOf, recordingLabelOf } from "../domain/shared/recordingCategory.js"
 import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
 import { MAX_PAGE_LIMIT, paginate, readKeyset } from "../http/pagination.js"
@@ -45,7 +45,10 @@ const mapReceipt = (row: ClientReceiptRow): Record<string, unknown> => {
     fundId: row.fundId,
     fundName: row.fundName,
     category,
-    categoryLabel: RECORDING_CATEGORY_TEXT[category].label,
+    categoryLabel: recordingLabelOf(
+      row.reasonCode,
+      assignedCategoryOf({ linked: row.sipMonth !== null, oneTime: row.oneTime }),
+    ),
     amountPaise: row.amountPaise,
     effectiveDate: row.effectiveDate,
     recordedAt: iso(row.recordedAt),

@@ -10,6 +10,7 @@ import { createClientErasureInspectRepository } from "../../src/repositories/cli
 import { createClientErasureWriteRepository } from "../../src/repositories/clientErasureWriteRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
+import { createRecordingCategoryRepository } from "../../src/repositories/recordingCategoryRepository.js"
 import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
 import { createEmailChangeRepository } from "../../src/repositories/emailChangeRepository.js"
 import { createEmailVerificationRepository } from "../../src/repositories/emailVerificationRepository.js"
@@ -413,6 +414,7 @@ export const recordFor = (
       {
         ...stack.mailDeps(),
         clientPositionRepository: createClientPositionRepository(),
+        recordingCategoryRepository: createRecordingCategoryRepository(),
         clientGrowthRepository: createClientGrowthRepository(),
         userRepository: stack.userRepository,
         auditRepository: stack.auditRepository,

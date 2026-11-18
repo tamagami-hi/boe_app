@@ -9,7 +9,9 @@ import {
 import { EmailValidationError } from "./emailValidation.js"
 import { investmentGrowthTemplate } from "./investmentGrowthTemplate.js"
 import { nomineeRequestDecidedTemplate } from "./nomineeRequestDecidedEmail.js"
+import { oneTimeInvestmentTemplate } from "./oneTimeInvestmentTemplate.js"
 import { sipEarlyExitTemplate } from "./earlyExitTemplate.js"
+import { sipPaymentTemplate } from "./sipPaymentTemplate.js"
 
 export interface EmailTemplateConfig {
   /** Address investors are told to contact. */
@@ -41,6 +43,8 @@ const TEMPLATE_MODULES: readonly EmailTemplateModule[] = [
   nomineeRequestDecidedTemplate,
   sipEarlyExitTemplate,
   investmentGrowthTemplate,
+  sipPaymentTemplate,
+  oneTimeInvestmentTemplate,
 ]
 
 const MODULE_BY_KEY: ReadonlyMap<string, EmailTemplateModule> = new Map(

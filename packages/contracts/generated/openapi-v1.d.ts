@@ -1291,7 +1291,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["listAdminClientRecordings"];
         put?: never;
         post: operations["recordAdminClientContribution"];
         delete?: never;
@@ -2718,6 +2718,54 @@ export interface paths {
         get: operations["listAdminRecordingSheet"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{userId}/sip-schedules/{scheduleId}/link-proposal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAdminSipLinkProposal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{userId}/sip-schedules/{scheduleId}/month-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["linkAdminSipScheduleMonths"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{userId}/recorded-contributions/{entryId}/category": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["setAdminRecordingCategory"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12759,6 +12807,117 @@ export interface operations {
             };
         };
     };
+    listAdminClientRecordings: {
+        parameters: {
+            query?: {
+                fundId?: string;
+            };
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            items: {
+                                /** Format: uuid */
+                                entryId: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                amountPaise: string;
+                                effectiveDate: string;
+                                reasonCode: string;
+                                /** Format: date-time */
+                                recordedAt: string;
+                                reversed: boolean;
+                                /** @enum {string|null} */
+                                category: "sip" | "one_time" | null;
+                                categoryLabel: string;
+                                /** Format: uuid */
+                                sipScheduleId: string | null;
+                                sipMonth: string | null;
+                                sipLinkAllowed: boolean;
+                                oneTimeAllowed: boolean;
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     recordAdminClientContribution: {
         parameters: {
             query?: never;
@@ -12787,6 +12946,8 @@ export interface operations {
                         scheduleId: string;
                         month: string;
                     };
+                    /** @enum {string} */
+                    category?: "sip" | "one_time";
                 };
             };
         };
@@ -16290,7 +16451,7 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "queued" | "sending" | "sent" | "delivered" | "retryable_failed" | "permanent_failed" | "cancelled";
-                templateKey?: "application_rejected" | "account_approved" | "password_set_link" | "password_reset_link" | "password_app_download" | "contact_phone_changed" | "email_change_code" | "contact_email_changed" | "admin_message" | "app_update_notice" | "investment_recorded" | "maturity_options" | "nominee_request_decided" | "sip_early_exit" | "investment_growth";
+                templateKey?: "application_rejected" | "account_approved" | "password_set_link" | "password_reset_link" | "password_app_download" | "contact_phone_changed" | "email_change_code" | "contact_email_changed" | "admin_message" | "app_update_notice" | "investment_recorded" | "maturity_options" | "nominee_request_decided" | "sip_early_exit" | "investment_growth" | "sip_payment_recorded" | "one_time_investment_recorded";
                 applicationId?: string;
                 userId?: string;
                 after?: string;
@@ -25515,6 +25676,484 @@ export interface operations {
             };
             /** @description Error */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAdminSipLinkProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                scheduleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            /** Format: uuid */
+                            scheduleId: string;
+                            months: {
+                                month: string;
+                                monthNumber: number;
+                                paid: boolean;
+                                /** Format: uuid */
+                                linkedEntryId: string | null;
+                                /** Format: uuid */
+                                proposedEntryId: string | null;
+                            }[];
+                            candidates: {
+                                /** Format: uuid */
+                                entryId: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                amountPaise: string;
+                                effectiveDate: string;
+                                reasonCode: string;
+                                /** Format: date-time */
+                                recordedAt: string;
+                                reversed: boolean;
+                                /** @enum {string|null} */
+                                category: "sip" | "one_time" | null;
+                                categoryLabel: string;
+                                /** Format: uuid */
+                                sipScheduleId: string | null;
+                                sipMonth: string | null;
+                                sipLinkAllowed: boolean;
+                                oneTimeAllowed: boolean;
+                            }[];
+                            schedule: {
+                                /** Format: uuid */
+                                scheduleId: string;
+                                /** Format: uuid */
+                                userId: string;
+                                clientName: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                monthlyAmountPaise: string;
+                                startMonth: string;
+                                endMonth: string;
+                                monthCount: number;
+                                state: string;
+                                version: number;
+                                monthsPaid: number;
+                                monthsDue: number;
+                                nextUnpaidMonth: string | null;
+                                paidMonths: string[];
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                /** Format: date-time */
+                                closedAt: string | null;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    linkAdminSipScheduleMonths: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path: {
+                userId: string;
+                scheduleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    links: {
+                        month: string;
+                        /** Format: uuid */
+                        entryId: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            linked: number;
+                            schedule: {
+                                /** Format: uuid */
+                                scheduleId: string;
+                                /** Format: uuid */
+                                userId: string;
+                                clientName: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                monthlyAmountPaise: string;
+                                startMonth: string;
+                                endMonth: string;
+                                monthCount: number;
+                                state: string;
+                                version: number;
+                                monthsPaid: number;
+                                monthsDue: number;
+                                nextUnpaidMonth: string | null;
+                                paidMonths: string[];
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                /** Format: date-time */
+                                closedAt: string | null;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setAdminRecordingCategory: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path: {
+                userId: string;
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    category: "one_time";
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            recording: {
+                                /** Format: uuid */
+                                entryId: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                amountPaise: string;
+                                effectiveDate: string;
+                                reasonCode: string;
+                                /** Format: date-time */
+                                recordedAt: string;
+                                reversed: boolean;
+                                /** @enum {string|null} */
+                                category: "sip" | "one_time" | null;
+                                categoryLabel: string;
+                                /** Format: uuid */
+                                sipScheduleId: string | null;
+                                sipMonth: string | null;
+                                sipLinkAllowed: boolean;
+                                oneTimeAllowed: boolean;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

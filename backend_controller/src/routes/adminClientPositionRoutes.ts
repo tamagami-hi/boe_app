@@ -62,6 +62,7 @@ const recordedContributionSchema = z
     reasonCode: z.enum(RECORDING_REASON_CODES),
     note: reasonDetailSchema.optional(),
     sipScheduleLink: z.object({ scheduleId: uuidParam, month: sipMonthSchema }).strict().optional(),
+    category: z.enum(["sip", "one_time"]).optional(),
   })
   .strict()
 
@@ -107,6 +108,7 @@ const recordedContribution = async (
       reasonCode: body.reasonCode,
       ...(body.note === undefined ? {} : { note: body.note }),
       ...(body.sipScheduleLink === undefined ? {} : { sipScheduleLink: body.sipScheduleLink }),
+      ...(body.category === undefined ? {} : { category: body.category }),
     }),
     execute: async (tx) => {
       const recorded = await recordContribution(tx, deps, {
@@ -117,6 +119,7 @@ const recordedContribution = async (
         reasonCode: body.reasonCode,
         note: body.note ?? null,
         sipLink: body.sipScheduleLink ?? null,
+        assignedCategory: body.category ?? null,
         actorUserId: principal.userId,
         requestId: request.requestId,
       })
