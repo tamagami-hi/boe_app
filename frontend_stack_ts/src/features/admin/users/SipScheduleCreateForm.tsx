@@ -19,9 +19,15 @@ export type SipScheduleCreateFormProps = Readonly<{
   userId: string
   onReload: () => void
   onClose: () => void
+  onLinkHistory?: (scheduleId: string) => void
 }>
 
-export const SipScheduleCreateForm = ({ userId, onReload, onClose }: SipScheduleCreateFormProps): React.ReactElement => {
+export const SipScheduleCreateForm = ({
+  userId,
+  onReload,
+  onClose,
+  onLinkHistory,
+}: SipScheduleCreateFormProps): React.ReactElement => {
   const write = useHeldWrite(useCreateSipSchedule(userId), "The schedule could not be sent. Reload the page and try again.")
   const [fundId, setFundId] = useState("")
   const [rupees, setRupees] = useState("")
@@ -41,12 +47,24 @@ export const SipScheduleCreateForm = ({ userId, onReload, onClose }: SipSchedule
         tone="success"
         title="SIP schedule started"
         action={
-          <Button size="sm" tone="secondary" onClick={onClose}>
-            Done
-          </Button>
+          <span className={ACTION_ROW}>
+            {onLinkHistory === undefined ? null : (
+              <Button
+                size="sm"
+                onClick={() => {
+                  onLinkHistory(saved.scheduleId)
+                }}
+              >
+                Link earlier recordings
+              </Button>
+            )}
+            <Button size="sm" tone="secondary" onClick={onClose}>
+              Done
+            </Button>
+          </span>
         }
       >
-        {`${saved.fundName}: ${String(saved.monthCount)} months from ${formatYearMonth(saved.startMonth)}. The client sees it on their portfolio. Nothing is collected automatically; link each monthly investment you record to its month.`}
+        {`${saved.fundName}: ${String(saved.monthCount)} months from ${formatYearMonth(saved.startMonth)}. The client sees it on their portfolio. Nothing is collected automatically. For a client who already paid earlier months, link those recordings to their months; link each new monthly investment as you record it.`}
       </Alert>
     )
   }
@@ -77,7 +95,12 @@ export const SipScheduleCreateForm = ({ userId, onReload, onClose }: SipSchedule
           </FormField>
         </div>
         <div className={ADMIN_FORM_GRID}>
-          <FormField label="Start month" required error={monthValid ? undefined : "Choose a month."}>
+          <FormField
+            label="Start month"
+            required
+            hint="For a client who started paying before, choose the month they first paid."
+            error={monthValid ? undefined : "Choose a month."}
+          >
             {({ id }) => (
               <Input
                 id={id}

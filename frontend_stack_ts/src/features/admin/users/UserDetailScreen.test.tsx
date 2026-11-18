@@ -137,7 +137,7 @@ const recordThisMonth = (): HTMLButtonElement => screen.getByRole("button", { na
 
 const recordThroughConfirm = (): void => {
   fireEvent.click(screen.getByRole("button", { name: /Review and record/u }))
-  fireEvent.click(screen.getByRole("button", { name: "Record the investment" }))
+  fireEvent.click(screen.getByRole("button", { name: "Record the payment" }))
 }
 
 beforeEach(() => {

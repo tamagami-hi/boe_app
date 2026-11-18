@@ -232,8 +232,8 @@ const RecordingSheetMonth = ({ month, fundId, onMonth, onFund }: SheetMonthProps
           </Alert>
         )}
         <p className={PROSE_SM}>
-          Each row is recorded as a monthly investment for its schedule month. Each client is notified that an
-          investment was added and is emailed the amount.
+          Each row is recorded as a SIP payment for its schedule month. Each client is told in the app, and active
+          clients get an email with the SIP month, the amount and the next month due.
         </p>
       </ConfirmDialog>
     </>

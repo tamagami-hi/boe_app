@@ -28,22 +28,37 @@ export const SipMonthLinkField = ({ state, disabled }: SipMonthLinkFieldProps): 
           </Button>
         }
       >
-        It is not known whether this client has a SIP schedule for this fund, so this monthly investment cannot be
-        recorded until the schedule loads.
+        It is not known whether this client has a SIP schedule for this fund, so this SIP payment cannot be recorded
+        until the schedule loads.
       </Alert>
     )
   }
   const schedule = state.schedule
   if (state.status === "none" || schedule === null) {
-    return <p className={PROSE_SM}>This client has no active SIP schedule for this fund, so the recording is not linked to a month.</p>
+    return (
+      <Alert tone="warning" title="No SIP schedule for this fund">
+        A SIP payment needs a month of the client&apos;s SIP schedule for this fund. Start one under SIP schedules on the
+        client&apos;s page, or record this as a one-time investment.
+      </Alert>
+    )
+  }
+  const months = selectableMonths(schedule, state.selected)
+  if (months.length === 0) {
+    return (
+      <Alert tone="warning" title="Every month is recorded">
+        Every month of this SIP schedule already has a payment. Extend the schedule under SIP schedules, or record this as
+        a one-time investment.
+      </Alert>
+    )
   }
   const options = [
-    { value: NO_SIP_MONTH_LINK, label: "Do not link to a month" },
-    ...selectableMonths(schedule, state.selected).map((month) => ({ value: month, label: sipMonthLabel(schedule, month) })),
+    ...(state.selected === NO_SIP_MONTH_LINK ? [{ value: NO_SIP_MONTH_LINK, label: "Choose a month" }] : []),
+    ...months.map((month) => ({ value: month, label: sipMonthLabel(schedule, month) })),
   ]
   return (
     <FormField
       label="SIP schedule month"
+      required
       hint={`${String(schedule.monthsPaid)} of ${String(schedule.monthCount)} months are paid. The client sees this month on the receipt.`}
     >
       {({ id }) => (

@@ -120,21 +120,21 @@ beforeEach(() => {
 })
 
 describe("recording a month opened from a SIP schedule row", () => {
-  it("prefills a monthly investment for this month and records nothing until it is confirmed", () => {
+  it("prefills a SIP payment for this month and records nothing until it is confirmed", () => {
     expect(screen.getByLabelText<HTMLSelectElement>(/^Fund/u).value).toBe(FUND_ID)
     expect(screen.getByLabelText<HTMLInputElement>(/^Amount in rupees/u).value).toBe("5000.50")
     expect(screen.getByLabelText<HTMLInputElement>(/^Date of the payment/u).value).toBe(TODAY)
-    expect(screen.getByLabelText<HTMLSelectElement>(/^Category/u).value).toBe("recorded_offline_monthly_investment")
+    expect(screen.getByLabelText<HTMLSelectElement>(/^Category/u).value).toBe("sip")
     expect(screen.getByLabelText<HTMLSelectElement>(/^SIP schedule month/u).value).toBe(THIS_MONTH)
 
     const review = reviewButton()
     if (review === null) throw new Error("expected the review button")
     fireEvent.click(review)
 
-    expect(screen.getByText("Record this monthly investment?")).toBeTruthy()
+    expect(screen.getByText("Record this SIP payment?")).toBeTruthy()
     expect(sent).toHaveLength(0)
 
-    fireEvent.click(screen.getByRole("button", { name: "Record the investment" }))
+    fireEvent.click(screen.getByRole("button", { name: "Record the payment" }))
 
     expect(sent).toHaveLength(1)
     expect(sent[0]).toMatchObject({
@@ -143,9 +143,10 @@ describe("recording a month opened from a SIP schedule row", () => {
       amountPaise: "500050",
       effectiveDate: TODAY,
       reasonCode: "recorded_offline_monthly_investment",
+      category: "sip",
       sipScheduleLink: { scheduleId: SCHEDULE_ID, month: THIS_MONTH },
     })
-    expect(screen.getByText("Monthly investment recorded")).toBeTruthy()
+    expect(screen.getByText("SIP payment recorded")).toBeTruthy()
   })
 
   it("holds a lost reply on the same key and body, so the month can only be recorded once", () => {
@@ -153,7 +154,7 @@ describe("recording a month opened from a SIP schedule row", () => {
     const review = reviewButton()
     if (review === null) throw new Error("expected the review button")
     fireEvent.click(review)
-    fireEvent.click(screen.getByRole("button", { name: "Record the investment" }))
+    fireEvent.click(screen.getByRole("button", { name: "Record the payment" }))
 
     expect(screen.getByText("Not confirmed")).toBeTruthy()
     expect(reviewButton()).toBeNull()
@@ -164,6 +165,6 @@ describe("recording a month opened from a SIP schedule row", () => {
     expect(sent).toHaveLength(2)
     expect(sent[1]).toEqual(sent[0])
     expect(sent[0]?.sipScheduleLink).toEqual({ scheduleId: SCHEDULE_ID, month: THIS_MONTH })
-    expect(screen.getByText("Monthly investment recorded")).toBeTruthy()
+    expect(screen.getByText("SIP payment recorded")).toBeTruthy()
   })
 })

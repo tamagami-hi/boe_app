@@ -26,6 +26,8 @@ import { parseLedgerReversal } from "./heldBodies"
 import { ledgerReasonLabel } from "./ledgerReasons"
 import { useReverseClientLedgerEntry } from "./ledgerReversalQueries"
 import { ListSkeleton } from "./ListSkeleton"
+import { RecordingCategoryFailure, assignedLabels } from "./RecordingCategoryLabels"
+import { useClientRecordings } from "./recordingCategoryQueries"
 
 type LedgerRow = DataOf<typeof listAdminClientLedgerPage>["items"][number]
 
@@ -72,6 +74,8 @@ export const LedgerEntries = ({
   const ledger = useClientLedgerPage(userId)
   const earlyExits = useClientSipEarlyExits(userId)
   const earlyExitEntries = earlyExitEntryIds(earlyExits)
+  const recordings = useClientRecordings(userId)
+  const categoryLabels = assignedLabels(recordings)
   const funds = useFundNames()
   const write = useHeldWrite(useReverseClientLedgerEntry(), UNSENT, {
     slot: ledgerReversalSlot(userId),
@@ -122,6 +126,7 @@ export const LedgerEntries = ({
     <>
       {showFundNotice ? funds.notice : null}
       <EarlyExitLabelFailure query={earlyExits} />
+      <RecordingCategoryFailure query={recordings} />
       {write.outcome.kind === "rejected" ? (
         <Alert tone="error" title="Not reversed">
           {rejectionOf(write.outcome.code, write.outcome.message)}
@@ -180,7 +185,11 @@ export const LedgerEntries = ({
                   <MoneyValue amount={toPaise(row.valueDeltaPaise)} size="sm" tone="signed" showSign showDecimals />
                 ),
               },
-              { key: "reason", header: "Reason", render: (row) => ledgerReasonLabel(row.reasonCode) },
+              {
+                key: "reason",
+                header: "Reason",
+                render: (row) => categoryLabels.get(row.entryId) ?? ledgerReasonLabel(row.reasonCode),
+              },
               { key: "action", header: "Correction", render: actionFor },
             ]}
           />

@@ -91,6 +91,7 @@ const READS: Readonly<Record<string, () => unknown>> = {
   listAdminInvestorPositions: () => ({ userId: USER_ID, items: [POSITION] }),
   listAdminClientLedgerPage: () => ({ items: [ledgerRow("66666666-6666-4666-8666-666666666661"), ledgerRow("66666666-6666-4666-8666-666666666662")] }),
   listAdminClientSipEarlyExits: () => ({ items: [] }),
+  listAdminClientRecordings: () => ({ items: [] }),
   listAdminClientMaturities: () => ({ userId: USER_ID, items: maturities }),
   listAdminWithdrawalPayouts: () => ({ userId: USER_ID, items: [] }),
   listAdminUsers: () => ({ items: [] }),

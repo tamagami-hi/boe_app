@@ -20,6 +20,7 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 import { META_TEXT } from "~/ui/recipes/text"
 
 import { SipEarlyExitPanel } from "./SipEarlyExitPanel"
+import { SipHistoryLinkPanel } from "./SipHistoryLinkPanel"
 import { SipScheduleCreateForm } from "./SipScheduleCreateForm"
 import { SipScheduleEditor } from "./SipScheduleEditor"
 
@@ -80,6 +81,7 @@ export const SipScheduleSection = ({
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [exitingId, setExitingId] = useState<string | null>(null)
+  const [linkingId, setLinkingId] = useState<string | null>(null)
   const [isPanelHolding, setPanelHolding] = useState(false)
   if (!canRead) return null
 
@@ -90,12 +92,17 @@ export const SipScheduleSection = ({
   const closedEarlyOn = new Map((earlyExits.data?.items ?? []).map((item) => [item.scheduleId, item.effectiveDate]))
   const editing = schedules.data?.items.find((item) => item.scheduleId === editingId)
   const canRecordMonth = canWrite && canStart && onRecordMonth !== undefined
+  const openPanel = (panel: "edit" | "exit" | "link", scheduleId: string): void => {
+    setEditingId(panel === "edit" ? scheduleId : null)
+    setExitingId(panel === "exit" ? scheduleId : null)
+    setLinkingId(panel === "link" ? scheduleId : null)
+  }
 
   return (
     <>
       <Section
         title="SIP schedules"
-        description="Monthly investments the client pays BeOnEdge directly. Nothing is collected automatically: each monthly investment you record can be linked to one month, and the client sees how many months are paid."
+        description="Monthly investments the client pays BeOnEdge directly. Nothing is collected automatically: each SIP payment you record is linked to one month, earlier recordings can be linked with Link earlier recordings, and the client sees how many months are paid."
         actions={
           canWrite && canStart && !creating ? (
             <Button
@@ -116,6 +123,10 @@ export const SipScheduleSection = ({
             onReload={reload}
             onClose={() => {
               setCreating(false)
+            }}
+            onLinkHistory={(scheduleId) => {
+              setCreating(false)
+              openPanel("link", scheduleId)
             }}
           />
         ) : null}
@@ -183,8 +194,7 @@ export const SipScheduleSection = ({
                           tone="ghost"
                           disabled={isPanelHolding}
                           onClick={() => {
-                            setExitingId(null)
-                            setEditingId(row.scheduleId)
+                            openPanel("edit", row.scheduleId)
                           }}
                         >
                           Manage
@@ -195,8 +205,19 @@ export const SipScheduleSection = ({
                             tone="ghost"
                             disabled={isPanelHolding}
                             onClick={() => {
-                              setEditingId(null)
-                              setExitingId(row.scheduleId)
+                              openPanel("link", row.scheduleId)
+                            }}
+                          >
+                            Link earlier recordings
+                          </Button>
+                        ) : null}
+                        {row.state === "active" ? (
+                          <Button
+                            size="sm"
+                            tone="ghost"
+                            disabled={isPanelHolding}
+                            onClick={() => {
+                              openPanel("exit", row.scheduleId)
                             }}
                           >
                             Early exit
@@ -230,6 +251,19 @@ export const SipScheduleSection = ({
             onReload={reload}
             onClose={() => {
               setEditingId(null)
+            }}
+            onHoldChange={setPanelHolding}
+          />
+        )}
+
+        {linkingId === null || !canWrite ? null : (
+          <SipHistoryLinkPanel
+            key={linkingId}
+            userId={userId}
+            scheduleId={linkingId}
+            onReload={reload}
+            onClose={() => {
+              setLinkingId(null)
             }}
             onHoldChange={setPanelHolding}
           />

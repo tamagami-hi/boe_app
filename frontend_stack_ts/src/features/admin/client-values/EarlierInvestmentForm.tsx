@@ -21,12 +21,14 @@ import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
 import { CatalogueFundPicker } from "./CatalogueFundPicker"
 import {
-  DEFAULT_RECORDING_REASON,
+  DEFAULT_RECORDING_KIND,
   RECORDING_CATEGORIES,
-  isRecordingReason,
+  isRecordingKind,
   recordingCategoryCopy,
+  recordingKindOf,
+  type RecordingKind,
 } from "./recordingCategories"
-import { MONTHLY_RECORDING_REASON, type RecordingPrefill } from "./recordingPrefill"
+import type { RecordingPrefill } from "./recordingPrefill"
 import { parseRecordedContribution } from "./heldBodies"
 import { useRecordClientContribution } from "./recordingQueries"
 import { paiseToRupeeText, parsePositiveRupees } from "./rupeeAmount"
@@ -82,16 +84,19 @@ export const EarlierInvestmentForm = ({
   const [fundId, setFundId] = useState(() => held?.fundId ?? prefill?.fundId ?? "")
   const [rupees, setRupees] = useState(() => (held === null ? (prefill?.rupees ?? "") : paiseToRupeeText(held.amountPaise)))
   const [effectiveDate, setEffectiveDate] = useState(() => held?.effectiveDate ?? prefill?.effectiveDate ?? "")
-  const [reasonCode, setReasonCode] = useState(() => held?.reasonCode ?? prefill?.reasonCode ?? DEFAULT_RECORDING_REASON)
+  const [kind, setKind] = useState<RecordingKind>(() => {
+    if (held !== null) return recordingKindOf(held)
+    return prefill === undefined ? DEFAULT_RECORDING_KIND : recordingKindOf({ reasonCode: prefill.reasonCode })
+  })
   const [note, setNote] = useState(() => held?.note ?? "")
   const [confirmingRecord, setConfirmingRecord] = useState(false)
   const [confirmingRestart, setConfirmingRestart] = useState(false)
 
-  const category = recordingCategoryCopy(reasonCode)
+  const category = recordingCategoryCopy(kind)
   const sipLink = useSipMonthLink(
     userId,
     fundId,
-    reasonCode === MONTHLY_RECORDING_REASON,
+    kind === "sip",
     held === null ? (prefill?.sipMonth ?? null) : (held.sipScheduleLink ?? null),
   )
   const amountPaise = parsePositiveRupees(rupees)
@@ -114,7 +119,9 @@ export const EarlierInvestmentForm = ({
   const today = indiaToday()
   const futureDated = effectiveDate !== "" && effectiveDate > today
   const amountInvalid = rupees !== "" && amountPaise === null
-  const incomplete = fundId === "" || effectiveDate === "" || futureDated || amountPaise === null || sipLink.blocking
+  const missingMonth = kind === "sip" && sipLink.link === null
+  const incomplete =
+    fundId === "" || effectiveDate === "" || futureDated || amountPaise === null || sipLink.blocking || missingMonth
 
   const send = (): void => {
     setConfirmingRecord(false)
@@ -125,9 +132,10 @@ export const EarlierInvestmentForm = ({
       fundId,
       amountPaise,
       effectiveDate,
-      reasonCode,
+      reasonCode: category.reasonCode,
+      ...(category.category === null ? {} : { category: category.category }),
       ...(trimmedNote === "" ? {} : { note: trimmedNote }),
-      ...(sipLink.link === null ? {} : { sipScheduleLink: sipLink.link }),
+      ...(kind !== "sip" || sipLink.link === null ? {} : { sipScheduleLink: sipLink.link }),
     })
   }
 
@@ -140,7 +148,7 @@ export const EarlierInvestmentForm = ({
     setFundId("")
     setRupees("")
     setEffectiveDate("")
-    setReasonCode(DEFAULT_RECORDING_REASON)
+    setKind(DEFAULT_RECORDING_KIND)
     setNote("")
     sipLink.reset()
     record.reset()
@@ -268,15 +276,19 @@ export const EarlierInvestmentForm = ({
             )}
           </FormField>
 
-          <FormField label="Category" required hint="The client sees this label on their receipt.">
+          <FormField
+            label="Category"
+            required
+            hint="A SIP payment is linked to a month of the client's SIP schedule for this fund. The client sees this label on their receipt."
+          >
             {({ id }) => (
               <Select
                 id={id}
                 options={CATEGORY_OPTIONS}
-                value={reasonCode}
+                value={kind}
                 disabled={locked}
                 onChange={(event) => {
-                  if (isRecordingReason(event.target.value)) setReasonCode(event.target.value)
+                  if (isRecordingKind(event.target.value)) setKind(event.target.value)
                 }}
               />
             )}

@@ -15,6 +15,9 @@ export const EMAIL_TEMPLATE_OPTIONS = [
   { value: "maturity_options", label: "Maturity options" },
   { value: "nominee_request_decided", label: "Nominee request decided" },
   { value: "sip_early_exit", label: "SIP closed early" },
+  { value: "investment_growth", label: "Value updated" },
+  { value: "sip_payment_recorded", label: "SIP payment recorded" },
+  { value: "one_time_investment_recorded", label: "One-time investment recorded" },
 ] as const satisfies readonly Readonly<{ value: AdminEmailTemplateKey; label: string }>[]
 
 const TEMPLATE_LABEL: ReadonlyMap<string, string> = new Map(
