@@ -6,16 +6,32 @@ export const CLIENT_NOTES: WhatsNewNotes = [
     month: "November 2026",
     sections: [
       {
+        heading: "New",
+        items: [
+          { text: "Monthly investments recorded earlier can now count towards your SIP plan's months paid." },
+          { text: "SIP payments and one-time investments each get their own email. A SIP payment says which month of your plan it covers." },
+          { text: "Receipts say whether a payment was a SIP payment or a one-time investment." },
+        ],
+      },
+      {
         heading: "Improved",
         items: [
           { text: "Value updates are also emailed to you, with the fund, the change and your value after it." },
+          { text: "Statements show paise and list corrections on their own line, so each month adds up exactly." },
+          { text: "On a phone, each statement month shows as rows, so no column is cut off." },
+          { text: "A fund's page lists its withdrawals, such as an early exit." },
+          { text: "Emails use more of the screen on a computer." },
           { text: "The field you are typing in stays above the on-screen keyboard." },
           { text: "On inner pages, the bottom bar highlights the section you are in." },
+          { text: "When a newer version is available, a Reload button appears.", platform: "web" },
         ],
       },
       {
         heading: "Fixed",
         items: [
+          { text: "Payment counts leave out recordings that were reversed." },
+          { text: "A corrected recording is announced as a correction, not as a value update." },
+          { text: "Payout and early exit notices open Activity, where they are explained." },
           { text: "The offline notice clears when the connection returns, and the screen reloads." },
           { text: "Try again reloads everything on the screen that failed, so fund names show again." },
           { text: "Profile and Activity no longer show a back arrow." },

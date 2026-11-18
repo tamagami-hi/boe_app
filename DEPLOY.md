@@ -225,6 +225,22 @@ growth email still queued at the rollback is dead-lettered and not re-sent after
 roll-forward, and growth writes made while the earlier release runs send no email, then or
 later. The ledger rows and the in-app notice are not affected.
 
+Migration 077 (recording categories, DEC-75, 0.18.3) is expand-only and not a boundary: it
+adds the append-only `client_value_entry_categories` table, which marks a recorded
+investment as one-time beside its ledger entry, and re-adds the `email_deliveries` template
+check with `sip_payment_recorded` and `one_time_investment_recorded`, which every existing row
+satisfies and the previous release never writes. From 0.18.3 a recording linked to a SIP
+schedule month (the admin form's SIP payment, the payment sheet, or a released admin app's
+monthly investment with a month) queues `sip_payment_recorded`, and a recording sent with
+the one-time category queues `one_time_investment_recorded`; a recording a released admin app
+sends without a category still queues `investment_recorded`, which the worker keeps
+rendering. Linking earlier recordings to SIP months and marking them one-time send no email.
+No response shape changes: only the receipt and report `categoryLabel` text reads SIP payment
+or One-time investment. The same deploy rule applies: an email worker from before 0.18.3
+dead-letters the two new templates. After an images-only rollback the previous release
+ignores the category table, so receipts show the earlier labels again; the links and
+categories stay and reappear on roll-forward.
+
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.
 
@@ -480,6 +496,19 @@ Advance notice and required updates are published app configuration (Admin, App 
   `minimumSupportedVersion.message` adds an extra line to that screen on apps from v0.15.0. Raise
   the floor to the new version when the v0.15.0 APK is published, so older APKs update before
   they meet the changed API.
+
+From 0.18.3, publishing app configuration asks the admin's password (DEC-74). The console
+lists the changed keys, then calls `POST /v1/admin/auth/confirm-password`, which returns a
+single-use confirmation valid for five minutes, bound to that admin, that session and the exact
+changes reviewed; `PATCH /v1/admin/app-config` refuses a publish without it. Five wrong passwords
+in fifteen minutes block that admin from publishing for up to fifteen minutes; the counter is per
+API process and resets when the API restarts. Admin apps before 0.18.3 cannot publish app
+configuration against a 0.18.3 backend: they show "Update the admin app to publish app config."
+Migration `076_admin_step_up_confirmations.sql` is expand-only; the previous release ignores the
+table. The maintenance-mode CORS reply in `release_manager/nginx/*.conf` now also allows the
+`x-admin-confirmation` header, so install the updated site configs (see Host nginx) when deploying
+0.18.3, or an admin APK publishing during maintenance sees a network failure instead of the
+maintenance screen.
 
 A deploy never raises the floor by itself. After deploying a release every client must install,
 either send a required announcement from Admin, Send email, "App update to all clients" (it emails

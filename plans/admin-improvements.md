@@ -1293,3 +1293,30 @@ The 16 lanes of tally milestone `M19-patches-0-18` (DEC-67) landed on `main` thr
   - the contract redesign and stage B, for 0.19.0 (December).
 - **Release:** 0.18.1, to be cut by the maintainer.
 - **Not verified:** no deploy, no VPS, no CI run on GitHub, no APK build or device run, no real nginx in front of the local stack.
+
+### 0.18.3 patch lanes on main (2026-11-18)
+
+After the maintainer cut and deployed v0.18.2, the emulator runs (`.temp/main/emu-test-0182.md` and `emu-test-0182-invest.md`) and the maintainer's own requests produced 12 lanes under tally milestone `M19-patches-0-18`. They landed on `main` through the landing queue, each reviewed in tally (`review-75` to `review-88`). In landing order:
+- **`p-safe-area-native`** (`db1fe1c`, `0ad08cc`): MainActivity publishes the safe-area insets itself, because its decor listener replaced Capacitor's and left `--safe-area-inset-*` empty on WebView below 140.
+- **`p-admin-copy`** (`c36906e`, `6b4aea6`): admin screens lose backend jargon and raw codes; App config says a publish replaces the whole config.
+- **`p-offline-recovery`** (`2800a80`, `c1fe13a`): the offline notice clears on reconnect and failed reads are read again; offline writes fail fast as Not confirmed and are never resent by themselves.
+- **`p-shell-polish`** (`3566bee`, `9d89471`, `3c225b3`, `2a9ced8`, `324c332`): the owning tab is marked on inner pages, admin section groups are spaced apart, each side takes its own inset, and Support shows no phone contacts.
+- **`p-keyboard-fields`** (`1a161b1`, `97a7b32`, `fbff18b`): every focused field is lifted above the on-screen keyboard while the shell stays still (decision 4c42c9a).
+- **`p-whatsnew-history`** (`f289dae`, `cf754e8`, `d0d5124`; DEC-73): append-only What's new history since 0.15.4 with release months, frozen by `releasedNotes.json`; dev testers who saw 0.18.1 see only 0.18.3, production upgraders see every entry.
+- **`p-growth-emails`** (`80ab7c7`, `bb89a74`, `d897f91`; DEC-72): one-investor growth, collective growth and the monthly value update email each active client once per fund with the change and the new value; migration 075.
+- **`p-invest-fixes`** (`00a4606`, `797f13d`, `cd8292e`, `9a78f6b`): early-exit, maturity-settlement and payout ledger entries are final (409, DEC-41); payment counts skip reversed recordings; statements show paise and a Corrections line and stack on a phone; the fund page lists withdrawals; a reversal notifies as a correction; the email card is 720 px wide on wide screens.
+- **`p-web-version`** (`4385573`, `8043895`): `index.html` revalidates, `/assets/` is immutable, `dist/version.json` drives a web-only Reload banner; one top banner at a time.
+- **`p-admin-nav`** (`b75c778`): desktop sidebar headings are gold eyebrows over indented page links.
+- **`p-config-form`** (`92e03c6`, `a330f38`, `6570ea1`, `8e0f850`; DEC-74): App config is a form with a changed-keys review and a password step; `POST /v1/admin/auth/confirm-password` returns a single-use five-minute confirmation bound to the admin, the session and the exact changes; migration 076.
+- **`p-invest-cats`** (`79a0b70`, `2bc0013`, `03095bd`, `bea7a8b`, `cbe2462`; DEC-75): past-dated SIP schedules with month-order linking of earlier monthly recordings, one-time categories stored beside the entry, and the `sip_payment_recorded` and `one_time_investment_recorded` emails; migration 077.
+- **Release prep** (`3c6ed09` and the part-2 commit): WORKFLOW freeze step, DEPLOY notes, the nginx maintenance header, the admin top-bar title and the 0.18.3 What's new.
+- **Migrations:** `075` (growth email key), `076` (`admin_step_up_confirmations`) and `077` (`client_value_entry_categories` and the two recording email keys) are all expand-only and not rollback boundaries; the previous release runs against them. `076` was edited to add `request_sha256` before it ever landed; no stack applied the earlier version.
+- **Deploy together:** the API and the email worker, because a worker before 0.18.3 dead-letters the three new email keys. Mail of those keys still queued at an images-only rollback is dead-lettered and not re-sent.
+- **Accepted points:**
+  - the app-config confirmation does not bind `reason`, which is audit text only;
+  - the confirmation limiter is per API process and resets on restart, which assumes one API process per stack;
+  - a recording linked as SIP cannot be re-marked one-time; one-time can become SIP (the 064 link releases only on reversal);
+  - admin apps before 0.18.3 cannot publish app config against a 0.18.3 backend.
+- **Parked:** review-82 M2, `webVersion.ts` calling `globalThis.fetch` instead of an explicit eslint override (the maintainer's config-protection hook blocks agent edits to `eslint.config.mjs`); the required app-update announcement still raises the Android minimum without the password step.
+- **Release:** 0.18.3, to be cut by the maintainer, then tested on the emulator from the installed 0.18.2 dev apps (in-app update and the one-time What's new).
+- **Not verified:** no deploy, no VPS, no CI on GitHub; the APKs were built by the lanes' checks only.

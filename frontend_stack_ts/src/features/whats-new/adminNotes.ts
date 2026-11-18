@@ -6,23 +6,47 @@ export const ADMIN_NOTES: WhatsNewNotes = [
     month: "November 2026",
     sections: [
       {
+        heading: "New",
+        items: [
+          {
+            text: "App config is a form with switches and fields. Before publishing it lists what changed and asks for your password.",
+          },
+          { text: "Publishing app config needs this version of the admin app or newer." },
+          {
+            text: "Bring an existing client into a SIP plan: start it from a past month, then link their earlier monthly recordings. You check the proposed months before confirming.",
+          },
+          { text: "Mark earlier recordings as SIP payments or one-time investments." },
+          {
+            text: "Recording an investment asks whether it is a SIP payment or a one-time investment. Each sends the client its own email.",
+          },
+        ],
+      },
+      {
         heading: "Improved",
         items: [
           {
             text: "Growth emails the client. A one-investor adjustment, a collective update or the value sheet sends each client one email per fund.",
           },
+          { text: "Early exits, maturity settlements and payouts are final and can no longer be reversed." },
+          { text: "Email deliveries can be filtered by Value updated, SIP payment recorded and One-time investment recorded." },
+          { text: "Client emails use more of the screen on a computer." },
           { text: "The field you are typing in stays above the on-screen keyboard." },
-          { text: "Sections and groups in the All sections menu and the sidebar are spaced clearly apart." },
+          { text: "In the sidebar, section headings stand out from the pages under them." },
+          { text: "Sections and groups in the All sections menu are spaced clearly apart." },
           { text: "On inner pages, such as a client's page, the bottom bar highlights the section you are in." },
           { text: "Sign out is on the Account screen only, so page titles have room in the top bar." },
           { text: "Plainer wording on Overview, the client pages, Client values and App config." },
-          { text: "Roles, statuses and email templates show their names." },
+          { text: "Roles, statuses, email templates and ledger reasons show their names." },
+          { text: "When a newer version is available, a Reload button appears.", platform: "web" },
         ],
       },
       {
         heading: "Fixed",
         items: [
           { text: "App config shows the address the app actually calls." },
+          { text: "Payment counts leave out recordings that were reversed." },
+          { text: "The maturity tab no longer says no payout was recorded above an early exit payout." },
+          { text: "Mark matured no longer offers a holding that is already at zero." },
           { text: "The offline notice clears when the connection returns, and the screen reloads." },
           { text: "Try again reloads everything on the screen that failed." },
           { text: "FAQ keys no longer break letter by letter on a phone." },
