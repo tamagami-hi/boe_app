@@ -67,6 +67,7 @@ record_action() { printf '%s\n' "$*" >> "$ACTION_LOG"; }
 action_git_workflow() { record_action action_git_workflow "$@"; }
 action_sync_worktrees() { record_action action_sync_worktrees "$@"; }
 action_cut_release() { record_action action_cut_release "$@"; }
+action_push_production() { record_action action_push_production "$@"; }
 action_export() { record_action action_export "$@"; }
 action_apk() { record_action action_apk "$@"; }
 action_validate_contracts() { record_action action_validate_contracts "$@"; }
@@ -100,6 +101,7 @@ assert_no_route() {
 assert_route menu_git 1 'action_git_workflow'
 assert_route menu_git 2 'action_sync_worktrees'
 assert_route menu_git 3 'action_cut_release'
+assert_route menu_git 4 'action_push_production'
 
 assert_route menu_exports 1 'action_export build'
 assert_route menu_exports 2 'action_export restage'

@@ -766,13 +766,17 @@ grep -qF 'apk_ship_release "$RM_DIR/stacks/$stack/paths.json" "$ROOT_DIR/emu/out
 action_apk_block="$(sed -n '/^action_apk()/,/^}/p' "$status_script")"
 grep -q ' true ' <<< "$(grep 'apk_ship_release' <<< "$action_apk_block")" \
     || fail_test 'APK-only flow does not request a pre-upload archive'
-gate_line="$(grep -n 'prepare_release_git' <<< "$action_apk_block" | head -1 | cut -d: -f1)"
+gate_line="$(grep -n 'prod_apk_from_production' <<< "$action_apk_block" | head -1 | cut -d: -f1)"
 build_line="$(grep -n 'boe_update.sh' <<< "$action_apk_block" | head -1 | cut -d: -f1)"
 [[ -n "$gate_line" && -n "$build_line" && "$gate_line" -lt "$build_line" ]] \
+    || fail_test 'standalone production APKs are not built from the production branch'
+prod_apk_block="$(sed -n '/^prod_apk_run()/,/^}/p' "$ROOT_DIR/release_manager/lib/prod_export.sh")"
+resolve_line="$(grep -n 'prod_export_resolve_release' <<< "$prod_apk_block" | head -1 | cut -d: -f1)"
+prod_build_line="$(grep -n 'boe_update.sh' <<< "$prod_apk_block" | head -1 | cut -d: -f1)"
+[[ -n "$resolve_line" && -n "$prod_build_line" && "$resolve_line" -lt "$prod_build_line" ]] \
     || fail_test 'standalone production APK publishing has no pre-build release gate'
-tag_line="$(grep -n 'on_exact_release_tag' <<< "$action_apk_block" | head -1 | cut -d: -f1)"
-[[ -n "$tag_line" && "$tag_line" -lt "$build_line" ]] \
-    || fail_test 'standalone production APK publishing does not require the exact release tag'
+grep -q 'apk_ship_release .* prod "$PROD_RELEASE_VERSION" true "$PROD_RELEASE_SHA" prod' <<< "$prod_apk_block" \
+    || fail_test 'standalone production APKs are not shipped as release-signed artifacts of the production tip'
 
 # ── deploy re-binds the bundle to the tracked path contract before upload ────
 

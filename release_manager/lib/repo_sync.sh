@@ -2,10 +2,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # repo_sync.sh — shared local-main ↔ remote-main comparison for release tooling.
 #
-# Sourced by export.sh and deploy.sh. The product rule it encodes:
+# The product rule it encodes:
 #   • only local main is pushed to remote main
-#   • remote main is the VPS deploy source
-#   • a build may only SHIP to the VPS when the artifact's commit == origin/main
 #
 # All references are `set -u`-safe. Nothing here changes the repo.
 # ─────────────────────────────────────────────────────────────────────────────

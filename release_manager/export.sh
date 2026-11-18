@@ -43,11 +43,14 @@ source "$RM_DIR/lib/paths.sh"
 source "$RM_DIR/lib/apk_ship.sh"
 # shellcheck source=lib/nginx_ship.sh
 source "$RM_DIR/lib/nginx_ship.sh"
+source "$RM_DIR/lib/production_gate.sh"
+source "$RM_DIR/lib/prod_export.sh"
 
 STACK=""
 SKIP_BUILD=false
 WITH_APK=false
 KEEP_BUNDLES=3
+PRODUCTION_WORKTREE=false
 
 usage() {
     cat <<'USAGE'
@@ -66,10 +69,21 @@ Options:
   --skip-build   reuse already-built images; development/monitoring only
   --keep N       how many past bundles to retain per stack (default 3)
   --help, -h     this message
+  --production-worktree
+                 internal: the build step --prod runs inside its temporary worktree
 
 Version labelling (this is the only script that advances the version):
-  • clean tree on the exact vX.Y.Z tag  → stable X.Y.Z          (shippable to prod)
+  • clean tree on the exact vX.Y.Z tag, and origin's vX.Y.Z is the same commit
+                                        → stable X.Y.Z          (shippable to prod)
   • anything else                       → <next>-dev.N.gSHA[.dirty]  (dev only)
+
+--prod never builds this checkout. It reads origin's production branch live,
+requires its tip to be exactly a release tag vX.Y.Z (VERSION X.Y.Z, origin's tag
+at the same commit), checks that commit out in a temporary worktree under
+.temp/prod-export/, runs that commit's own export.sh there, stages the bundle
+under build/prod_release/ and removes the worktree, also on failure. Put a
+release on production first: status.sh → Git → Push a release to production.
+Newer commits on main or a dirty tree here do not matter.
 
 Production deploys refuse any version containing '-', so cut a release in
 status.sh before exporting a production bundle.
@@ -87,6 +101,7 @@ while [[ $# -gt 0 ]]; do
             [[ $# -ge 2 && "$2" =~ ^[0-9]+$ && "$2" -ge 1 ]] \
                 || { err "--keep requires a positive integer (got: ${2:-<none>})"; exit 1; }
             KEEP_BUNDLES="$2"; shift 2 ;;
+        --production-worktree) PRODUCTION_WORKTREE=true; shift ;;
         --help|-h)    usage; exit 0 ;;
         *) err "unknown argument: $1"; usage >&2; exit 1 ;;
     esac
@@ -100,6 +115,27 @@ if [[ "$STACK" == prod_release && "$SKIP_BUILD" == true ]]; then
     exit 1
 fi
 
+EXPORT_MODE=parent
+if [[ "$STACK" == prod_release ]]; then
+    EXPORT_MODE="$(prod_export_mode "$ROOT_DIR" "$PRODUCTION_WORKTREE")" || exit 1
+elif [[ "$PRODUCTION_WORKTREE" == true ]]; then
+    err "--production-worktree applies only to --prod"
+    exit 1
+fi
+
+if [[ "$STACK" == prod_release && "$EXPORT_MODE" == parent ]]; then
+    for c in git jq; do
+        command -v "$c" >/dev/null || { err "$c is required"; exit 1; }
+    done
+    release_origin_is_approved "$ROOT_DIR" \
+        || { err "origin must be the single approved BeOnEdge repository for a production export"; exit 1; }
+    banner "EXPORT · $STACK from origin's production branch"
+    prod_export_from_production "$ROOT_DIR" "$BUILD_DIR/$STACK" "$KEEP_BUNDLES" "$WITH_APK" \
+        || { err "production export did not complete"; exit 1; }
+    printf '\n   Next:  ./release_manager/deploy.sh --prod\n\n'
+    exit 0
+fi
+
 for c in docker jq gzip sha256sum git; do
     command -v "$c" >/dev/null || { err "$c is required"; exit 1; }
 done
@@ -111,16 +147,20 @@ done
 CANONICAL="$(canonical_version "$VERSION_FILE" "$BUILD_DIR/$STACK" "$ROOT_DIR")"
 assert_semver "$CANONICAL" || exit 1
 
-if on_exact_release_tag "$ROOT_DIR" "$CANONICAL" \
-   && release_origin_is_approved "$ROOT_DIR" \
-   && remote_release_refs_match "$ROOT_DIR" "$CANONICAL" \
-        "$(git -C "$ROOT_DIR" rev-parse HEAD)"; then
+if release_origin_is_approved "$ROOT_DIR" \
+   && production_release_gate "$ROOT_DIR" "$CANONICAL"; then
     VERSION="$CANONICAL"
     RELEASE_KIND="stable"
 else
     # Bump the patch so a dev label always sorts AFTER the last release.
     VERSION="$(dev_version "$(bump_version "$CANONICAL" patch)" "$ROOT_DIR")"
     RELEASE_KIND="dev"
+fi
+
+if [[ "$EXPORT_MODE" == child ]] && { [[ "$RELEASE_KIND" != stable ]] \
+    || ! production_release_matches "$ROOT_DIR" "$CANONICAL" "$(git -C "$ROOT_DIR" rev-parse HEAD)"; }; then
+    err "this worktree is not a clean v$CANONICAL that is origin's production tip; refusing to build"
+    exit 1
 fi
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -137,11 +177,6 @@ field "version"     "$VERSION"
 field "kind"        "$RELEASE_KIND"
 field "commit"      "${GIT_SHA:0:9}$([[ "$GIT_DIRTY" == true ]] && printf ' (dirty)')"
 field "bundle"      "${BUNDLE#"$ROOT_DIR"/}"
-
-if [[ "$RELEASE_KIND" == "dev" && "$STACK" == "prod_release" ]]; then
-    warn "this is a DEV label — prod_deploy.sh on the VPS will refuse it"
-    warn "cut and push a stable release first:  ./release_manager/status.sh"
-fi
 
 mkdir -p "$BUNDLE/images"
 
@@ -482,12 +517,7 @@ ok "manifest.json written"
 # ── retention ───────────────────────────────────────────────────────────────
 # Oldest-first by build time, so pruning cannot delete the clean tagged release
 # and keep an older dirty prerelease of the same version (see version.sh).
-mapfile -t old < <(bundle_dirs_oldest_first "$BUILD_DIR/$STACK")
-if (( ${#old[@]} > KEEP_BUNDLES )); then
-    for v in "${old[@]:0:$(( ${#old[@]} - KEEP_BUNDLES ))}"; do
-        rm -rf -- "$BUILD_DIR/$STACK/$v" && info "pruned old bundle $v" 2>/dev/null || true
-    done
-fi
+bundle_prune_oldest "$BUILD_DIR/$STACK" "$KEEP_BUNDLES"
 
 # ── done ────────────────────────────────────────────────────────────────────
 banner "BUNDLE READY"

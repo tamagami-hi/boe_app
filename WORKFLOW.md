@@ -70,14 +70,36 @@ VPS. Never report a deployment or device check from a unit-test result.
    each reports into
    `releasedNotes.json` (newest first, per audience), restore `VERSION`, and commit
    the notes and the rows together. A released entry is never edited afterwards.
-2. Use `release_manager/status.sh` to inspect/prepare Git and release state.
-3. Production export requires a clean, tagged, published release commit; prepare
-   that through the maintainer's release flow before exporting.
-4. Export the selected stack with exactly one of `--dev`, `--prod`, `--monitor`.
-5. The maintainer ships/deploys the matching bundle, observes its health/runtime
-   checks, and decides whether it is accepted.
-6. If recovery is needed, the maintainer selects a rollback only after checking
-   the current schema/configuration. Database restoration is separate and destructive.
+2. Cut the release on `main` with `release_manager/status.sh`, Git → Cut a release.
+   It commits `VERSION`, tags `vX.Y.Z` and pushes `main` and the tag together.
+   It then asks `Push a release onto the production branch? [y/N]`; answer No
+   until the development stack has been tested.
+3. Export and deploy the development stack: `export.sh --dev`, then
+   `deploy.sh --dev`. Test it on the phone; the maintainer decides whether it is
+   accepted. An export straight after the cut is labelled `X.Y.Z`; once `main` has
+   moved on, a dev export gets a `-dev` label, which the development stack accepts.
+4. Approve it for production: `status.sh`, Git → Push a release to production.
+   It reads origin live, shows where `production` stands and lists up to five of
+   the newest release tags on `main` that are not on `production` yet. Choose
+   one and confirm `Push vX.Y.Z (<sha>) onto production? [y/N]`; the push is a
+   fast-forward and is never forced. The first time, `production` does not exist
+   yet: choose v0.18.6, the release already live, to create it.
+5. Export production: `export.sh --prod --with-apk`. It builds the tip of
+   origin's `production` branch, which must be exactly a release tag, in a
+   temporary worktree, using that tag's own scripts. Tally records commits that
+   land on `main` after a cut, and uncommitted changes in this checkout, never
+   block a production export and never reach the bundle. Each export runs its
+   own tag's scripts, so the first production export through this flow is the
+   first release cut after this change landed; v0.18.6 itself is not exported
+   again.
+6. Deploy production: `deploy.sh --prod`. It checks again that the bundle is
+   stable and clean, and that its commit is both origin's `production` tip and
+   origin's `vX.Y.Z` tag. The maintainer observes the health and runtime checks.
+7. If recovery is needed, the maintainer selects a rollback only after checking
+   the current schema/configuration. `rollback.sh` is not blocked by
+   `production` and does not move it: after a rollback, `production` still names
+   the newer release, and the fix goes out as a newer release tag. Database
+   restoration is separate and destructive.
 
 The commands are in [release_manager/README.md](release_manager/README.md#normal-flow)
 ("Normal flow"); flags and recovery semantics are in

@@ -43,14 +43,9 @@ git -C "$repo" push -u origin main >/dev/null 2>&1
 if remote_release_tag_matches "$repo" 0.6.5; then
     fail_test 'origin/main without the release tag was accepted as stable'
 fi
-if remote_release_refs_match "$repo" 0.6.5 "$(git -C "$repo" rev-parse HEAD)"; then
-    fail_test 'live remote refs accepted origin/main without a release tag'
-fi
 
 git -C "$repo" push origin v0.6.5 >/dev/null 2>&1
 remote_release_tag_matches "$repo" 0.6.5 \
     || fail_test 'matching remote annotated tag was rejected'
-remote_release_refs_match "$repo" 0.6.5 "$(git -C "$repo" rev-parse HEAD)" \
-    || fail_test 'matching live origin/main and release tag were rejected'
 
 printf 'PASS: stable releases require origin tag and commit equality\n'

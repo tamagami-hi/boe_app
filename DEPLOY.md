@@ -96,6 +96,7 @@ Three scripts, in this order. Only `export.sh` advances the version.
 #   --with-apk     also build and stage the Android APKs for this stack
 #   --skip-build   reuse already-built images (development/monitoring only)
 #   --keep N       bundles retained per stack (default 3)
+#   --prod builds origin's production tip; push a release there first (status.sh → Git)
 
 # 2. Ship the newest staged bundle and run that stack's native deploy script on the VPS
 ./release_manager/deploy.sh --prod
@@ -112,9 +113,11 @@ Three scripts, in this order. Only `export.sh` advances the version.
 #   --restore-db   ALSO restore that release's pre-deploy database snapshot
 ```
 
-Version labelling: a clean tree on the exact `vX.Y.Z` tag produces a stable `X.Y.Z`;
-anything else produces `<next>-dev.N.gSHA[.dirty]`. **Production deploys refuse any version
-containing `-`**, so cut a release in `status.sh` before exporting a production bundle.
+Version labelling: a clean tree on the exact `vX.Y.Z` tag, with origin's `vX.Y.Z` at the same
+commit, produces a stable `X.Y.Z`; anything else produces `<next>-dev.N.gSHA[.dirty]`.
+**Production deploys refuse any version containing `-`**, so cut a release in `status.sh`
+before exporting a production bundle. The production checks are in
+[Production gate](#production-gate).
 
 The frontend learns that label at build time from `VITE_BEO_APP_VERSION` (DEC-71). `export.sh`
 passes it to both SPA images as the `--build-arg VITE_BEO_APP_VERSION=<label>` that
@@ -136,9 +139,58 @@ file under `/assets/` returns 404 instead of `index.html`. The host vhosts in
 `release_manager/nginx/` pass these headers through unchanged. Tabs opened on 0.18.2 or earlier
 have no watcher and pick up a new build on their next reload.
 
-`release_manager/verify.sh` checks the whole contract locally (108 assertions; add
+`release_manager/verify.sh` checks the whole contract locally (119 assertions; add
 `--remote` for the VPS checks). `release_manager/status.sh` is the interactive console for
 version state, git workflow and stack status.
+
+### Production gate
+
+`main` keeps moving after a cut (tally records commits, landed lanes). Production does not
+follow `main`: it follows origin's `production` branch, which means "approved for
+production". Records commits after a cut never block a production export.
+
+- **Approve.** `status.sh` → Git → Push a release to production (also offered, default No,
+  right after Cut a release). It fetches origin and reads `main`, `production` and the tags
+  live; if that fails it refuses rather than list stale refs. It shows production's tip, for
+  example `production is at v0.18.6 (468b02f)`, and the five newest release tags on it, then
+  lists up to five of the newest `vX.Y.Z` tags that are on origin's `main`, not on
+  `production`, and descend from its tip, so every choice is a fast-forward. Confirming
+  `Push vX.Y.Z (<sha>) onto production? [y/N]` runs
+  `git push origin <sha>:refs/heads/production` (no `+`, `--force` or
+  `--force-with-lease`; origin refuses anything that is not a fast-forward) and then checks
+  with `git ls-remote` that origin's `production` is that commit. Without a terminal, or on
+  No, nothing is pushed and the exact command is printed. When `production` does not exist,
+  the same choice creates it; the first time, choose v0.18.6, the release already live.
+- **Export.** `export.sh --prod` never builds the checkout it runs in, and takes no tag: it
+  reads origin's `production` live (refusing when origin is unreachable or the branch is
+  missing), requires the tip to be exactly a release tag `vX.Y.Z` on origin, with `VERSION`
+  `X.Y.Z` at that commit and the local tag at the same commit, checks it out in a temporary
+  detached worktree under `.temp/prod-export/` and runs that commit's own `export.sh` there
+  with the internal `--production-worktree` flag. That step refuses to run anywhere but a
+  detached checkout under `.temp/prod-export/`, and refuses to build unless the tree is
+  clean, `HEAD` is exactly `v<VERSION>`, and origin's tag and `production` both resolve to
+  `HEAD`. The bundle is staged under `release_manager/build/prod_release/` as before, only if
+  its manifest says `stable`, the tag's version and commit, and `git_dirty: false`. The
+  worktree is removed on success, failure and Ctrl-C. Because each export runs its own
+  tag's scripts, the first production export through this flow is the first release cut
+  after this change; a tag cut earlier has the old scripts and is refused.
+- **APKs.** With `--with-apk`, and for status.sh → Exports → Build + ship APKs → production,
+  the worktree also gets what the APK build reads but Git does not track:
+  `keystore.properties`, the files in `keystore/` and `local.properties` are linked from this
+  checkout's `frontend_stack_ts/android/` (each must be ignored at the tag, so the tree stays
+  clean), and `npm ci` installs `packages/contracts` and `frontend_stack_ts` from the tag's
+  lockfiles. Standalone production APKs are built from production's tip the same way.
+- **Deploy.** `deploy.sh --prod` refuses a version with `-`, a `git_sha` that is not 40 hex
+  characters, and any `git_dirty` other than the boolean `false` (a missing value, `null` or
+  the string `"false"` is refused). In one live `git ls-remote` read, the bundle's `git_sha`
+  must equal both origin's `production` tip and origin's `vX.Y.Z` tag (peeled). Neither
+  `origin/main` nor ancestry is compared, and nothing is pushed after a deploy.
+- **Rollback.** `rollback.sh --prod` is not blocked by any of this and does not move
+  `production`. After a rollback, `production` still names the newer release; the fix goes
+  out as a newer release tag pushed to `production`.
+- **Dashboard.** `status.sh --status` shows production's tip, read live from origin, next to
+  the version the production stack runs, and says when the newest release tag is not on
+  `production` yet.
 
 ## Database rollback semantics
 

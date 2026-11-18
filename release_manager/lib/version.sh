@@ -107,7 +107,7 @@ dev_version() {
 # on_exact_release_tag <repo> <version> — true if the tree is clean AND HEAD is
 # exactly the v<version> tag. This is the condition that lets export.sh stamp a
 # STABLE artifact: the build came from the release commit status.sh cut, not from
-# in-flight work. deploy.sh independently re-verifies git_sha == origin/main.
+# in-flight work.
 on_exact_release_tag() {
     local repo="$1" version="$2" exact
     [[ -z "$(git -C "$repo" status --porcelain 2>/dev/null)" ]] || return 1
@@ -123,28 +123,12 @@ remote_release_tag_matches() {
     local repo="$1" version="$2" expected="${3:-}" refs direct peeled target
     [[ -n "$expected" ]] || expected="$(git -C "$repo" rev-parse HEAD 2>/dev/null || true)"
     [[ "$expected" =~ ^[0-9a-f]{40}$ ]] || return 1
-    refs="$(git -C "$repo" ls-remote --tags origin \
+    refs="$(GIT_TERMINAL_PROMPT=0 git -C "$repo" ls-remote --tags origin \
         "refs/tags/v$version" "refs/tags/v$version^{}" 2>/dev/null)" || return 1
     direct="$(awk -v ref="refs/tags/v$version" '$2 == ref { print $1; exit }' <<< "$refs")"
     peeled="$(awk -v ref="refs/tags/v$version^{}" '$2 == ref { print $1; exit }' <<< "$refs")"
     target="${peeled:-$direct}"
     [[ "$target" == "$expected" ]]
-}
-
-# remote_release_refs_match <repo> <version> <expected-commit>
-#   Resolve live origin/main and the release tag in one ls-remote snapshot and
-#   require both to identify the same expected commit.
-remote_release_refs_match() {
-    local repo="$1" version="$2" expected="$3" refs branch direct peeled target
-    [[ "$expected" =~ ^[0-9a-f]{40}$ ]] || return 1
-    refs="$(git -C "$repo" ls-remote origin \
-        refs/heads/main "refs/tags/v$version" "refs/tags/v$version^{}" 2>/dev/null)" \
-        || return 1
-    branch="$(awk '$2 == "refs/heads/main" { print $1; exit }' <<< "$refs")"
-    direct="$(awk -v ref="refs/tags/v$version" '$2 == ref { print $1; exit }' <<< "$refs")"
-    peeled="$(awk -v ref="refs/tags/v$version^{}" '$2 == ref { print $1; exit }' <<< "$refs")"
-    target="${peeled:-$direct}"
-    [[ "$branch" == "$expected" && "$target" == "$expected" ]]
 }
 
 

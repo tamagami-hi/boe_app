@@ -169,6 +169,21 @@ if bash "$RM_DIR/tests/release_tag_contract.test.sh" >/dev/null 2>&1; then
 else
     fail "remote release tag contract tests failed"
 fi
+if bash "$RM_DIR/tests/production_gate.test.sh" >/dev/null 2>&1; then
+    pass "production deploys need a clean bundle that is origin's production tip and its release tag"
+else
+    fail "production gate tests failed"
+fi
+if bash "$RM_DIR/tests/production_push.test.sh" >/dev/null 2>&1; then
+    pass "the production push menu offers only newer fast-forward releases and never forces"
+else
+    fail "production push menu tests failed"
+fi
+if bash "$RM_DIR/tests/prod_export_worktree.test.sh" >/dev/null 2>&1; then
+    pass "production exports build origin's production tip in a temporary worktree and leave none behind"
+else
+    fail "production worktree export tests failed"
+fi
 if bash "$RM_DIR/tests/repo_sync.test.sh" >/dev/null 2>&1; then
     pass "repository sync handles main-worktree paths containing spaces"
 else

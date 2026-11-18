@@ -48,6 +48,10 @@ source "$RM_DIR/lib/input_validation.sh"
 source "$RM_DIR/lib/apk_ship.sh"
 # shellcheck source=lib/nginx_ship.sh
 source "$RM_DIR/lib/nginx_ship.sh"
+source "$RM_DIR/lib/production_gate.sh"
+source "$RM_DIR/lib/production_push.sh"
+source "$RM_DIR/lib/prod_export.sh"
+source "$RM_DIR/lib/status_dashboard.sh"
 
 for c in jq git ssh; do
     command -v "$c" >/dev/null || { err "$c is required"; exit 1; }
@@ -89,186 +93,6 @@ bundle_version() {
     local b; b="$(latest_bundle "$1")"
     [[ -n "$b" && -f "$b/manifest.json" ]] || return 0
     jq -r '.version // empty' "$b/manifest.json" 2>/dev/null || true
-}
-
-# fetch_remote_state — one SSH call that returns every stack's live version,
-# status and container count. Everything the dashboard needs. Every remote
-# path comes from the validated contracts; nothing is constructed here.
-fetch_remote_state() {
-    [[ "$REMOTE_FETCHED" == true ]] && return 0
-    REMOTE_FETCHED=true
-
-    local s f
-    # One argv element per value: the remote shell re-parses the command
-    # string, so a '|'-joined spec would be read as a pipeline.
-    local -a rargs=("$BACKUP_MOUNT" "$BACKUP_ROOT")
-    for s in "${BOE_STACKS[@]}"; do
-        f="$(stack_paths_file "$s")"
-        rargs+=("$(paths_get "$f" .vps.stack_dir)"
-                "$(paths_get "$f" .vps.version_name)"
-                "$(paths_get "$f" .vps.env_file)")
-    done
-
-    local qcmd="bash -s --" a
-    for a in "${rargs[@]}"; do
-        printf -v a '%q' "$a"
-        qcmd+=" $a"
-    done
-
-    REMOTE_STATE="$(boe_ssh "$qcmd" <<'REMOTE' 2>/dev/null || true
-set -u
-mount="$1"; broot="$2"; shift 2
-printf 'REACHABLE=yes\n'
-printf 'JQ=%s\n'             "$(command -v jq >/dev/null 2>&1 && echo yes || echo no)"
-printf 'DOCKER=%s\n'          "$(docker info >/dev/null 2>&1 && echo yes || echo no)"
-printf 'BACKUP_MOUNTED=%s\n'  "$(mountpoint -q "$mount" && echo yes || echo no)"
-printf 'BACKUP_WRITABLE=%s\n' "$([[ -w "$broot" ]] && echo yes || echo no)"
-printf 'DISK_STACK=%s\n'      "$(df -h --output=avail "$1" 2>/dev/null | tail -n1 | tr -d ' ')"
-printf 'DISK_BACKUP=%s\n'     "$(df -h --output=avail "$mount" 2>/dev/null | tail -n1 | tr -d ' ')"
-printf 'NGINX=%s\n'           "$(systemctl is-active nginx 2>/dev/null || echo unknown)"
-while (( $# >= 3 )); do
-  d="$1"; vf="$2"; envf="$3"; shift 3
-  stack="${d##*/}"
-  v=""; st=""
-  if [[ -s "$d/$vf" ]] && command -v jq >/dev/null 2>&1; then
-    v="$(jq -r '.version // empty' "$d/$vf" 2>/dev/null || true)"
-    st="$(jq -r '.status // empty'  "$d/$vf" 2>/dev/null || true)"
-  fi
-  printf '%s_VERSION=%s\n' "$stack" "$v"
-  printf '%s_STATUS=%s\n'  "$stack" "$st"
-  printf '%s_ENV=%s\n'     "$stack" "$([[ -s "$envf" ]] && echo yes || echo no)"
-  env_mode="$(stat -c '%a' "$envf" 2>/dev/null || true)"
-  env_owner="$(stat -c '%U:%G' "$envf" 2>/dev/null || true)"
-  env_safe=no
-  if [[ ! -L "$envf" && -f "$envf" && -r "$envf" ]]; then
-    env_uid="$(stat -c '%u' "$envf" 2>/dev/null || true)"
-    env_links="$(stat -c '%h' "$envf" 2>/dev/null || true)"
-    if [[ "$env_links" == 1 ]] && { [[ "$env_uid" == "$(id -u)" && "$env_mode" == 600 ]] || [[ "$env_uid" == 0 && "$env_mode" == 640 ]]; }; then
-      env_safe=yes
-    fi
-  fi
-  printf '%s_ENV_MODE=%s\n'  "$stack" "$env_mode"
-  printf '%s_ENV_OWNER=%s\n' "$stack" "$env_owner"
-  printf '%s_ENV_SAFE=%s\n'  "$stack" "$env_safe"
-  # -s not -f: the original VPS scaffold contains a 0-byte paths.json, so an
-  # existence test would report an unshipped stack as provisioned.
-  printf '%s_SHIPPED=%s\n' "$stack" "$([[ -s "$d/paths.json" ]] && jq -e . "$d/paths.json" >/dev/null 2>&1 && echo yes || echo no)"
-done
-printf 'CONTAINERS<<\n'
-docker ps --format '{{.Names}}\t{{.Status}}' 2>/dev/null | grep -E '^boe' || true
-printf '>>\n'
-REMOTE
-)"
-    [[ -n "$REMOTE_STATE" ]] || REMOTE_STATE="REACHABLE=no"
-}
-
-# rs <key> — one value out of the cached remote state. First-writer wins
-# (head -n1): a duplicated key cannot smuggle a second value past the first.
-# Values are remote output, so control bytes (including ESC) are stripped
-# before they ever reach the terminal.
-rs() {
-    printf '%s\n' "$REMOTE_STATE" | sed -n "s/^$1=//p" | head -n1 \
-        | LC_ALL=C tr -d '\000-\010\013-\037\177'
-}
-
-# ── dashboard ───────────────────────────────────────────────────────────────
-
-show_status() {
-    fetch_remote_state
-
-    local canonical
-    canonical="$(canonical_version "$VERSION_FILE" "$BUILD_DIR/prod_release" "$ROOT_DIR")"
-
-    printf '\n%s╔══════════════════════════════════════════════════════════════════════╗%s\n' "$c_bold" "$c_rst"
-    printf '%s║  BeOnEdge · BOE_APP release control center                            ║%s\n' "$c_bold" "$c_rst"
-    printf '%s╚══════════════════════════════════════════════════════════════════════╝%s\n' "$c_bold" "$c_rst"
-
-    # ── repository ──────────────────────────────────────────────────────────
-    repo_sync_eval "$RM_DIR" >/dev/null 2>&1 || true
-    local dirty_note=""
-    [[ "${RS_DIRTY:-0}" != "0" ]] && dirty_note=" ${c_yel}(${RS_DIRTY} uncommitted)${c_rst}"
-
-    printf '\n%s━━ repository%s\n' "$c_bold" "$c_rst"
-    field "VERSION file" "$canonical"
-    field "branch"       "$(git -C "$ROOT_DIR" symbolic-ref --short -q HEAD 2>/dev/null || echo detached)"
-    printf '   %s%-18s%s %s%b\n' "$c_dim" "local HEAD" "$c_rst" "${RS_LOCAL_SHA:-?}" "$dirty_note"
-    field "origin/main"  "${RS_REMOTE_SHA:-<unknown>}"
-    if [[ "${RS_IDENTICAL:-false}" == true ]]; then
-        ok "local main matches origin/main"
-    else
-        warn "local main and origin/main differ (ahead ${RS_AHEAD:-?}, behind ${RS_BEHIND:-?})"
-    fi
-    if on_exact_release_tag "$ROOT_DIR" "$canonical"; then
-        ok "HEAD is exactly tag v$canonical → export produces a STABLE bundle"
-    else
-        info "HEAD is not on tag v$canonical → export produces a DEV bundle"
-    fi
-
-    # ── VPS ─────────────────────────────────────────────────────────────────
-    printf '\n%s━━ vps (%s)%s\n' "$c_bold" "$BOE_SSH_ALIAS" "$c_rst"
-    if [[ "$(rs REACHABLE)" != "yes" ]]; then
-        err "unreachable over SSH"
-    else
-        ok "reachable"
-        [[ "$(rs DOCKER)" == "yes" ]] && ok "docker usable" || err "docker NOT usable"
-        [[ "$(rs BACKUP_MOUNTED)" == "yes" ]] && ok "backup disk mounted" || err "backup disk NOT mounted"
-        if [[ "$(rs BACKUP_WRITABLE)" == "yes" ]]; then
-            ok "backup tree writable"
-        else
-            err "backup tree NOT writable — see Ship + Deploy → Diagnose the VPS"
-        fi
-        field "nginx"        "$(rs NGINX)"
-        field "free stack disk"  "$(rs DISK_STACK)"
-        field "free backup disk" "$(rs DISK_BACKUP)"
-    fi
-
-    # ── stacks ──────────────────────────────────────────────────────────────
-    printf '\n%s━━ stacks%s\n' "$c_bold" "$c_rst"
-    printf '   %s%-17s %-28s %-28s %-10s%s\n' "$c_dim" "STACK" "STAGED (local)" "DEPLOYED (vps)" "SYNC" "$c_rst"
-    local s built deployed status mark
-    for s in "${BOE_STACKS[@]}"; do
-        built="$(bundle_version "$s")"
-        deployed="$(rs "${s}_VERSION")"
-        status="$(rs "${s}_STATUS")"
-        if [[ -n "$built" && -n "$deployed" && "$built" == "$deployed" ]]; then
-            mark="${c_grn}in sync${c_rst}"
-        elif [[ -n "$built" && "$built" != "$deployed" ]]; then
-            mark="${c_yel}ship pending${c_rst}"
-        elif [[ -z "$built" && -n "$deployed" ]]; then
-            mark="${c_dim}no bundle${c_rst}"
-        else
-            mark="${c_dim}not started${c_rst}"
-        fi
-        printf '   %-17s %-28s %-28s %b\n' \
-            "$s" "${built:-—}" "${deployed:-—}${status:+ ($status)}" "$mark"
-    done
-
-    # ── containers ──────────────────────────────────────────────────────────
-    local containers
-    containers="$(printf '%s\n' "$REMOTE_STATE" | sed -n '/^CONTAINERS<</,/^>>/p' | sed '1d;$d')"
-    printf '\n%s━━ running containers%s\n' "$c_bold" "$c_rst"
-    if [[ -n "$containers" ]]; then
-        printf '%s\n' "$containers" | while IFS=$'\t' read -r n st; do
-            printf '   %-42s %s\n' "$n" "$st"
-        done
-    else
-        info "no boe-* containers running"
-    fi
-
-    # ── readiness ───────────────────────────────────────────────────────────
-    printf '\n%s━━ configuration readiness%s\n' "$c_bold" "$c_rst"
-    for s in "${BOE_STACKS[@]}"; do
-        local shipped envp
-        shipped="$(rs "${s}_SHIPPED")"; envp="$(rs "${s}_ENV")"
-        if [[ "$shipped" != "yes" ]]; then
-            warn "$s: never shipped (no paths.json on the VPS)"
-        elif [[ "$envp" != "yes" ]]; then
-            warn "$s: shipped, but .env is missing or empty on the VPS"
-        else
-            ok "$s: provisioned"
-        fi
-    done
-    printf '\n'
 }
 
 # ── actions ─────────────────────────────────────────────────────────────────
@@ -480,38 +304,21 @@ action_apk() {
     printf '   2) production APKs (client + admin)\n'
     printf '   3) cancel\n'
     printf '\n%s   ➜ choice [1-3]: %s' "$c_bold" "$c_rst"
-    local n stack target version expected_git="" mode=dev
+    local n stack=dev_release target=dev version
     read -r n
     case "$n" in
-        1) stack=dev_release; target=dev ;;
-        2) stack=prod_release; target=prod ;;
+        1) : ;;
+        2) assert_release_origin_approved || return 1
+           prod_apk_from_production "$ROOT_DIR" "$RM_DIR/stacks/prod_release/paths.json"
+           return ;;
         *) warn "cancelled"; return 0 ;;
     esac
     version="$(canonical_version "$VERSION_FILE" "$BUILD_DIR/prod_release" "$ROOT_DIR")"
     assert_semver "$version" || return 1
-    if [[ "$target" == prod ]]; then
-        # Gate BEFORE any build: a production APK may only ever be published
-        # from the clean, tagged, pushed release commit. The library then
-        # independently refuses anything the sidecar proves is dirty,
-        # off-commit, off-version, or not release-signed.
-        prepare_release_git || return 1
-        on_exact_release_tag "$ROOT_DIR" "$version" || {
-            err "production APKs require HEAD on the exact v$version release tag"
-            err "cut the release first: status.sh → Git → Cut a release"
-            return 1
-        }
-        expected_git="$(git -C "$ROOT_DIR" rev-parse HEAD)"
-        remote_release_refs_match "$ROOT_DIR" "$version" "$expected_git" || {
-            err "origin/main and v$version do not both resolve to HEAD"
-            err "push the release before publishing production APKs"
-            return 1
-        }
-        mode=prod
-    fi
     BOE_APK_VERSION="$version" "$ROOT_DIR/emu/boe_update.sh" "--$target" --no-install --both || return 1
     section "SHIP APKs" "publish to the dedicated VPS paths.json directories"
     paths_validate "$stack" "$(stack_paths_file "$stack")" || return 1
-    apk_ship_release "$RM_DIR/stacks/$stack/paths.json" "$ROOT_DIR/emu/out" "$target" "$version" true "$expected_git" "$mode"
+    apk_ship_release "$RM_DIR/stacks/$stack/paths.json" "$ROOT_DIR/emu/out" "$target" "$version" true "" dev
 }
 
 assert_release_origin_approved() {
@@ -520,6 +327,13 @@ assert_release_origin_approved() {
         err "both must be the approved BeOnEdge GitHub repository"
         return 1
     fi
+}
+
+action_push_production() {
+    local ask=false
+    assert_release_origin_approved || return 1
+    [[ "$UI_INTERACTIVE" == true ]] && ask=true
+    production_push_flow "$ROOT_DIR" "$ask"
 }
 
 action_git_workflow() {
@@ -634,7 +448,11 @@ action_cut_release() {
             return 1
         }
     ok "committed, tagged and pushed v$next"
-    printf '\n   Next:  ./release_manager/export.sh --prod\n\n'
+    if confirm "Push a release onto the production branch?"; then
+        action_push_production || warn "no release was pushed to production"
+    fi
+    printf '\n   Next:  ./release_manager/export.sh --dev, deploy and test it; then\n'
+    printf '          Git → Push a release to production, and ./release_manager/export.sh --prod\n\n'
 }
 
 action_validate_contracts() {
@@ -782,6 +600,7 @@ ${c_bold}━━ Git${c_rst}
    1) Full Git workflow       commit, review PRs, integrate and push main
    2) Sync local worktrees    fast-forward main into both dev worktrees
    3) Cut a release           prepare Git, bump VERSION, tag and push
+   4) Push a release to production  fast-forward origin's production to a release tag
    b) Back
 
 MENU
@@ -791,6 +610,7 @@ MENU
             1) action_git_workflow || warn "Git workflow did not complete" ;;
             2) action_sync_worktrees || warn "worktree synchronization did not complete" ;;
             3) action_cut_release || warn "release not cut" ;;
+            4) action_push_production || warn "no release was pushed to production" ;;
             b|B) return 0 ;;
             *) warn "unknown Git choice: $choice"; continue ;;
         esac

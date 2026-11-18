@@ -58,8 +58,9 @@ release version, validates their sidecar provenance and SHA-256, archives any
 previously published APKs into variant-specific rollback directories, and then
 publishes each artifact atomically (temp upload → remote digest check → rename)
 to the dedicated VPS directories declared by that stack's `paths.json`. The
-production route first requires a clean, tagged, pushed release commit and
-refuses debug-signed artifacts. APKs included in a full bundle are selected by
+production route builds the tip of origin's `production` branch in a temporary
+worktree, exactly as `export.sh --prod` does, and refuses debug-signed
+artifacts. APKs included in a full bundle are selected by
 the bundle manifest and published only after the remote deploy succeeds;
 `deploy.sh --ship-only` stages them under `<stack>/apk/` for inspection without
 touching the live APK directories.
@@ -71,8 +72,8 @@ Or directly:
 ./release_manager/export.sh --dev
 ./release_manager/deploy.sh --dev
 
-# production (needs Git → Cut a release first)
-./release_manager/export.sh --prod
+# production (after Git → Push a release to production; builds that branch's tip)
+./release_manager/export.sh --prod --with-apk
 ./release_manager/deploy.sh --prod
 
 # monitoring
@@ -86,6 +87,33 @@ Or directly:
 
 Every script takes exactly one of `--dev`, `--prod`, `--monitor`.
 
+### Production releases come from the `production` branch
+
+Origin's `production` branch means "approved for production". Production does
+not follow `main`, so tally records commits (or anything else) landing on `main`
+after a cut never block a production export.
+
+1. Cut on `main` with `status.sh` → Git → Cut a release (commit, tag, push).
+   It then asks whether to push a release to production; the default is No.
+2. Export and deploy the development stack, and test it.
+3. `status.sh` → Git → Push a release to production. It reads origin live, shows
+   production's tip and the newest releases on it, and lists up to five newer
+   release tags on `main` that fast-forward it. Confirm one to push it (never
+   forced). The first time, choose v0.18.6, the release already live, to create
+   the branch.
+4. `export.sh --prod --with-apk` builds production's tip, which must be exactly
+   a release tag, in a temporary worktree under `.temp/prod-export/` with that
+   tag's own scripts, stages the bundle under `build/prod_release/` and removes
+   the worktree, also on failure. This checkout may be ahead or dirty. The first
+   export through this flow is the first release cut after this change landed.
+5. `deploy.sh --prod` ships only a stable bundle with `git_dirty: false` whose
+   commit is both origin's live `production` tip and its live release tag.
+
+`rollback.sh` is the way back. It is not blocked and does not move
+`production`; after a rollback the fix goes out as a newer release tag.
+`status.sh --status` shows production's tip, read live, next to the version the
+production stack runs. Details: `DEPLOY.md`, "Production gate".
+
 ---
 
 ## Layout
@@ -98,6 +126,10 @@ release_manager/
 │   ├── stacks.sh               THE stack registry — the single source of truth
 │   ├── paths.sh                validates + reads paths.json (nothing generates it)
 │   ├── version.sh              semver helpers (also used by the APK builder)
+│   ├── production_gate.sh      production release and deploy gates, live origin reads
+│   ├── production_push.sh      Git → Push a release to production
+│   ├── prod_export.sh          production builds from a temporary worktree at production's tip
+│   ├── status_dashboard.sh     the status.sh dashboard
 │   ├── ui.sh                   output helpers
 │   └── repo_sync.sh            git local-vs-origin comparison
 │
@@ -147,7 +179,9 @@ any operational script carries a raw path literal.
 **The version advances in exactly one place.** `export.sh` labels the build:
 a clean tree on the exact `vX.Y.Z` tag produces a stable, shippable version only
 when the same tag resolves to that commit on `origin`; anything else produces
-`<next>-dev.N.gSHA[.dirty]`, which production refuses.
+`<next>-dev.N.gSHA[.dirty]`, which production refuses. `origin/main` does not
+have to be at the tag. A production export always builds the tip of origin's
+`production` branch in its own worktree.
 `deploy.sh` and `rollback.sh` never change a version — they only record what the
 VPS reports.
 

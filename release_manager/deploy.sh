@@ -43,12 +43,11 @@ source "$RM_DIR/lib/version.sh"
 source "$RM_DIR/lib/stacks.sh"
 # shellcheck source=lib/paths.sh
 source "$RM_DIR/lib/paths.sh"
-# shellcheck source=lib/repo_sync.sh
-source "$RM_DIR/lib/repo_sync.sh"
 # shellcheck source=lib/apk_ship.sh
 source "$RM_DIR/lib/apk_ship.sh"
 # shellcheck source=lib/nginx_ship.sh
 source "$RM_DIR/lib/nginx_ship.sh"
+source "$RM_DIR/lib/production_gate.sh"
 
 STACK=""
 BUNDLE_ARG=""
@@ -82,6 +81,9 @@ Options:
   --help, -h      this message
 
 Requires that export.sh has already staged a bundle for the chosen stack.
+
+Production (--prod) ships only a stable bundle with git_dirty: false whose
+git_sha is both origin's live production tip and origin's live vX.Y.Z tag.
 USAGE
 }
 
@@ -218,39 +220,14 @@ ok "bundle checksums verified locally"
 section "2/7  RELEASE GATE"
 
 if [[ "$STACK" == "prod_release" ]]; then
-    if [[ "$VERSION" == *-* ]]; then
-        err "refusing to ship a development build to production: $VERSION"
-        err "cut a stable release first: ./release_manager/status.sh"
-        exit 1
-    fi
     if ! release_origin_is_approved "$ROOT_DIR"; then
         err "origin fetch/push URLs are not the single approved BeOnEdge repository"
         exit 1
     fi
-    repo_sync_eval "$RM_DIR" >/dev/null 2>&1 || true
-    manifest_sha="$(jq -r '.git_sha // empty' "$BUNDLE/manifest.json")"
-    manifest_dirty="$(jq -r '.git_dirty // false' "$BUNDLE/manifest.json")"
-    if [[ "$RS_FETCHED" != true || "$RS_HAS_REMOTE" != true || -z "$RS_REMOTE_FULL" ]]; then
-        err "could not freshly verify origin/main — refusing production deployment"
-        exit 1
-    fi
-    origin_sha="$RS_REMOTE_FULL"
-
-    if [[ "$manifest_dirty" == "true" ]]; then
-        err "bundle was built from a dirty tree — refusing to ship to production"
-        exit 1
-    fi
-    if [[ "$manifest_sha" != "$origin_sha" ]]; then
-        err "bundle commit ${manifest_sha:0:9} is not origin/main ${origin_sha:0:9}"
-        err "push the release commit before shipping to production"
-        exit 1
-    fi
-    if ! remote_release_refs_match "$ROOT_DIR" "$VERSION" "$manifest_sha"; then
-        err "live origin/main and v$VERSION do not both resolve to bundle commit ${manifest_sha:0:9}"
-        err "retry or reconcile the atomic release push before shipping to production"
-        exit 1
-    fi
-    ok "production gate passed (stable, clean, matches origin/main and remote tag)"
+    MANIFEST_SHA="$(jq -r '.git_sha // empty' "$BUNDLE/manifest.json")"
+    MANIFEST_DIRTY="$(manifest_git_dirty "$BUNDLE/manifest.json")"
+    production_deploy_gate "$ROOT_DIR" "$VERSION" "$MANIFEST_SHA" "$MANIFEST_DIRTY" || exit 1
+    ok "production gate passed (stable, clean, origin's production and v$VERSION are the bundle commit)"
 else
     ok "non-production stack — no release gate"
 fi
