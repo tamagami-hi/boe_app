@@ -158,7 +158,12 @@ const run = async () => {
   checkBudgets(assets)
   checkFonts(assets)
 
-  const cycle = findCycle(await buildChunkGraph(assets))
+  const graph = await buildChunkGraph(assets)
+  const staticEdges = [...graph.values()].reduce((sum, edges) => sum + edges.size, 0)
+  if (graph.size > 1 && staticEdges === 0) {
+    fail("No static import between chunks was found, so the chunk graph cannot be checked: the build output's import syntax no longer matches STATIC_CHUNK_IMPORT.")
+  }
+  const cycle = findCycle(graph)
   if (cycle !== null) {
     fail(
       `Chunk import graph has a cycle: ${cycle.join(" -> ")}. ` +
