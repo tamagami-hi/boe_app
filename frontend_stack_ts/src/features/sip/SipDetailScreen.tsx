@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
 
+import { isApiError } from "~/api/errors"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
@@ -61,7 +62,34 @@ const ENDED_EXPLANATION = "This plan has ended. Nothing more is collected or rec
 const AUTOPAY_OFF_EXPLANATION =
   "AutoPay is not collecting at the moment. Your investments are recorded by the BeOnEdge team and appear in your portfolio."
 
+const PAID_BY_UNAVAILABLE = "Not available"
+
 type Confirming = "pause" | "resume" | "cancel" | "cancel-autopay" | null
+
+type PaymentMode = "autopay" | "manual" | "unknown"
+
+const AUTOPAY_ONLY_STATES: readonly string[] = [
+  "pending_mandate",
+  "cancel_pending",
+  "setup_failed",
+  "mandate_failed",
+  "revoked",
+]
+
+const paymentModeOf = (
+  status: string | null,
+  autopay: Readonly<{ data: unknown; error: unknown }>,
+): PaymentMode => {
+  if (status !== null && AUTOPAY_ONLY_STATES.includes(status)) return "autopay"
+  if (autopay.data !== undefined) return "autopay"
+  return isApiError(autopay.error) && autopay.error.code === "RESOURCE_NOT_FOUND" ? "manual" : "unknown"
+}
+
+const PaidBy = ({ mode, isFailed }: Readonly<{ mode: PaymentMode; isFailed: boolean }>): React.ReactElement => {
+  if (mode === "autopay") return <>AutoPay</>
+  if (mode === "manual") return <>You, each month</>
+  return isFailed ? <>{PAID_BY_UNAVAILABLE}</> : <Skeleton width="6rem" />
+}
 
 const SipDetailScreen = (): React.ReactElement => {
   const { sipPlanId = "" } = useParams()
@@ -77,13 +105,11 @@ const SipDetailScreen = (): React.ReactElement => {
   const paymentsOff = useOnlinePaymentsOff()
 
   const plan = plans.data?.items.find((entry) => entry.sipId === sipPlanId) ?? null
-  const looksAutoPay =
-    plan !== null &&
-    ["pending_mandate", "cancel_pending", "setup_failed", "mandate_failed", "revoked"].includes(
-      plan.status,
-    )
   const autopay = useAutoPayPlan(sipPlanId, plan !== null)
-  const isAutoPay = autopay.data !== undefined || looksAutoPay
+  const mode = paymentModeOf(plan?.status ?? null, autopay)
+  const isAutoPay = mode === "autopay"
+  const isManual = mode === "manual"
+  const isModeFailed = mode === "unknown" && autopay.isError
 
   const nameFor = (fundId: string): string =>
     funds.data?.items.find((fund) => fund.id === fundId)?.name ?? "Fund"
@@ -199,9 +225,18 @@ Back to SIP plans
             autopay.data === undefined ? null : clientAutoPayStatus(autopay.data.mandate.status)
           const setupReason = paymentFailureReason(autopay.data?.setup?.failureCode ?? null)
 
-          const canPause = plan.status === "active" && !isAutoPay
-          const canResume = plan.status === "paused" && !isAutoPay
-          const canCancel = (plan.status === "active" || plan.status === "paused") && !isAutoPay
+          const canPause = plan.status === "active" && isManual
+          const canResume = plan.status === "paused" && isManual
+          const canCancel = (plan.status === "active" || plan.status === "paused") && isManual
+          const explanation = isEndedSip(plan.status)
+            ? ENDED_EXPLANATION
+            : isAutoPay
+              ? paymentsOff
+                ? AUTOPAY_OFF_EXPLANATION
+                : AUTOPAY_EXPLANATION
+              : isManual
+                ? MANUAL_EXPLANATION
+                : null
           const canStopMandate =
             isAutoPay &&
             ["pending_mandate", "active", "paused"].includes(plan.status) &&
@@ -238,7 +273,9 @@ Back to SIP plans
                   )}
                   <div className={STAT_ROOT}>
                     <span className={STAT_LABEL}>Paid by</span>
-                    <span className={ITEM_TITLE}>{isAutoPay ? "AutoPay" : "You, each month"}</span>
+                    <span className={ITEM_TITLE}>
+                      <PaidBy mode={mode} isFailed={isModeFailed} />
+                    </span>
                   </div>
                 </div>
                 {status.detail === undefined ? null : (
@@ -246,17 +283,32 @@ Back to SIP plans
                 )}
               </Card>
 
-              <div className={PROSE_PANEL}>
-                <p className={HONESTY_TEXT}>
-                  {isEndedSip(plan.status)
-                    ? ENDED_EXPLANATION
-                    : isAutoPay
-                      ? paymentsOff
-                        ? AUTOPAY_OFF_EXPLANATION
-                        : AUTOPAY_EXPLANATION
-                      : MANUAL_EXPLANATION}
-                </p>
-              </div>
+              {explanation === null ? null : (
+                <div className={PROSE_PANEL}>
+                  <p className={HONESTY_TEXT}>{explanation}</p>
+                </div>
+              )}
+
+              {isModeFailed ? (
+                <Alert
+                  tone="error"
+                  title="We could not check how this plan is paid"
+                  action={
+                    <Button
+                      tone="secondary"
+                      size="sm"
+                      loading={autopay.isFetching}
+                      onClick={() => {
+                        void autopay.refetch()
+                      }}
+                    >
+                      Try again
+                    </Button>
+                  }
+                >
+                  Check your connection and try again. The actions for this plan show once this loads.
+                </Alert>
+              ) : null}
 
               {failure === null ? null : (
                 <Alert tone="error" title={failure.title}>
