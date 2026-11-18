@@ -50,6 +50,8 @@ export interface ReversalEntryInput {
   readonly requestId: string
 }
 
+export type FinalEntryOwner = "sip_early_exit" | "maturity_settlement" | "withdrawal_payout"
+
 export interface LedgerEntryRow {
   readonly id: string
   readonly userId: string
@@ -61,6 +63,7 @@ export interface LedgerEntryRow {
   readonly reasonCode: string
   readonly reversesEntryId: string | null
   readonly reversedByEntryId: string | null
+  readonly finalOwner: FinalEntryOwner | null
   readonly orderType: string | null
   readonly createdAt: Date
 }
@@ -125,6 +128,7 @@ interface LedgerEntrySqlRow {
   readonly reasonCode: string
   readonly reversesEntryId: string | null
   readonly reversedByEntryId: string | null
+  readonly finalOwner: FinalEntryOwner | null
   readonly orderType: string | null
   readonly createdAt: Date
 }
@@ -143,6 +147,7 @@ const mapEntry = (row: LedgerEntrySqlRow): LedgerEntryRow => ({
   reasonCode: row.reasonCode,
   reversesEntryId: row.reversesEntryId,
   reversedByEntryId: row.reversedByEntryId,
+  finalOwner: row.finalOwner,
   orderType: row.orderType,
   createdAt: row.createdAt,
 })
@@ -159,6 +164,11 @@ const entrySelection = sql`
     e.reason_code as "reasonCode",
     e.reverses_entry_id as "reversesEntryId",
     (select r.id from client_value_entries r where r.reverses_entry_id = e.id) as "reversedByEntryId",
+    case
+      when exists (select 1 from sip_early_exits x where x.ledger_entry_id = e.id) then 'sip_early_exit'
+      when exists (select 1 from client_position_maturities m where m.settlement_entry_id = e.id) then 'maturity_settlement'
+      when exists (select 1 from withdrawal_operations w where w.ledger_entry_id = e.id) then 'withdrawal_payout'
+    end as "finalOwner",
     o.type::text as "orderType",
     e.created_at as "createdAt"
   from client_value_entries e

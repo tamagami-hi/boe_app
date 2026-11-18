@@ -12,6 +12,7 @@ import {
   type ClientValueFold,
   type LedgerFact,
 } from "../domain/admin/clientReturns.js"
+import { isEntryReversible } from "../domain/admin/reverseLedgerEntry.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { indiaCalendarDate } from "../domain/shared/calendarDate.js"
 import { AppError } from "../http/errorCatalog.js"
@@ -95,7 +96,7 @@ export const ledgerEntryBody = (row: LedgerEntryRow) => ({
   reasonCode: row.reasonCode,
   reversesEntryId: row.reversesEntryId,
   reversedByEntryId: row.reversedByEntryId,
-  reversible: row.entryType !== "reversal" && row.reversedByEntryId === null,
+  reversible: isEntryReversible(row),
   createdAt: row.createdAt.toISOString(),
 })
 

@@ -11,6 +11,7 @@ import {
   type RecordContributionDeps,
 } from "../domain/admin/recordContribution.js"
 import {
+  isEntryReversible,
   reverseLedgerEntry,
   type ReverseLedgerEntryDeps,
 } from "../domain/admin/reverseLedgerEntry.js"
@@ -176,7 +177,7 @@ const ledgerEntries = async (
         reasonCode: row.reasonCode,
         reversesEntryId: row.reversesEntryId,
         reversedByEntryId: row.reversedByEntryId,
-        reversible: row.entryType !== "reversal" && row.reversedByEntryId === null,
+        reversible: isEntryReversible(row),
         createdAt: row.createdAt.toISOString(),
       })),
     },

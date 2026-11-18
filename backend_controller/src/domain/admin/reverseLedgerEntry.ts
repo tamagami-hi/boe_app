@@ -5,12 +5,14 @@ import type { AuditWriteRepository } from "../../repositories/auditRepository.js
 import type { ClientGrowthRepository } from "../../repositories/clientGrowthRepository.js"
 import type {
   ClientPositionRepository,
+  FinalEntryOwner,
   LedgerEntryRow,
   ReversalPositionBasis,
 } from "../../repositories/clientPositionRepository.js"
 import type { NotificationWriteRepository } from "../../repositories/notificationRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
 import { refuseErasedClient } from "../shared/erasedClient.js"
+import { RECORDING_CATEGORY_TEXT } from "../shared/recordingCategory.js"
 import { releaseSipMonthOnReversal } from "./sipMonthLink.js"
 
 export interface ReverseLedgerEntryDeps {
@@ -47,6 +49,20 @@ export const REVERSAL_NOTIFICATION = Object.freeze({
   title: "Investment value updated",
   body: "The value of one of your investments was updated. Open your portfolio to see the current value.",
 })
+
+const CORRECTION_TEXT = RECORDING_CATEGORY_TEXT.correction
+
+const UNNAMED_CORRECTION_BODY = "One of your investment records now includes a correction. Contact support if you have any questions."
+
+const FINAL_ENTRY_REFUSAL: Readonly<Record<FinalEntryOwner, string>> = Object.freeze({
+  sip_early_exit: "This withdrawal is a SIP early exit, which is final. It cannot be reversed.",
+  maturity_settlement: "This entry settled a maturity, which is final. It cannot be reversed.",
+  withdrawal_payout: "This withdrawal has a payout, which is final. It cannot be reversed.",
+})
+
+export const isEntryReversible = (
+  row: Pick<LedgerEntryRow, "entryType" | "reversedByEntryId" | "finalOwner">,
+): boolean => row.entryType !== "reversal" && row.reversedByEntryId === null && row.finalOwner === null
 
 export const reverseLedgerEntry = async (
   tx: Transaction,
@@ -136,14 +152,31 @@ const recordReversalOutcome = async (
     },
   })
 
+  const text = await reversalNotificationText(tx, deps, original)
   await deps.notificationRepository.create(tx, {
     userId: input.userId,
     kind: REVERSAL_NOTIFICATION.kind,
-    title: REVERSAL_NOTIFICATION.title,
-    body: REVERSAL_NOTIFICATION.body,
+    title: text.title,
+    body: text.body,
     payload: { fundId: original.fundId, deepLink: "/portfolio" },
   })
 
+}
+
+const reversalNotificationText = async (
+  tx: Transaction,
+  deps: ReverseLedgerEntryDeps,
+  original: LedgerEntryRow,
+): Promise<Readonly<{ title: string; body: string }>> => {
+  if (original.entryType !== "contribution") return REVERSAL_NOTIFICATION
+  const version = await deps.clientPositionRepository.findFundVersionForDate(tx, {
+    fundId: original.fundId,
+    effectiveDate: original.effectiveDate,
+  })
+  return {
+    title: CORRECTION_TEXT.notificationTitle,
+    body: version === null ? UNNAMED_CORRECTION_BODY : CORRECTION_TEXT.notificationBody(version.fundName),
+  }
 }
 
 const deriveReversedPosition = (
@@ -187,5 +220,8 @@ const assertReversible = (original: LedgerEntryRow): void => {
     throw new AppError("STATE_CONFLICT", {
       message: "That entry has already been reversed.",
     })
+  }
+  if (original.finalOwner !== null) {
+    throw new AppError("STATE_CONFLICT", { message: FINAL_ENTRY_REFUSAL[original.finalOwner] })
   }
 }

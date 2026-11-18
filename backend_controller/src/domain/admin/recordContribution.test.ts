@@ -90,6 +90,7 @@ const entry = (overrides: Partial<LedgerEntryRow> = {}): LedgerEntryRow => ({
   reasonCode: "recorded_offline_investment",
   reversesEntryId: null,
   reversedByEntryId: null,
+  finalOwner: null,
   orderType: "recorded_offline",
   createdAt: NOW,
   ...overrides,
@@ -243,6 +244,22 @@ describe("ledger reversal", () => {
     await expect(reverseLedgerEntry(TX, deps, reversalInput)).rejects.toThrow()
     expect(deps.clientPositionRepository.insertReversalEntry).not.toHaveBeenCalled()
   })
+
+  test.each(["sip_early_exit", "maturity_settlement", "withdrawal_payout"] as const)(
+    "refuses to reverse a withdrawal owned by a %s and writes nothing",
+    async (finalOwner) => {
+      const deps = positionDeps()
+      vi.mocked(deps.clientPositionRepository.lockEntryForReversal).mockResolvedValue(
+        entry({ entryType: "withdrawal", principalDeltaPaise: -500_000n, valueDeltaPaise: -500_000n, orderType: null, finalOwner }),
+      )
+
+      await expect(reverseLedgerEntry(TX, deps, reversalInput)).rejects.toMatchObject({ code: "STATE_CONFLICT" })
+
+      expect(deps.clientPositionRepository.insertReversalEntry).not.toHaveBeenCalled()
+      expect(deps.auditRepository.append).not.toHaveBeenCalled()
+      expect(deps.notificationRepository.create).not.toHaveBeenCalled()
+    },
+  )
 
   test("locks the position before appending the reversal", async () => {
     const deps = positionDeps()
