@@ -2408,6 +2408,10 @@
     {
       "commit": "d9b6d55",
       "note": "Release v0.18.1 cut by the maintainer with release_manager/status.sh (tag v0.18.1): the M19 November patches (16 lanes plus the docs pass), VERSION only."
+    },
+    {
+      "commit": "02ae953",
+      "note": "Release v0.18.2 cut by the maintainer with release_manager/status.sh (tag v0.18.2): lazy feature screens split out of the app chunk, static-only chunk cycle check, contracts built before the APK vite build; VERSION only."
     }
   ]
 }
