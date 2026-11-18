@@ -5,7 +5,7 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
 import { ADMIN_ROUTES } from "~/app/routing/adminRoutes"
-import type { PermissionCode } from "~/domain/permissions"
+import { roleLabel, type PermissionCode } from "~/domain/permissions"
 import {
   useAdminApplications,
   useAdminMandates,
@@ -157,7 +157,7 @@ const OverviewScreen = (): React.ReactElement => {
     <Page width="wide">
       <PageHeader
         title="Overview"
-        description="What is waiting for a decision, and where to make it. Every number is read live from the backend."
+        description="What is waiting for a decision, and where to make it. Every number is counted fresh each time this page opens."
       />
 
       <DailyTiles reachablePaths={reachablePaths} />
@@ -183,7 +183,7 @@ const OverviewScreen = (): React.ReactElement => {
           <div className={ADMIN_META}>
             {principal === null
               ? null
-              : principal.roles.map((role) => <span key={role}>{role}</span>)}
+              : principal.roles.map((role) => <span key={role}>{roleLabel(role)}</span>)}
           </div>
           <div className={ACTION_ROW}>
             {reachable.map((route) => (

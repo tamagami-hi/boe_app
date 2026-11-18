@@ -49,7 +49,7 @@ export const ClientHubTabs = ({ userId, investorLabel, isClient }: Props): React
   if (active === undefined) return null
 
   return (
-    <Section title="Records" description="Each tab reads live from the backend when you open it.">
+    <Section title="Records" description="Each tab shows the latest records when you open it.">
       <Tabs
         id={TABS_ID}
         label="Client records"

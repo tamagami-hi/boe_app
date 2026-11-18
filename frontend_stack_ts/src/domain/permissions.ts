@@ -43,6 +43,18 @@ export const ROLE_CODES = ["client", "admin", "superadmin"] as const
 
 export type RoleCode = (typeof ROLE_CODES)[number]
 
+const ROLE_LABEL: Readonly<Record<string, string>> = {
+  client: "Investor",
+  admin: "Admin",
+  superadmin: "Superadmin",
+  onboarding: "Onboarding",
+  finance: "Finance",
+  content: "Content",
+  support: "Support",
+}
+
+export const roleLabel = (code: string): string => ROLE_LABEL[code] ?? code
+
 export const isPermissionCode = (value: unknown): value is PermissionCode =>
   typeof value === "string" && (PERMISSION_CODES as readonly string[]).includes(value)
 

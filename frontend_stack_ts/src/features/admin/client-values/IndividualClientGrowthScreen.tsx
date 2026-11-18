@@ -20,7 +20,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Adjust one investor"
-        description="Appends a growth entry against one position. A rate is measured against the amount invested, so it does not compound; the amount invested itself never moves. Read the projected value before committing — the server recalculates it authoritatively and its response is the truth."
+        description="Appends a growth entry against one position. A rate is measured against the amount invested, so it does not compound; the amount invested itself never moves. Read the projected value before committing. The value is worked out again when you commit, and that result is what gets recorded."
       />
       <IndividualGrowthForm
         key={investor.missing ? "" : formKey}

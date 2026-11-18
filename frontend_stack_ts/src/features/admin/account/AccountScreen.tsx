@@ -4,7 +4,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
-import type { RoleCode } from "~/domain/permissions"
+import { roleLabel, type RoleCode } from "~/domain/permissions"
 import { useAuthPort } from "~/features/auth/authPort"
 import { InstalledVersionRow } from "~/features/whats-new/InstalledVersionRow"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
@@ -12,8 +12,8 @@ import { Button } from "~/ui/primitives/Button"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 
-const roleLabel = (roles: readonly RoleCode[]): string =>
-  roles.includes("superadmin") ? "Superadmin" : "Admin"
+const accountRoleLabel = (roles: readonly RoleCode[]): string =>
+  roleLabel(roles.includes("superadmin") ? "superadmin" : "admin")
 
 const AccountScreen = (): React.ReactElement => {
   const { principal, signedOut } = useSession()
@@ -37,7 +37,7 @@ const AccountScreen = (): React.ReactElement => {
         <DataList>
           <DetailRow label="Name">{principal.fullName}</DetailRow>
           <DetailRow label="Email">{principal.email}</DetailRow>
-          <DetailRow label="Role">{roleLabel(principal.roles)}</DetailRow>
+          <DetailRow label="Role">{accountRoleLabel(principal.roles)}</DetailRow>
           <InstalledVersionRow label="App version" />
         </DataList>
       </Card>

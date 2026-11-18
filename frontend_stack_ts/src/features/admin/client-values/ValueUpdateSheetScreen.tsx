@@ -329,7 +329,7 @@ const ValueUpdateSheetScreen = (): React.ReactElement => {
         />
       ) : (
         <Alert tone="warning" title="The sheet is out of date" action={reloadAction}>
-          The server&apos;s numbers no longer match the ones on this sheet, so nothing can be committed
+          The saved figures no longer match the ones on this sheet, so nothing can be committed
           from it. Reload, check the gains and preview again.
         </Alert>
       )}

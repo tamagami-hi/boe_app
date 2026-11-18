@@ -290,8 +290,8 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
               <span className={ADMIN_LABEL}>Basis</span>
               <span className={ADMIN_CODE}>{plan.basisHash}</span>
               <p className={PROSE_SM}>
-                These numbers are the server&apos;s, not this browser&apos;s. On commit the server
-                recomputes them from the same positions and refuses the write if the basis moved.
+                These figures were worked out from the saved positions, not in this browser. On commit
+                they are worked out again, and the commit is refused if any position changed since.
               </p>
             </Card>
           </Section>

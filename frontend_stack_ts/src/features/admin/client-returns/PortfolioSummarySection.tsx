@@ -18,7 +18,7 @@ export const PortfolioSummarySection = ({ userId }: Props): React.ReactElement =
   return (
     <Section
       title="Portfolio summary"
-      description="Folded from this client's value ledger on every read, across all funds."
+      description="Totals across all funds, worked out from every entry recorded for this client each time the page opens."
     >
       {canRead ? (
         <AsyncBoundary

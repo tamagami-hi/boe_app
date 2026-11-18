@@ -76,7 +76,7 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
 
       {isChosen ? (
         <>
-          <Section title="Positions" description="Folded from the ledger on every read. There is no stored balance.">
+          <Section title="Positions" description="Each position is the total of this investor's entries in that fund. No separate balance is stored.">
             <AsyncBoundary
               query={positions}
               skeleton={<ListSkeleton />}
@@ -143,7 +143,7 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
 
           <Section
             title="Ledger entries"
-            description="Append-only. Reversing an entry writes a new row that negates it; an entry can be reversed once."
+            description="Entries are never edited or deleted. Reversing an entry adds a new entry that cancels it; an entry can be reversed once."
           >
             <LedgerEntries
               key={userId}

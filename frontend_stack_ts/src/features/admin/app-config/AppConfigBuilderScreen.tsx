@@ -6,6 +6,7 @@ import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
+import { ConfigurationError, resolveApiBase } from "~/lib/env"
 import { useHeldDone } from "~/features/admin/shared/useHeldDone"
 import { HeldWriteNotice } from "~/features/admin/shared/HeldWriteNotice"
 import { useHeldWrite } from "~/features/admin/shared/useHeldWrite"
@@ -34,7 +35,16 @@ const TEMPLATE = {
 const UNSENT = "The configuration could not be sent. Reload the page and try again."
 
 const VALIDATION_MESSAGE =
-  "The backend refused that configuration. Only the documented keys are accepted, and the version strings must be dotted numbers."
+  "That configuration was refused. Only the keys listed under Publish a new version are accepted, and versions must be dotted numbers."
+
+const apiAddress = (): string => {
+  try {
+    return resolveApiBase()
+  } catch (error) {
+    if (error instanceof ConfigurationError) return "Not configured in this build"
+    throw error
+  }
+}
 
 const draftOf = (data: AdminAppConfig): string => JSON.stringify(data.config ?? TEMPLATE, null, 2)
 
@@ -208,10 +218,10 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
             >
               <Card>
                 <DataList>
-                  <DetailRow label="API origin">{window.location.origin}</DetailRow>
+                  <DetailRow label="API address">{apiAddress()}</DetailRow>
                   <DetailRow label="Console target">Administrator</DetailRow>
                   <DetailRow label="Config source">
-                    The published app_config_versions row with no retirement date
+                    The latest published version, shown above
                   </DetailRow>
                 </DataList>
               </Card>
@@ -226,7 +236,7 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
                   <div className={STACK_LG}>
                     <FormField
                       label="Configuration"
-                      hint="JSON. The backend applies defaults for any key you omit."
+                      hint="JSON. A key you leave out is published empty, and maintenance stays off unless you turn it on."
                       {...(parsed === null && draft !== null
                         ? { error: "This is not valid JSON." }
                         : {})}
@@ -287,7 +297,7 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
       <ConfirmDialog
         open={confirming}
         title="Publish this configuration?"
-        description="It takes effect for every installed app as soon as their config cache expires. The previous version is retired but kept."
+        description="Each installed app picks it up the next time it reloads its configuration. The previous version is retired but kept."
         confirmLabel="Publish it"
         cancelLabel="Cancel"
         onConfirm={send}

@@ -1,6 +1,7 @@
 import { formatDateTime } from "~/domain/dates"
 import { emailDeliveryState } from "~/domain/status"
 import { useClientEmailDeliveries } from "~/features/admin/client-returns/returnQueries"
+import { emailTemplateLabel } from "~/features/admin/emails/emailTemplateLabels"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -38,7 +39,7 @@ export const ClientEmailsTab = ({ userId }: Props): React.ReactElement => {
             rows={data.items}
             rowKey={(row) => row.emailDeliveryId}
             columns={[
-              { key: "template", header: "Template", render: (row) => row.templateKey },
+              { key: "template", header: "Template", render: (row) => emailTemplateLabel(row.templateKey) },
               { key: "recipient", header: "Recipient", render: (row) => row.recipientMasked },
               {
                 key: "state",

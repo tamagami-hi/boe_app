@@ -16,6 +16,8 @@ import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
 import { ADMIN_CODE } from "~/ui/recipes/admin"
 
+import { EMAIL_TEMPLATE_OPTIONS, emailTemplateLabel } from "./emailTemplateLabels"
+
 const STATES = [
   { value: "any", label: "All" },
   { value: "queued", label: "Queued" },
@@ -27,23 +29,7 @@ const STATES = [
   { value: "cancelled", label: "Cancelled" },
 ] as const
 
-const TEMPLATES = [
-  { value: "any", label: "Any template" },
-  { value: "account_approved", label: "Account approved" },
-  { value: "application_rejected", label: "Application rejected" },
-  { value: "password_set_link", label: "Password set link" },
-  { value: "password_reset_link", label: "Password reset link" },
-  { value: "password_app_download", label: "App download after password" },
-  { value: "contact_phone_changed", label: "Phone changed notice" },
-  { value: "email_change_code", label: "Email change code" },
-  { value: "contact_email_changed", label: "Email changed notice" },
-  { value: "admin_message", label: "Admin message" },
-  { value: "app_update_notice", label: "App update notice" },
-  { value: "investment_recorded", label: "Investment added" },
-  { value: "maturity_options", label: "Maturity options" },
-  { value: "nominee_request_decided", label: "Nominee request decided" },
-  { value: "sip_early_exit", label: "SIP closed early" },
-] as const
+const TEMPLATES = [{ value: "any", label: "Any template" }, ...EMAIL_TEMPLATE_OPTIONS] as const
 
 const EmailDeliveriesScreen = (): React.ReactElement => {
   const [state, setState] = useUrlFilter("state", STATES, "any")
@@ -117,7 +103,7 @@ const EmailDeliveriesScreen = (): React.ReactElement => {
             rows={data.items}
             rowKey={(row) => row.emailDeliveryId}
             columns={[
-              { key: "template", header: "Template", render: (row) => row.templateKey },
+              { key: "template", header: "Template", render: (row) => emailTemplateLabel(row.templateKey) },
               {
                 key: "recipient",
                 header: "Recipient",

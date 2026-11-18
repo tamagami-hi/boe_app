@@ -48,7 +48,7 @@ export const ValueUpdatePreview = ({
     <>
       <Section
         title="What this would write"
-        description="The server recomputed these numbers from the same positions. Committing is refused if any position in the fund moved since."
+        description="These figures were worked out again from the saved positions. Committing is refused if any position in the fund has changed since."
       >
         <Card>
           <div className={ADMIN_SUMMARY_GRID}>

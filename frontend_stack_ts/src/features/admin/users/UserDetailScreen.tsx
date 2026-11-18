@@ -7,6 +7,7 @@ import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, formatDateTime, indiaToday } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
+import { roleLabel } from "~/domain/permissions"
 import { emailVerificationState, orderState, userAccountState } from "~/domain/status"
 import { PortfolioSummarySection } from "~/features/admin/client-returns/PortfolioSummarySection"
 import { EarlierInvestmentForm, type RecordingHold } from "~/features/admin/client-values/EarlierInvestmentForm"
@@ -123,7 +124,7 @@ const UserDetailScreen = (): React.ReactElement => {
                   )}
                 </DetailRow>
                 <DetailRow label="Roles">
-                  {data.roles.length === 0 ? "Investor" : data.roles.join(", ")}
+                  {data.roles.length === 0 ? roleLabel("client") : data.roles.map(roleLabel).join(", ")}
                 </DetailRow>
                 <DetailRow label="Orders">{String(data.user.ordersCount)}</DetailRow>
                 <DetailRow label="Joined">{formatDate(data.user.createdAt)}</DetailRow>
@@ -135,7 +136,6 @@ const UserDetailScreen = (): React.ReactElement => {
                 {data.user.closedAt === null ? null : (
                   <DetailRow label="Closed">{formatDateTime(data.user.closedAt)}</DetailRow>
                 )}
-                <DetailRow label="Version">{String(data.user.version)}</DetailRow>
               </DataList>
 
               <div className={ACTION_ROW}>

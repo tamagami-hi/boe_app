@@ -75,7 +75,7 @@ const ReturnsDashboardScreen = (): React.ReactElement => {
     <Page width="wide">
       <PageHeader
         title="Returns"
-        description="Every client with a recorded investment, folded from the client value ledger on each read. Fund AUM is a separate record and is not reconciled here."
+        description="Every client with a recorded investment. Figures are worked out from the entries recorded for each client each time this page opens. Fund AUM is a separate record and is not reconciled here."
       />
 
       {canReadUsers ? null : (

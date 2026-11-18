@@ -497,7 +497,7 @@ describe("a payout outcome without a bank transfer reference", () => {
     window.sessionStorage.clear()
 
     renderWith(payoutPanel(PAID_PAYOUT))
-    expect(screen.getByText(/· paid$/u)).toBeTruthy()
+    expect(screen.getByText(/· Paid$/u)).toBeTruthy()
     expect(screen.queryByText(/BANK-OLD-1/u)).toBeNull()
     expect(screen.queryByText(/reference/iu)).toBeNull()
   })

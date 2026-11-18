@@ -58,7 +58,7 @@ const UserDirectoryScreen = (): React.ReactElement => {
     <Page width="wide">
       <PageHeader
         title="Users"
-        description="Every account on the platform. Search runs on the server, so it covers every user, not just the page in front of you."
+        description="Every account on the platform. Search covers every user, not just the page in front of you."
         actions={
           canCreateClient ? (
             <ButtonLink to="/users/create" tone="secondary" size="sm" trailing>

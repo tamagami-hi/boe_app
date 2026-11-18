@@ -33,7 +33,7 @@ const ENTRIES = [
     routeId: "client-values-collective",
     to: "/client-values/collective",
     title: "A whole fund",
-    hint: "Preview every position in a fund, then commit the exact numbers the server recomputed.",
+    hint: "Preview every position in a fund, then commit exactly the figures the preview showed.",
   },
   {
     routeId: "client-values-position",
@@ -52,7 +52,7 @@ const ClientValuesScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Client values"
-        description="Investor value is an append-only ledger. Nothing here edits a stored balance, because there is no stored balance: every adjustment is a new entry the backend derives value from."
+        description="Each investor's value is the total of the entries recorded for them. Nothing here overwrites a balance: every adjustment adds a new entry, and the value is worked out again from all of them."
       />
 
       {canWrite ? null : (
@@ -82,8 +82,8 @@ const ClientValuesScreen = (): React.ReactElement => {
             An adjustment appends a growth entry against a position and notifies the investor that
             their value changed. The notification never carries an amount. The entry is dated by the
             effective date you choose, so it lands in that month&apos;s statement. A negative
-            adjustment is allowed, but one that would take a position below zero is refused by the
-            backend rather than clamped.
+            adjustment is allowed, but one that would take a position below zero is refused rather
+            than stopped at zero.
           </Prose>
         </Card>
       </Section>

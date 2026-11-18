@@ -1,4 +1,4 @@
-import type { AdminInvestorPositionsData } from "@beonedge/contracts"
+import type { AdminInvestorPositionsData, AdminMaturity } from "@beonedge/contracts"
 import { useEffect, useState } from "react"
 
 import { Section } from "~/app/layouts/Section"
@@ -44,6 +44,19 @@ const SETTLED_TEXT = {
   withdrawal: "Withdrawal recorded. Confirm the bank transfer outcome below when available.",
   reinvestment: "Reinvestment recorded. The current value is now the new invested amount.",
 } as const
+
+const MATURITY_STATE_LABEL = {
+  pending: "Awaiting settlement",
+  settled: "Settled",
+} as const satisfies Record<AdminMaturity["state"], string>
+
+const SETTLEMENT_LABEL = {
+  withdrawal: "Settled by withdrawal",
+  reinvestment: "Settled by reinvestment",
+} as const satisfies Record<NonNullable<AdminMaturity["settlement"]>, string>
+
+const maturityStatusOf = ({ state, settlement }: Pick<AdminMaturity, "state" | "settlement">): string =>
+  settlement === null ? MATURITY_STATE_LABEL[state] : SETTLEMENT_LABEL[settlement]
 
 const noteOf = (text: string): Readonly<{ note?: string }> => (text.trim() === "" ? {} : { note: text.trim() })
 
@@ -279,7 +292,7 @@ export const MaturityPanel = ({ userId, investorLabel, canWrite, positions, onUn
                   header: "Value at maturity",
                   render: (row) => <MoneyValue amount={toPaise(row.valueAtMaturityPaise)} size="sm" showDecimals />,
                 },
-                { key: "state", header: "Status", render: (row) => row.settlement ?? row.state },
+                { key: "state", header: "Status", render: maturityStatusOf },
               ]}
             />
           )}

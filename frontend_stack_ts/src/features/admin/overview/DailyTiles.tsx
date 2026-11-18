@@ -89,7 +89,7 @@ export const DailyTiles = ({ reachablePaths }: Props): React.ReactElement => {
   const fundUpdates = useFundValueUpdates(canReadValues)
 
   return (
-    <Section title="Today" description="What needs a follow-up across clients, read live each time this page opens.">
+    <Section title="Today" description="What needs a follow-up across clients, counted fresh each time this page opens.">
       <ContentGrid columns={4}>
         <DailyTile
           label="Invites not accepted"

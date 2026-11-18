@@ -90,7 +90,7 @@ const InvestorNamesNotice = ({ names, retrying, onRetry }: NoticeProps): React.R
   if (names.kind === "forbidden") {
     return (
       <Alert tone="info" title="Names not shown">
-        Investor names are not available for this role. The amounts below are the server&apos;s preview.
+        Investor names are not available for this role. The amounts below are still the full preview.
       </Alert>
     )
   }
@@ -105,8 +105,8 @@ const InvestorNamesNotice = ({ names, retrying, onRetry }: NoticeProps): React.R
         </Button>
       }
     >
-      The client list could not be read, so the investors in this batch cannot be named. The amounts below are the
-      server&apos;s preview.
+      The client list could not be read, so the investors in this batch cannot be named. The amounts below are still
+      the full preview.
     </Alert>
   )
 }

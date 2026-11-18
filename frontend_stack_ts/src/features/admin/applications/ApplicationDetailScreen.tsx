@@ -8,6 +8,7 @@ import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
 import { applicationState, emailDeliveryState } from "~/domain/status"
+import { emailTemplateLabel } from "~/features/admin/emails/emailTemplateLabels"
 import { isUnknownRecord } from "~/features/admin/shared/unknownRecord"
 import { useHeldDone } from "~/features/admin/shared/useHeldDone"
 import { useAdminApplication } from "~/features/admin/shared/adminQueries"
@@ -125,7 +126,6 @@ const ApplicationDetailScreen = (): React.ReactElement => {
                 <DetailRow label="Applied">
                   {formatDateTime(data.application.createdAt)}
                 </DetailRow>
-                <DetailRow label="Version">{String(data.application.version)}</DetailRow>
               </DataList>
               {data.linkedUserId === null ? null : (
                 <div className={ACTION_ROW}>
@@ -200,7 +200,11 @@ const ApplicationDetailScreen = (): React.ReactElement => {
                   rows={data.reviews}
                   rowKey={(row) => row.reviewId}
                   columns={[
-                    { key: "decision", header: "Decision", render: (row) => row.decision },
+                    {
+                      key: "decision",
+                      header: "Decision",
+                      render: (row) => <StatusBadge status={applicationState(row.decision)} />,
+                    },
                     { key: "reasonCode", header: "Reason", render: (row) => row.reasonCode },
                     {
                       key: "detail",
@@ -237,7 +241,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
                     rows={data.deliveries.items}
                     rowKey={(row) => row.emailDeliveryId}
                     columns={[
-                      { key: "template", header: "Template", render: (row) => row.templateKey },
+                      { key: "template", header: "Template", render: (row) => emailTemplateLabel(row.templateKey) },
                       {
                         key: "recipient",
                         header: "Recipient",

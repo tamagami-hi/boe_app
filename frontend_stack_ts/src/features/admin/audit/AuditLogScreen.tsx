@@ -64,7 +64,7 @@ const AuditLogScreen = (): React.ReactElement => {
     <Page width="wide">
       <PageHeader
         title="Audit log"
-        description="Every administrative command, who ran it, what it touched and which request it belonged to. Money commands show the client and amount the audit record names. Filtering runs on the server, so it covers the whole log. Dates are India dates."
+        description="Every administrative command, who ran it, what it touched and which request it belonged to. Money commands show the client and amount the audit record names. Filters search the whole log, not just the page in front of you. Dates are India dates."
       />
 
       <FilterRow label="Show">
