@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 214,
+  "nextNumber": 215,
   "notes": [
     {
       "id": "note-1",
@@ -3327,6 +3327,26 @@
       "kind": "heads-up",
       "text": "the run 20261118T145530Z-450975 (integration: tools/node24-container/run.sh sh -c set -e; cd packages/contracts && npm ci --no-audit --no-fund && npm run build; cd ../../backend_controller && npm ci --no-au…) was not recorded: 'integration' is not a kind of run; the kinds are red, green, clippy, fmt, sweep, coverage, land, evidence, other; the result is kept in /home/nethunter07/PROJECTS/boe_app/.temp/worktrees/v-growth-parts/.temp/tally/results/refused/20261118T145530Z-450975 and tried again when the ledger changes",
       "at": "2026-11-18T14:56:50.123Z",
+      "replies": []
+    },
+    {
+      "id": "note-214",
+      "from": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "to": "all",
+      "kind": "finding",
+      "text": "Carried to 0.19.0 (maintainer, 2026-11-18). Details in .temp/main/emu-test-0184.md. M1 medium: when a withdrawal's principal is spread by value, rounding leaves blocks with invested of -₹0.01, -₹0.02 or -100% return (BOE Test Funds after a 0.18.3 exit); spread by invested or clamp at zero; maturity settlement can hit it too. L6: Back from a fund drops ?view=breakdown (parent route). L7: a reversed SIP payment shows as a reversed one-time block. N2: the value sheet shows each client's whole position and no per-investment current gain.",
+      "about": {
+        "paths": [
+          "backend_controller/src/domain/client/investmentBreakdownPass.ts",
+          "frontend_stack_ts/src/features/portfolio/BreakdownView.tsx",
+          "frontend_stack_ts/src/features/admin/client-values/ValueUpdateSheetTable.tsx"
+        ],
+        "task": "M19-patches-0-18:P-fixes-0185"
+      },
+      "at": "2026-11-18T17:26:02.888Z",
       "replies": []
     }
   ]
