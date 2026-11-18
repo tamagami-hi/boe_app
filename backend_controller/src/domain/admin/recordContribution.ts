@@ -11,8 +11,8 @@ import type { UserId } from "../../db/repositories.js"
 import type { UserAccountState } from "../../db/types.js"
 import type { InvestmentRecordedMailDeps } from "../email/investmentRecordedMail.js"
 import {
-  RECORDING_CATEGORY_TEXT,
   recordingCategoryOf,
+  recordingNoticeOf,
   type AssignedRecordingCategory,
   type RecordingCategory,
   type RecordingReasonCode,
@@ -216,12 +216,17 @@ export const recordContribution = async (
     },
   })
 
-  const text = RECORDING_CATEGORY_TEXT[category]
+  const notice = recordingNoticeOf({
+    reasonCode: input.reasonCode,
+    assigned: sipLink === null ? assigned : "sip",
+    sipMonth: sipLink?.month ?? null,
+    fundName: version.fundName,
+  })
   await deps.notificationRepository.create(tx, {
     userId: input.userId,
     kind: RECORDED_CONTRIBUTION_NOTIFICATION.kind,
-    title: text.notificationTitle,
-    body: text.notificationBody(version.fundName),
+    title: notice.title,
+    body: notice.body,
     payload: {
       fundId: input.fundId,
       deepLink: RECORDED_CONTRIBUTION_NOTIFICATION.deepLink,

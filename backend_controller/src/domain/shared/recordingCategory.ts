@@ -1,3 +1,5 @@
+import { formatCalendarMonth } from "../../email/emailMoney.js"
+
 export const RECORDING_REASON_CODES = [
   "recorded_offline_investment",
   "recorded_offline_monthly_investment",
@@ -70,3 +72,40 @@ export const assignedCategoryOf = (
 
 export const recordingLabelOf = (reasonCode: string, assigned: AssignedRecordingCategory | null): string =>
   assigned === null ? RECORDING_CATEGORY_TEXT[recordingCategoryOf(reasonCode)].label : ASSIGNED_CATEGORY_LABEL[assigned]
+
+export interface RecordingNotice {
+  readonly title: string
+  readonly body: string
+}
+
+export interface RecordingNoticeInput {
+  readonly reasonCode: string
+  readonly assigned: AssignedRecordingCategory | null
+  readonly sipMonth: string | null
+  readonly fundName: string
+}
+
+const UNRECOGNISED = "Contact support if you do not recognise it."
+
+const assignedNoticeOf = (input: RecordingNoticeInput): RecordingNotice | null => {
+  if (input.assigned === "one_time") {
+    return {
+      title: "One-time investment recorded",
+      body: `Your one-time investment in ${input.fundName} is now in your portfolio. ${UNRECOGNISED}`,
+    }
+  }
+  if (input.assigned !== "sip") return null
+  const month = input.sipMonth === null ? "" : ` for ${formatCalendarMonth(input.sipMonth)}`
+  return {
+    title: "SIP payment recorded",
+    body: `Your SIP payment${month} in ${input.fundName} is now in your portfolio. ${UNRECOGNISED}`,
+  }
+}
+
+export const recordingNoticeOf = (input: RecordingNoticeInput): RecordingNotice => {
+  const category = recordingCategoryOf(input.reasonCode)
+  const assigned = category === "correction" ? null : assignedNoticeOf(input)
+  if (assigned !== null) return assigned
+  const text = RECORDING_CATEGORY_TEXT[category]
+  return { title: text.notificationTitle, body: text.notificationBody(input.fundName) }
+}
