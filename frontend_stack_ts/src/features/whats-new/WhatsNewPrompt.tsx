@@ -6,9 +6,9 @@ import { useOverlayStack } from "~/app/providers/OverlayStackProvider"
 import { useSession } from "~/app/providers/SessionProvider"
 import { Button } from "~/ui/primitives/Button"
 
-import { RELEASE, RELEASE_HEADING, RELEASES } from "./whatsNew.recipe"
-import { unseenEntries, type WhatsNewNotes as Notes } from "./whatsNewEntry"
+import { releaseLabel, unseenEntries, type WhatsNewNotes as Notes } from "./whatsNewEntry"
 import { WhatsNewNotes } from "./WhatsNewNotes"
+import { WhatsNewReleases } from "./WhatsNewReleases"
 import { browserWhatsNewSeen, type WhatsNewSeen } from "./whatsNewSeen"
 
 export type WhatsNewPromptProps = Readonly<{
@@ -21,22 +21,15 @@ type ShownSheet = Readonly<{ userId: string; entries: Notes }>
 
 const versionLabel = ([newest, ...older]: Notes): string => {
   const oldest = older[older.length - 1]
-  return oldest === undefined ? `Version ${newest.id}` : `Versions ${oldest.id} to ${newest.id}`
+  return oldest === undefined ? releaseLabel(newest) : `Versions ${oldest.id} to ${newest.id}`
 }
 
-const UnseenNotes = ({ entries }: Readonly<{ entries: Notes }>): React.ReactElement => {
-  if (entries.length === 1) return <WhatsNewNotes entry={entries[0]} />
-  return (
-    <div className={RELEASES}>
-      {entries.map((entry) => (
-        <div key={entry.id} className={RELEASE}>
-          <h3 className={RELEASE_HEADING}>{`Version ${entry.id}`}</h3>
-          <WhatsNewNotes entry={entry} headingLevel="h4" />
-        </div>
-      ))}
-    </div>
+const UnseenNotes = ({ entries }: Readonly<{ entries: Notes }>): React.ReactElement =>
+  entries.length === 1 ? (
+    <WhatsNewNotes entry={entries[0]} />
+  ) : (
+    <WhatsNewReleases entries={entries} headingLevel="h3" />
   )
-}
 
 export const WhatsNewPrompt = ({
   notes,

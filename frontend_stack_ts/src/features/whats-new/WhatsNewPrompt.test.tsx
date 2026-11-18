@@ -34,9 +34,12 @@ const NOTES: WhatsNewNotes = [
   { id: "0.18.1", sections: [{ heading: "New", items: [{ text: "Fund pages." }] }] },
 ]
 
-const TWO_RELEASES: WhatsNewNotes = [
-  { id: "0.18.2", sections: [{ heading: "Fixed", items: [{ text: "Faster sign-in." }] }] },
-  ...NOTES,
+const HISTORY: WhatsNewNotes = [
+  { id: "0.18.3", month: "November 2026", sections: [{ heading: "Fixed", items: [{ text: "Offline notice clears." }] }] },
+  { id: "0.18.1", month: "November 2026", sections: [{ heading: "New", items: [{ text: "Fund pages." }] }] },
+  { id: "0.18.0", month: "November 2026", sections: [{ heading: "Fixed", items: [{ text: "Outages keep you in." }] }] },
+  { id: "0.17.0", month: "November 2026", sections: [{ heading: "New", items: [{ text: "Nominee requests." }] }] },
+  { id: "0.16.0", month: "November 2026", sections: [{ heading: "New", items: [{ text: "Investment receipts." }] }] },
 ]
 
 const browserSeen = (): WhatsNewSeen => createWhatsNewSeen(() => window.localStorage)
@@ -185,38 +188,46 @@ describe("What's new prompt", () => {
     expect(sheet()).toBeNull()
   })
 
-  it("shows every unseen release, newest first, to a user with no record and marks the newest seen", () => {
+  it("shows a user with no record every release, newest open and older ones collapsed, and marks the newest seen", () => {
     const seen = browserSeen()
-    render(tree(seen, false, TWO_RELEASES))
+    render(tree(seen, false, HISTORY))
 
-    const headings = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)
-    expect(headings).toEqual(["Version 0.18.2", "Version 0.18.1"])
-    expect(screen.getByText("Faster sign-in.")).not.toBeNull()
-    expect(screen.getByText("Fund pages.")).not.toBeNull()
+    expect(screen.getByText("Versions 0.16.0 to 0.18.3")).not.toBeNull()
+    const releases = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)
+    expect(releases).toEqual([
+      "Version 0.18.3 November 2026",
+      "Version 0.18.1 November 2026",
+      "Version 0.18.0 November 2026",
+      "Version 0.17.0 November 2026",
+      "Version 0.16.0 November 2026",
+    ])
+    expect(screen.getByText("Offline notice clears.")).toBeVisible()
+    expect(screen.getByText("Investment receipts.")).not.toBeVisible()
 
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
 
     expect(sheet()).toBeNull()
-    expect(seen.lastSeen("client", ASHA)).toBe("0.18.2")
+    expect(seen.lastSeen("client", ASHA)).toBe("0.18.3")
   })
 
-  it("shows only the releases newer than the one already seen", () => {
+  it("shows a user who last saw 0.18.1 only the release after it", () => {
     storeLastSeen("0.18.1")
-    render(tree(browserSeen(), false, TWO_RELEASES))
+    render(tree(browserSeen(), false, HISTORY))
 
     expect(sheet()).not.toBeNull()
-    expect(screen.getByText("Version 0.18.2")).not.toBeNull()
-    expect(screen.getByText("Faster sign-in.")).not.toBeNull()
+    expect(screen.getByText("Version 0.18.3 · November 2026")).not.toBeNull()
+    expect(screen.getByText("Offline notice clears.")).toBeVisible()
     expect(screen.queryByText("Fund pages.")).toBeNull()
+    expect(screen.queryByText("Outages keep you in.")).toBeNull()
   })
 
   it("shows only the newest release when the stored id is not in the notes", () => {
     storeLastSeen("0.19.0-rolled-back")
-    render(tree(browserSeen(), false, TWO_RELEASES))
+    render(tree(browserSeen(), false, HISTORY))
 
     expect(sheet()).not.toBeNull()
-    expect(screen.getByText("Version 0.18.2")).not.toBeNull()
-    expect(screen.getByText("Faster sign-in.")).not.toBeNull()
+    expect(screen.getByText("Version 0.18.3 · November 2026")).not.toBeNull()
+    expect(screen.getByText("Offline notice clears.")).toBeVisible()
     expect(screen.queryByText("Fund pages.")).toBeNull()
   })
 })
