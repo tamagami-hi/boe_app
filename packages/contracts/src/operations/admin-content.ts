@@ -9,9 +9,10 @@ import {
   AdminListQuery,
   AdminPageMeta,
   AdminReasonDetail,
+  ADMIN_CONFIRMATION_ERRORS,
+  ConfirmedAdminMutationHeaders,
   OptionalAdminMutationHeaders,
 } from "./admin-shared.js"
-import { ADMIN_CONFIRMATION_ERRORS, ConfirmedAdminMutationHeaders } from "./admin-step-up.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
 const ShortText = z.string().trim().max(200)
@@ -189,6 +190,12 @@ export const getAdminAppConfig = defineOperation({
   success: { status: 200, schema: createSuccessEnvelopeSchema(AdminAppConfigData) },
   errorCodes: [...ADMIN_READ_ERRORS],
 })
+
+export const AdminAppConfigPublishTarget = z.strictObject({
+  config: AdminAppConfigPayload,
+  expectedVersion: z.number().int().positive().nullable().optional(),
+})
+export type AdminAppConfigPublishTarget = z.infer<typeof AdminAppConfigPublishTarget>
 
 export const AdminAppConfigPatchBody = z.strictObject({
   config: AdminAppConfigPayload,

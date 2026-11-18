@@ -34,6 +34,19 @@ export const RequiredAdminMutationHeaders = z.strictObject({
   "x-csrf-token": z.string().min(1),
 })
 
+export const ADMIN_CONFIRMATION_HEADER = "x-admin-confirmation"
+
+export const AdminConfirmationToken = z.string().regex(/^[A-Za-z0-9_-]{43}$/u)
+export type AdminConfirmationToken = z.infer<typeof AdminConfirmationToken>
+
+export const ConfirmedAdminMutationHeaders = z.strictObject({
+  "idempotency-key": IdempotencyKey.optional(),
+  "x-csrf-token": z.string().min(1),
+  [ADMIN_CONFIRMATION_HEADER]: AdminConfirmationToken,
+})
+
+export const ADMIN_CONFIRMATION_ERRORS = ["TOKEN_INVALID", "TOKEN_EXPIRED", "TOKEN_ALREADY_USED"] as const
+
 export const ADMIN_AUTH_ERRORS = [
   "AUTHENTICATION_REQUIRED",
   "SESSION_INVALID",

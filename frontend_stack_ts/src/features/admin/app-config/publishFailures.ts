@@ -6,7 +6,7 @@ const SECONDS_PER_MINUTE = 60
 const CONFIRMATION_CODES = ["TOKEN_INVALID", "TOKEN_EXPIRED", "TOKEN_ALREADY_USED"] as const
 
 export const CONFIRMATION_REFUSED =
-  "Your password confirmation could not be used, because it expired, was already used, or belongs to another session. Nothing was published. Review and publish again, and enter your password."
+  "Your password confirmation could not be used, because it expired, was already used, belongs to another session, or was given for other changes. Nothing was published. Review and publish again, and enter your password."
 
 export const VALIDATION_REFUSED =
   "That configuration was refused. Check the fields marked above and the Advanced JSON, then publish again."

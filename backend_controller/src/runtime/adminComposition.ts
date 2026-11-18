@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify"
 
-import { createPasswordRecheckLimiter } from "../auth/passwordRecheckLimiter.js"
+import { createConfirmationAttemptLimiter } from "../auth/confirmationAttemptLimiter.js"
 import { createFixedWindowRateLimiter } from "../http/rateLimit.js"
 import { createAccountingReportRepository } from "../repositories/accountingReportRepository.js"
 import { createAdminCatalogRepository } from "../repositories/adminCatalogRepository.js"
@@ -104,7 +104,7 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     auditRepository,
     crypto,
     clock,
-    confirmLimiter: createPasswordRecheckLimiter(clock),
+    confirmLimiter: createConfirmationAttemptLimiter(clock),
   })
 
   registerAdminContentRoutes(application, {

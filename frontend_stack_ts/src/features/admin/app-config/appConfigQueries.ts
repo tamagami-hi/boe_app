@@ -13,6 +13,10 @@ export type AppConfigInput = z.input<typeof publishAdminAppConfig.request.body>
 export type ConfirmedAppConfigInput = AppConfigInput & Readonly<{ confirmation: string }>
 export type PublishAppConfigInput = ConfirmedAppConfigInput & Readonly<{ idempotencyKey: string }>
 export type AdminPasswordConfirmation = DataOf<typeof confirmAdminPassword>
+export type PublishConfirmationInput = Readonly<{
+  password: string
+  body: z.input<typeof confirmAdminPassword.request.body>["body"]
+}>
 
 export const useAdminAppConfig = (): UseQueryResult<AdminAppConfig> => {
   const api = useApi()
@@ -23,11 +27,15 @@ export const useAdminAppConfig = (): UseQueryResult<AdminAppConfig> => {
   })
 }
 
-export const useConfirmPublishPassword = (): UseMutationResult<AdminPasswordConfirmation, Error, string> => {
+export const useConfirmPublishPassword = (): UseMutationResult<
+  AdminPasswordConfirmation,
+  Error,
+  PublishConfirmationInput
+> => {
   const api = useApi()
   return useMutation({
-    mutationFn: async (password: string) =>
-      (await api.request(confirmAdminPassword, { body: { password, action: "app_config.publish" } })).data,
+    mutationFn: async ({ password, body }: PublishConfirmationInput) =>
+      (await api.request(confirmAdminPassword, { body: { password, action: "app_config.publish", body } })).data,
   })
 }
 

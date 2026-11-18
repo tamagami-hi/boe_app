@@ -22,6 +22,8 @@ const CONFIRMATION_USED_MESSAGE =
   "This password confirmation was already used. Enter your password again to publish."
 const CONFIRMATION_EXPIRED_MESSAGE =
   "This password confirmation expired. Enter your password again to publish."
+const CONFIRMATION_OTHER_REQUEST_MESSAGE =
+  "This password confirmation was given for different changes. Review them and enter your password again to publish."
 
 export interface AdminStepUpPrincipal {
   readonly userId: string
@@ -43,6 +45,7 @@ export interface ConfirmAdminPasswordInput {
   readonly principal: AdminStepUpPrincipal
   readonly password: string
   readonly action: AdminStepUpAction
+  readonly requestSha256: Buffer
   readonly requestId: string
 }
 
@@ -93,6 +96,7 @@ const issueStepUp = async (
     action: input.action,
     tokenHash: minted.hash,
     tokenKeyVersion: minted.keyVersion,
+    requestSha256: input.requestSha256,
     expiresAt,
     now,
   })
@@ -133,6 +137,7 @@ export interface ConsumeAdminStepUpInput {
   readonly principal: AdminStepUpPrincipal
   readonly action: AdminStepUpAction
   readonly presented: string
+  readonly requestSha256: Buffer
   readonly now: Date
 }
 
@@ -147,11 +152,18 @@ export const consumeAdminStepUp = async (
     action: input.action,
     tokenHash: deps.crypto.hashToken(input.presented).hash,
   }
-  const consumed = await deps.stepUpRepository.consume(tx, { ...presented, now: input.now })
+  const consumed = await deps.stepUpRepository.consume(tx, {
+    ...presented,
+    requestSha256: input.requestSha256,
+    now: input.now,
+  })
   if (consumed !== null) return consumed
 
   const bound = await deps.stepUpRepository.findBound(tx, presented)
   if (bound === null) throw new AppError("TOKEN_INVALID", { message: CONFIRMATION_INVALID_MESSAGE })
   if (bound.consumedAt !== null) throw new AppError("TOKEN_ALREADY_USED", { message: CONFIRMATION_USED_MESSAGE })
-  throw new AppError("TOKEN_EXPIRED", { message: CONFIRMATION_EXPIRED_MESSAGE })
+  if (bound.expiresAt.getTime() <= input.now.getTime()) {
+    throw new AppError("TOKEN_EXPIRED", { message: CONFIRMATION_EXPIRED_MESSAGE })
+  }
+  throw new AppError("TOKEN_INVALID", { message: CONFIRMATION_OTHER_REQUEST_MESSAGE })
 }

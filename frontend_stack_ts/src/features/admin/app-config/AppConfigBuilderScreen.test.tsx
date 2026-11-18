@@ -23,7 +23,7 @@ const PUBLISHED = {
   contentSha256: "a".repeat(64),
 }
 
-const confirmedPasswords: string[] = []
+const confirmations: unknown[] = []
 const published: unknown[] = []
 
 vi.mock("~/app/providers/SessionProvider", () => ({
@@ -40,8 +40,8 @@ vi.mock("./appConfigQueries", () => ({
   }),
   useConfirmPublishPassword: () => ({
     isPending: false,
-    mutate: (password: string, settle: Settle) => {
-      confirmedPasswords.push(password)
+    mutate: (input: unknown, settle: Settle) => {
+      confirmations.push(input)
       settle.onSuccess?.({ confirmation: CONFIRMATION, action: "app_config.publish", expiresAt: "2026-11-18T08:05:00.000Z" })
     },
   }),
@@ -79,7 +79,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.unstubAllEnvs()
-  confirmedPasswords.length = 0
+  confirmations.length = 0
   published.length = 0
 })
 
@@ -123,13 +123,10 @@ describe("the app config form and its Advanced JSON", () => {
     fireEvent.change(within(dialog).getByLabelText(/Your password/u), { target: { value: "the admin password" } })
     fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }))
 
-    expect(confirmedPasswords).toEqual(["the admin password"])
+    const reviewed = { config: JSON.parse(jsonArea().value) as Record<string, unknown>, expectedVersion: 7 }
+    expect(confirmations).toEqual([{ password: "the admin password", body: reviewed }])
     expect(published).toHaveLength(1)
-    expect(published[0]).toMatchObject({
-      config: JSON.parse(jsonArea().value) as Record<string, unknown>,
-      expectedVersion: 7,
-      confirmation: CONFIRMATION,
-    })
+    expect(published[0]).toMatchObject({ ...reviewed, confirmation: CONFIRMATION })
   })
 })
 

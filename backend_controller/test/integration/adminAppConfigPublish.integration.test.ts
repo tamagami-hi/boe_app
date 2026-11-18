@@ -7,7 +7,6 @@ import type { FastifyInstance } from "fastify"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createUncachedCache } from "../../src/cache/cache.js"
-import { createFixedWindowRateLimiter } from "../../src/http/rateLimit.js"
 import { clearAppUpdateCache } from "../../src/release/releaseFeed.js"
 import { createAdminContentRepository } from "../../src/repositories/adminContentRepository.js"
 import { createAppUpdateAnnouncementRepository } from "../../src/repositories/appUpdateAnnouncementRepository.js"
@@ -17,13 +16,12 @@ import { registerAdminContentRoutes } from "../../src/routes/adminContentRoutes.
 import { createApplication } from "../../src/runtime/application.js"
 import { adminHeaders, adminWebAuth, registerAdminLogin, signInRoleAdmin, type AdminSession } from "./adminSessionSupport.js"
 import { PasswordMailStack } from "./passwordMailSupport.js"
-import { confirmedAs, confirmedHeaders, registerStepUp, stepUpFor } from "./stepUpSupport.js"
+import { confirmedAs, confirmedHeaders, registerStepUp, stepUpFor, type PublishTarget } from "./stepUpSupport.js"
 
 const ROUTE = "/v1/admin/app-config"
 const FEED_BASE = "https://dev-app.beonedge.in/downloads"
 const LOCK_WAIT_POLL_MS = 25
 const LOCK_WAIT_LIMIT_MS = 10_000
-const GENEROUS_CONFIRMATIONS = { windowMs: 60_000, maxRequests: 1_000 }
 
 interface PublishedConfig {
   readonly version: number | null
@@ -38,14 +36,14 @@ let editor: AdminSession
 const dataOf = <T>(r: { json: () => unknown }): T => (r.json() as { data: T }).data
 const errorOf = (r: { json: () => unknown }): string => (r.json() as { error: { code: string } }).error.code
 
-const publishWith = (confirmation: string, payload: object) =>
+const publishWith = (confirmation: string, payload: PublishTarget) =>
   app.inject({ method: "PATCH", url: ROUTE, headers: confirmedHeaders(editor, confirmation), payload })
 
-const publish = async (payload: object) => publishWith(await confirmedAs(app, editor), payload)
+const publish = async (payload: PublishTarget) => publishWith(await confirmedAs(app, editor, payload), payload)
 
-const confirmations = async (count: number): Promise<string[]> => {
+const confirmedEach = async (payloads: readonly PublishTarget[]): Promise<string[]> => {
   const issued: string[] = []
-  for (let index = 0; index < count; index += 1) issued.push(await confirmedAs(app, editor))
+  for (const payload of payloads) issued.push(await confirmedAs(app, editor, payload))
   return issued
 }
 
@@ -104,7 +102,7 @@ beforeAll(async () => {
     logger: false,
     registerRoutes: (instance) => {
       registerAdminLogin(instance, stack, webAuth)
-      registerStepUp(instance, stack, webAuth, createFixedWindowRateLimiter(GENEROUS_CONFIRMATIONS, stack.clock))
+      registerStepUp(instance, stack, webAuth)
       registerAdminContentRoutes(instance, {
         webAuth,
         unitOfWork: stack.unitOfWork,
@@ -205,11 +203,10 @@ describe("publishing the app configuration from the version it was edited from",
 describe("simultaneous publishes", () => {
   test("admins publishing at the same moment each get their own version instead of a server error", async () => {
     const before = await maxVersion()
-    const issued = await confirmations(6)
+    const payloads = Array.from({ length: 6 }, (_, index) => ({ config: { presentation: { attempt: index } } }))
+    const issued = await confirmedEach(payloads)
 
-    const responses = await Promise.all(
-      issued.map((confirmation, index) => publishWith(confirmation, { config: { presentation: { attempt: index } } })),
-    )
+    const responses = await Promise.all(payloads.map((payload, index) => publishWith(issued[index] ?? "", payload)))
 
     expect(responses.map((response) => response.statusCode)).toEqual(Array(6).fill(200))
     const versions = responses.map((response) => Number(dataOf<PublishedConfig>(response).version)).sort((a, b) => a - b)
@@ -219,13 +216,13 @@ describe("simultaneous publishes", () => {
   test("of several screens opened on the same version exactly one publishes", async () => {
     const opened = await current()
     const rows = await versionRows()
-    const issued = await confirmations(4)
+    const payloads = Array.from({ length: 4 }, (_, index) => ({
+      config: { presentation: { screen: index } },
+      expectedVersion: opened.version,
+    }))
+    const issued = await confirmedEach(payloads)
 
-    const responses = await Promise.all(
-      issued.map((confirmation, index) =>
-        publishWith(confirmation, { config: { presentation: { screen: index } }, expectedVersion: opened.version }),
-      ),
-    )
+    const responses = await Promise.all(payloads.map((payload, index) => publishWith(issued[index] ?? "", payload)))
 
     expect(responses.map((response) => response.statusCode).sort()).toEqual([200, 409, 409, 409])
     expect(await versionRows()).toBe(rows + 1)
@@ -235,7 +232,8 @@ describe("simultaneous publishes", () => {
     const opened = await current()
     const taken = (await maxVersion()) + 1
     const audits = await publishAudits()
-    const [confirmation = ""] = await confirmations(1)
+    const racing = { config: { featureFlags: { racing: true } }, expectedVersion: opened.version }
+    const [confirmation = ""] = await confirmedEach([racing])
     const writer = await stack.pool.connect()
     try {
       await writer.query("begin")
@@ -244,7 +242,7 @@ describe("simultaneous publishes", () => {
         "insert into app_config_versions (version, payload, content_sha256, published_by_user_id, published_at) values ($1, '{}'::jsonb, $2, $3, now())",
         [taken, Buffer.alloc(32), editor.userId],
       )
-      const pending = publishWith(confirmation, { config: { featureFlags: { racing: true } }, expectedVersion: opened.version })
+      const pending = publishWith(confirmation, racing)
       await waitForBlockedPublish()
       await writer.query("commit")
 

@@ -9,16 +9,23 @@ import { createIdempotencyRepository } from "../../src/repositories/idempotencyR
 import { registerAdminContentRoutes } from "../../src/routes/adminContentRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { adminHeaders, adminWebAuth, registerAdminLogin, signInAs, signInRoleAdmin, type AdminSession } from "./adminSessionSupport.js"
-import { PasswordMailStack } from "./passwordMailSupport.js"
-import { confirmedAs, confirmedHeaders, registerStepUp, requestConfirmation, stepUpFor } from "./stepUpSupport.js"
+import { PASSWORD, PasswordMailStack } from "./passwordMailSupport.js"
+import {
+  confirmedAs,
+  confirmedHeaders,
+  registerStepUp,
+  requestConfirmation,
+  stepUpFor,
+  type PublishTarget,
+} from "./stepUpSupport.js"
 
 const ROUTE = "/v1/admin/app-config"
 const CONFIRMATION_LIFETIME_MS = 5 * 60_000
-const ATTEMPTS_PER_WINDOW = 5
+const FAILURES_PER_WINDOW = 5
 const WRONG_PASSWORD = "a password this admin never had"
 
 interface Envelope {
-  readonly data: { readonly version: number | null } | null
+  readonly data: { readonly version: number | null; readonly config: unknown } | null
   readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean } | null
   readonly meta: { readonly idempotencyReplay?: boolean }
 }
@@ -28,16 +35,28 @@ let app: FastifyInstance
 
 const envelope = (r: { json: () => unknown }): Envelope => r.json() as Envelope
 const errorOf = (r: { json: () => unknown }): string => envelope(r).error?.code ?? "none"
+const outcomeOf = (r: { statusCode: number; json: () => unknown }): [number, string] => [r.statusCode, errorOf(r)]
 const newKey = (): string => `publish-${randomBytes(8).toString("hex")}`
 const versionRows = () => stack.count("app_config_versions")
 const publishAudits = () => stack.count("audit_events", "command = 'app_config.published'")
 const superadmin = (): Promise<AdminSession> => signInRoleAdmin(app, stack, "superadmin")
 
-const publish = (headers: Record<string, string>, payload: object) =>
+const publish = (headers: Record<string, string>, payload: PublishTarget) =>
   app.inject({ method: "PATCH", url: ROUTE, headers, payload })
 
-const liveVersion = async (session: AdminSession): Promise<number | null> =>
-  envelope(await app.inject({ method: "GET", url: ROUTE, headers: adminHeaders(session) })).data?.version ?? null
+const live = async (session: AdminSession): Promise<Envelope["data"]> =>
+  envelope(await app.inject({ method: "GET", url: ROUTE, headers: adminHeaders(session) })).data
+
+const unconsumed = (userId: string) =>
+  stack.count("admin_step_up_confirmations", "user_id = $1 and consumed_at is null", [userId])
+
+const attempts = async (session: AdminSession, password: string, count: number): Promise<[number, string][]> => {
+  const outcomes: [number, string][] = []
+  for (let attempt = 0; attempt < count; attempt += 1) {
+    outcomes.push(outcomeOf(await requestConfirmation(app, session, { config: { presentation: { attempt } } }, password)))
+  }
+  return outcomes
+}
 
 beforeAll(async () => {
   stack = await PasswordMailStack.start({ seed: true })
@@ -92,9 +111,9 @@ describe("publishing app config without a password confirmation", () => {
 describe("publishing app config with a password confirmation", () => {
   test("publishes once, ties the publish to the confirmation, and a replay of the same request returns the stored result", async () => {
     const editor = await superadmin()
-    const confirmation = await confirmedAs(app, editor)
-    const key = newKey()
     const payload = { config: { featureFlags: { confirmed: true } } }
+    const confirmation = await confirmedAs(app, editor, payload)
+    const key = newKey()
 
     const first = await publish(confirmedHeaders(editor, confirmation, key), payload)
     const rowsAfterFirst = await versionRows()
@@ -115,32 +134,35 @@ describe("publishing app config with a password confirmation", () => {
     expect(confirmed).toBe(1)
   })
 
-  test("a used confirmation cannot publish again under a new request", async () => {
+  test("a used confirmation cannot publish the same changes again under a new request", async () => {
     const editor = await superadmin()
-    const confirmation = await confirmedAs(app, editor)
-    const first = await publish(confirmedHeaders(editor, confirmation, newKey()), { config: { presentation: { round: 1 } } })
+    const payload = { config: { presentation: { round: 1 } } }
+    const confirmation = await confirmedAs(app, editor, payload)
+    const first = await publish(confirmedHeaders(editor, confirmation, newKey()), payload)
     const rows = await versionRows()
 
-    const again = await publish(confirmedHeaders(editor, confirmation, newKey()), { config: { presentation: { round: 2 } } })
+    const again = await publish(confirmedHeaders(editor, confirmation, newKey()), payload)
 
     expect(first.statusCode).toBe(200)
-    expect([again.statusCode, errorOf(again)]).toEqual([409, "TOKEN_ALREADY_USED"])
+    expect(outcomeOf(again)).toEqual([409, "TOKEN_ALREADY_USED"])
     expect(await versionRows()).toBe(rows)
   })
 
   test("a confirmation is honoured just inside five minutes and refused just after, writing nothing", async () => {
     const editor = await superadmin()
-    const early = await confirmedAs(app, editor)
-    const late = await confirmedAs(app, editor)
+    const inside = { config: { presentation: { inside: true } } }
+    const outside = { config: { presentation: { outside: true } } }
+    const early = await confirmedAs(app, editor, inside)
+    const late = await confirmedAs(app, editor, outside)
 
     stack.clockOffsetMs = CONFIRMATION_LIFETIME_MS - 5_000
-    const inside = await publish(confirmedHeaders(editor, early, newKey()), { config: { presentation: { inside: true } } })
+    const accepted = await publish(confirmedHeaders(editor, early, newKey()), inside)
     const rows = await versionRows()
     stack.clockOffsetMs = CONFIRMATION_LIFETIME_MS + 1_000
-    const outside = await publish(confirmedHeaders(editor, late, newKey()), { config: { presentation: { outside: true } } })
+    const refused = await publish(confirmedHeaders(editor, late, newKey()), outside)
 
-    expect(inside.statusCode).toBe(200)
-    expect([outside.statusCode, errorOf(outside)]).toEqual([410, "TOKEN_EXPIRED"])
+    expect(accepted.statusCode).toBe(200)
+    expect(outcomeOf(refused)).toEqual([410, "TOKEN_EXPIRED"])
     expect(await versionRows()).toBe(rows)
   })
 
@@ -148,56 +170,117 @@ describe("publishing app config with a password confirmation", () => {
     const owner = await superadmin()
     const otherAdmin = await superadmin()
     const ownersOtherSession = await signInAs(app, owner.userId, owner.email)
-    const confirmation = await confirmedAs(app, owner)
+    const payload = { config: { presentation: { by: "owner" } } }
+    const confirmation = await confirmedAs(app, owner, payload)
     const rows = await versionRows()
 
-    const byOtherAdmin = await publish(confirmedHeaders(otherAdmin, confirmation, newKey()), { config: { presentation: { by: "other" } } })
-    const byOtherSession = await publish(confirmedHeaders(ownersOtherSession, confirmation, newKey()), { config: { presentation: { by: "session" } } })
-    const byOwner = await publish(confirmedHeaders(owner, confirmation, newKey()), { config: { presentation: { by: "owner" } } })
+    const byOtherAdmin = await publish(confirmedHeaders(otherAdmin, confirmation, newKey()), payload)
+    const byOtherSession = await publish(confirmedHeaders(ownersOtherSession, confirmation, newKey()), payload)
+    const byOwner = await publish(confirmedHeaders(owner, confirmation, newKey()), payload)
 
-    expect([byOtherAdmin.statusCode, errorOf(byOtherAdmin)]).toEqual([400, "TOKEN_INVALID"])
-    expect([byOtherSession.statusCode, errorOf(byOtherSession)]).toEqual([400, "TOKEN_INVALID"])
+    expect(outcomeOf(byOtherAdmin)).toEqual([400, "TOKEN_INVALID"])
+    expect(outcomeOf(byOtherSession)).toEqual([400, "TOKEN_INVALID"])
     expect(byOwner.statusCode).toBe(200)
     expect(await versionRows()).toBe(rows + 1)
   })
 
-  test("a publish refused for a stale version leaves its confirmation unused, because both commit together", async () => {
+  test("a confirmation publishes only the changes it was given for, and a different body uses nothing up", async () => {
     const editor = await superadmin()
-    const live = await liveVersion(editor)
-    const confirmation = await confirmedAs(app, editor)
+    const version = (await live(editor))?.version ?? null
+    const reviewed = { config: { presentation: { reviewed: true } }, expectedVersion: version }
+    const confirmation = await confirmedAs(app, editor, reviewed)
+    const rows = await versionRows()
 
-    const stale = await publish(confirmedHeaders(editor, confirmation, newKey()), {
-      config: { presentation: { attempt: "stale" } },
-      expectedVersion: (live ?? 0) + 100,
+    const otherConfig = await publish(confirmedHeaders(editor, confirmation, newKey()), {
+      config: { presentation: { reviewed: false } },
+      expectedVersion: version,
     })
-    const current = await publish(confirmedHeaders(editor, confirmation, newKey()), {
-      config: { presentation: { attempt: "current" } },
-      expectedVersion: live,
-    })
+    const withoutVersion = await publish(confirmedHeaders(editor, confirmation, newKey()), { config: reviewed.config })
+    const unusedAfterRefusals = await unconsumed(editor.userId)
+    const asReviewed = await publish(confirmedHeaders(editor, confirmation, newKey()), reviewed)
 
-    expect([stale.statusCode, errorOf(stale)]).toEqual([409, "STATE_CONFLICT"])
-    expect(current.statusCode).toBe(200)
+    expect(outcomeOf(otherConfig)).toEqual([400, "TOKEN_INVALID"])
+    expect(outcomeOf(withoutVersion)).toEqual([400, "TOKEN_INVALID"])
+    expect(unusedAfterRefusals).toBe(1)
+    expect(asReviewed.statusCode).toBe(200)
+    expect(await versionRows()).toBe(rows + 1)
+  })
+
+  test("a publish refused for a stale version writes nothing and leaves its confirmation unused", async () => {
+    const editor = await superadmin()
+    const opened = (await live(editor))?.version ?? null
+    const stalePayload = { config: { presentation: { attempt: "stale" } }, expectedVersion: opened }
+    const confirmation = await confirmedAs(app, editor, stalePayload)
+    const newer = { config: { presentation: { attempt: "newer" } }, expectedVersion: opened }
+    expect((await publish(confirmedHeaders(editor, await confirmedAs(app, editor, newer), newKey()), newer)).statusCode).toBe(200)
+    const before = { rows: await versionRows(), audits: await publishAudits(), current: await live(editor) }
+
+    const stale = await publish(confirmedHeaders(editor, confirmation, newKey()), stalePayload)
+
+    expect(outcomeOf(stale)).toEqual([409, "STATE_CONFLICT"])
+    expect({ rows: await versionRows(), audits: await publishAudits(), current: await live(editor) }).toEqual(before)
+    expect(await unconsumed(editor.userId)).toBe(1)
+  })
+
+  test("a replay under the same key with a different body is refused as a reused key and uses no confirmation", async () => {
+    const editor = await superadmin()
+    const key = newKey()
+    const first = { config: { presentation: { replay: "first" } } }
+    const second = { config: { presentation: { replay: "second" } } }
+    expect((await publish(confirmedHeaders(editor, await confirmedAs(app, editor, first), key), first)).statusCode).toBe(200)
+    const confirmation = await confirmedAs(app, editor, second)
+    const rows = await versionRows()
+
+    const reused = await publish(confirmedHeaders(editor, confirmation, key), second)
+    const unusedAfterReuse = await unconsumed(editor.userId)
+    const underNewKey = await publish(confirmedHeaders(editor, confirmation, newKey()), second)
+
+    expect(outcomeOf(reused)).toEqual([409, "IDEMPOTENCY_KEY_REUSED"])
+    expect(unusedAfterReuse).toBe(1)
+    expect(underNewKey.statusCode).toBe(200)
+    expect(await versionRows()).toBe(rows + 1)
   })
 })
 
 describe("confirming the password", () => {
+  test("an admin without config.publish is refused before any password check", async () => {
+    const support = await signInRoleAdmin(app, stack, "support")
+
+    const wrong = await requestConfirmation(app, support, { config: {} }, WRONG_PASSWORD)
+    const right = await requestConfirmation(app, support, { config: {} })
+
+    expect(outcomeOf(wrong)).toEqual([403, "AUTHORIZATION_DENIED"])
+    expect(outcomeOf(right)).toEqual([403, "AUTHORIZATION_DENIED"])
+    expect(await stack.count("audit_events", "command like 'auth.step_up_%' and actor_user_id = $1", [support.userId])).toBe(0)
+    expect(await stack.count("admin_step_up_confirmations", "user_id = $1", [support.userId])).toBe(0)
+  })
+
   test("a wrong password is refused and audited without the password, and counts toward a limit that then refuses even the right one", async () => {
     const admin = await superadmin()
 
-    const wrong = []
-    for (let attempt = 0; attempt < ATTEMPTS_PER_WINDOW; attempt += 1) {
-      wrong.push(await requestConfirmation(app, admin, WRONG_PASSWORD))
-    }
-    const right = await requestConfirmation(app, admin)
+    const wrong = await attempts(admin, WRONG_PASSWORD, FAILURES_PER_WINDOW)
+    const right = await requestConfirmation(app, admin, { config: {} })
 
-    expect(wrong.map((response) => [response.statusCode, errorOf(response)])).toEqual(
-      Array.from({ length: ATTEMPTS_PER_WINDOW }, () => [401, "INVALID_CREDENTIALS"]),
-    )
-    expect([right.statusCode, errorOf(right)]).toEqual([429, "RATE_LIMITED"])
+    expect(wrong).toEqual(Array.from({ length: FAILURES_PER_WINDOW }, () => [401, "INVALID_CREDENTIALS"]))
+    expect(outcomeOf(right)).toEqual([429, "RATE_LIMITED"])
     expect(await stack.count("audit_events", "command = 'auth.step_up_refused' and actor_user_id = $1", [admin.userId])).toBe(
-      ATTEMPTS_PER_WINDOW,
+      FAILURES_PER_WINDOW,
     )
     expect(await stack.count("admin_step_up_confirmations", "user_id = $1", [admin.userId])).toBe(0)
     expect(await stack.rowsMentioning(WRONG_PASSWORD)).toBe(0)
+  })
+
+  test("only wrong passwords count, so an admin who keeps republishing is never locked out by success", async () => {
+    const admin = await superadmin()
+
+    const wrong = await attempts(admin, WRONG_PASSWORD, FAILURES_PER_WINDOW - 1)
+    const successes = await attempts(admin, PASSWORD, FAILURES_PER_WINDOW + 1)
+    const lastWrong = await attempts(admin, WRONG_PASSWORD, 1)
+    const afterLimit = await attempts(admin, PASSWORD, 1)
+
+    expect(wrong.every(([status]) => status === 401)).toBe(true)
+    expect(successes.map(([status]) => status)).toEqual(Array.from({ length: FAILURES_PER_WINDOW + 1 }, () => 200))
+    expect(lastWrong).toEqual([[401, "INVALID_CREDENTIALS"]])
+    expect(afterLimit).toEqual([[429, "RATE_LIMITED"]])
   })
 })

@@ -1,36 +1,27 @@
 import { z } from "zod"
 
 import { createSuccessEnvelopeSchema } from "../envelope.js"
-import { IdempotencyKey, IsoDateTime, PasswordInput } from "../scalars.js"
+import { IsoDateTime, PasswordInput } from "../scalars.js"
+import { AdminAppConfigPublishTarget } from "./admin-content.js"
 import {
   ADMIN_AUTH_ERRORS,
   ADMIN_BODY_ERRORS,
   ADMIN_CSRF_ERRORS,
   ADMIN_INFRA_ERRORS,
+  AdminConfirmationToken,
   AdminCsrfHeaders,
 } from "./admin-shared.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
-
-export const ADMIN_CONFIRMATION_HEADER = "x-admin-confirmation"
 
 export const ADMIN_STEP_UP_ACTIONS = ["app_config.publish"] as const
 export const AdminStepUpAction = z.enum(ADMIN_STEP_UP_ACTIONS)
 export type AdminStepUpAction = z.infer<typeof AdminStepUpAction>
 
-export const AdminConfirmationToken = z.string().regex(/^[A-Za-z0-9_-]{43}$/u)
-export type AdminConfirmationToken = z.infer<typeof AdminConfirmationToken>
-
-export const ConfirmedAdminMutationHeaders = z.strictObject({
-  "idempotency-key": IdempotencyKey.optional(),
-  "x-csrf-token": z.string().min(1),
-  [ADMIN_CONFIRMATION_HEADER]: AdminConfirmationToken,
-})
-
-export const ADMIN_CONFIRMATION_ERRORS = ["TOKEN_INVALID", "TOKEN_EXPIRED", "TOKEN_ALREADY_USED"] as const
 
 export const AdminPasswordConfirmationBody = z.strictObject({
   password: PasswordInput,
   action: AdminStepUpAction,
+  body: AdminAppConfigPublishTarget,
 })
 export type AdminPasswordConfirmationBody = z.infer<typeof AdminPasswordConfirmationBody>
 

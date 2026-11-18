@@ -116,12 +116,9 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
     setLocalFailure(null)
     if (checks.payload === null || editedFrom === undefined || !checks.isPublishable) return
     const trimmedReason = reason.trim()
-    const body = {
-      config: checks.payload,
-      expectedVersion: editedFrom,
-      ...(trimmedReason === "" ? {} : { reason: trimmedReason }),
-    }
-    confirm.mutate(password, {
+    const reviewed = { config: checks.payload, expectedVersion: editedFrom }
+    const body = { ...reviewed, ...(trimmedReason === "" ? {} : { reason: trimmedReason }) }
+    confirm.mutate({ password, body: reviewed }, {
       onSuccess: (issued) => {
         setReviewing(false)
         publish.submit({ ...body, confirmation: issued.confirmation })

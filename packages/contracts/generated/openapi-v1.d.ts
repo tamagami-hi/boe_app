@@ -20614,6 +20614,35 @@ export interface operations {
                     password: string;
                     /** @enum {string} */
                     action: "app_config.publish";
+                    body: {
+                        config: {
+                            featureFlags?: {
+                                [key: string]: boolean;
+                            };
+                            minimumSupportedVersion?: {
+                                android?: string;
+                                ios?: string;
+                                web?: string;
+                                message?: string;
+                            };
+                            downloads?: {
+                                /** Format: uri */
+                                androidUrl?: string;
+                                /** Format: uri */
+                                iosUrl?: string;
+                            };
+                            maintenance?: {
+                                enabled?: boolean;
+                                message?: string;
+                                /** Format: date-time */
+                                scheduledFor?: string;
+                            };
+                            presentation?: {
+                                [key: string]: string | number | boolean;
+                            };
+                        };
+                        expectedVersion?: number | null;
+                    };
                 };
             };
         };

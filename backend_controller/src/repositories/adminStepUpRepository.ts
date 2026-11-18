@@ -9,6 +9,7 @@ export interface AdminStepUpBinding {
 export interface IssueAdminStepUpInput extends AdminStepUpBinding {
   readonly tokenHash: Buffer
   readonly tokenKeyVersion: string
+  readonly requestSha256: Buffer
   readonly expiresAt: Date
   readonly now: Date
 }
@@ -24,7 +25,10 @@ export interface AdminStepUpState {
 
 export interface AdminStepUpRepository {
   issue: (tx: Transaction, input: IssueAdminStepUpInput) => Promise<string>
-  consume: (tx: Transaction, input: PresentedAdminStepUp & Readonly<{ now: Date }>) => Promise<string | null>
+  consume: (
+    tx: Transaction,
+    input: PresentedAdminStepUp & Readonly<{ requestSha256: Buffer; now: Date }>,
+  ) => Promise<string | null>
   findBound: (tx: Transaction, input: PresentedAdminStepUp) => Promise<AdminStepUpState | null>
 }
 
@@ -38,6 +42,7 @@ export const createAdminStepUpRepository = (): AdminStepUpRepository => ({
         action: input.action,
         token_hash: input.tokenHash,
         token_key_version: input.tokenKeyVersion,
+        request_sha256: input.requestSha256,
         created_at: input.now,
         expires_at: input.expiresAt,
         consumed_at: null,
@@ -55,6 +60,7 @@ export const createAdminStepUpRepository = (): AdminStepUpRepository => ({
       .where("user_id", "=", input.userId)
       .where("session_id", "=", input.sessionId)
       .where("action", "=", input.action)
+      .where("request_sha256", "=", input.requestSha256)
       .where("consumed_at", "is", null)
       .where("expires_at", ">", input.now)
       .returning("id")

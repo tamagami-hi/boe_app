@@ -46,6 +46,13 @@ import {
   runAdminMutation,
   uuidParam,
 } from "./adminRouteKit.js"
+import {
+  appConfigPayloadSchema,
+  appConfigPublishCanonical,
+  appConfigPublishHash,
+  expectedVersionSchema,
+  longText,
+} from "./appConfigPublishTarget.js"
 
 export interface AdminContentConfig {
   readonly cursorKey: Buffer
@@ -77,7 +84,6 @@ const listQuerySchema = z.object({ after: z.string().min(1).optional(), limit: l
 const statusPatchSchema = z.object({ status: statusEnum }).strict()
 const sortOrderSchema = z.coerce.number().int().min(0).max(100000).default(0)
 const shortText = z.string().trim().max(200)
-const longText = z.string().trim().max(8000)
 
 const faqFieldsSchema = z
   .object({
@@ -88,50 +94,11 @@ const faqFieldsSchema = z
   })
   .strict()
 
-const semverish = z
-  .string()
-  .trim()
-  .max(32)
-  .regex(/^[0-9]+(?:\.[0-9]+){0,3}$/u, "must be a dotted numeric version")
-
-const appConfigPayloadSchema = z
-  .object({
-    featureFlags: z.record(z.string().max(80), z.boolean()).default({}),
-    minimumSupportedVersion: z
-      .object({
-        android: semverish.optional(),
-        ios: semverish.optional(),
-        web: semverish.optional(),
-        message: z.string().trim().min(1).max(500).optional(),
-      })
-      .strict()
-      .default({}),
-    downloads: z
-      .object({
-        androidUrl: z.string().url().max(2048).optional(),
-        iosUrl: z.string().url().max(2048).optional(),
-      })
-      .strict()
-      .default({}),
-    maintenance: z
-      .object({
-        enabled: z.boolean().default(false),
-        message: longText.optional(),
-        scheduledFor: z.iso.datetime({ offset: true }).optional(),
-      })
-      .strict()
-      .default({ enabled: false }),
-    presentation: z
-      .record(z.string().max(80), z.union([z.string().max(500), z.number(), z.boolean()]))
-      .default({}),
-  })
-  .strict()
-
 const appConfigPatchSchema = z
   .object({
     config: appConfigPayloadSchema,
     reason: reasonDetailSchema.optional(),
-    expectedVersion: z.number().int().positive().nullable().optional(),
+    expectedVersion: expectedVersionSchema,
   })
   .strict()
 
@@ -495,13 +462,14 @@ const publishCheckedAppConfig = async (
     reply,
     APP_CONFIG_ROUTE,
     "PATCH",
-    { config: body.config, ...(body.expectedVersion === undefined ? {} : { expectedVersion: body.expectedVersion }) },
+    appConfigPublishCanonical(body),
     principalUserId,
     async (tx) => {
       const stepUpId = await consumeAdminStepUp(tx, deps.stepUp, {
         principal: publisher.principal,
         action: APP_CONFIG_PUBLISH_ACTION,
         presented: publisher.confirmation,
+        requestSha256: appConfigPublishHash(body),
         now,
       })
       await deps.contentRepository.lockAppConfigPublication(tx)

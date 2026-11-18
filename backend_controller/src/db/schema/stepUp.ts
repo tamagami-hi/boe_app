@@ -9,6 +9,7 @@ export interface AdminStepUpConfirmationsTable {
   action: string
   token_hash: Bytea
   token_key_version: string
+  request_sha256: Bytea
   created_at: Timestamp
   expires_at: Timestamp
   consumed_at: NullableTimestamp
