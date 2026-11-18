@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import type { ReactNode } from "react"
 
 import { ADMIN_ACCOUNT_PATH, ADMIN_HOME_PATH, ADMIN_NAV_DOMAINS, ADMIN_ROUTES } from "~/app/routing/adminRoutes"
 import { resolveNavOwner } from "~/app/routing/navOwner"
 import { findRoute, navBarEntries, navGroups, navRoutes } from "~/app/routing/routeManifest"
+import type { NavGroup, NavRoute } from "~/app/routing/routeManifest"
 import { Modal } from "~/app/overlays/Modal"
 import { useSession } from "~/app/providers/SessionProvider"
 import { MaturityDuePrompt } from "~/features/admin/maturities/MaturityDuePrompt"
@@ -31,6 +32,8 @@ import {
   ADMIN_SIDEBAR_GROUP,
   ADMIN_SIDEBAR_GROUP_LABEL,
   ADMIN_SIDEBAR_LINK,
+  ADMIN_SIDEBAR_LIST,
+  ADMIN_SIDEBAR_SINGLE,
   ADMIN_TITLE,
   ADMIN_TOPBAR,
   ADMIN_WORDMARK,
@@ -41,9 +44,41 @@ const MOBILE_NAV_SLOTS = 4
 
 export type AdminFrameProps = Readonly<{ children: ReactNode }>
 
+type AdminSidebarGroupProps = Readonly<{ group: NavGroup; ownerId: string | null; idPrefix: string }>
+
+const AdminSidebarGroup = ({ group, ownerId, idPrefix }: AdminSidebarGroupProps): React.ReactElement => {
+  const sidebarLink = (entry: NavRoute): React.ReactElement => (
+    <Link
+      to={entry.path}
+      className={ADMIN_SIDEBAR_LINK}
+      aria-current={entry.id === ownerId ? "page" : undefined}
+    >
+      {entry.nav.label}
+    </Link>
+  )
+  const [only] = group.entries
+  if (group.entries.length === 1 && only !== undefined) {
+    return <div className={ADMIN_SIDEBAR_SINGLE}>{sidebarLink(only)}</div>
+  }
+  const headingId = `${idPrefix}-${group.domain}`
+  return (
+    <div className={ADMIN_SIDEBAR_GROUP}>
+      <span id={headingId} className={ADMIN_SIDEBAR_GROUP_LABEL}>
+        {group.label}
+      </span>
+      <ul aria-labelledby={headingId} className={ADMIN_SIDEBAR_LIST}>
+        {group.entries.map((entry) => (
+          <li key={entry.id}>{sidebarLink(entry)}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement => {
   const location = useLocation()
   const session = useSession()
+  const sidebarId = useId()
   const isHoldingWrite = useHasUnsettledHeldWrite()
   const [moreOpen, setMoreOpen] = useState(false)
   const [maturityPromptDismissedFor, setMaturityPromptDismissedFor] = useState<string | null>(null)
@@ -86,19 +121,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
         <nav className={ADMIN_SIDEBAR} aria-label="Primary">
           <span className={ADMIN_WORDMARK}>BeOnEdge</span>
           {groups.map((group) => (
-            <div key={group.domain} className={ADMIN_SIDEBAR_GROUP}>
-              {group.entries.length > 1 ? <span className={ADMIN_SIDEBAR_GROUP_LABEL}>{group.label}</span> : null}
-              {group.entries.map((entry) => (
-                <Link
-                  key={entry.id}
-                  to={entry.path}
-                  className={ADMIN_SIDEBAR_LINK}
-                  aria-current={entry.id === ownerId ? "page" : undefined}
-                >
-                  {entry.nav.label}
-                </Link>
-              ))}
-            </div>
+            <AdminSidebarGroup key={group.domain} group={group} ownerId={ownerId} idPrefix={sidebarId} />
           ))}
         </nav>
 

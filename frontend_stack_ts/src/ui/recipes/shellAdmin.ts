@@ -66,13 +66,18 @@ export const ADMIN_SIDEBAR = [
 export const ADMIN_WORDMARK =
   "mb-3 px-3 font-display text-md font-medium tracking-display text-nav-fg"
 
-export const ADMIN_SIDEBAR_GROUP = [
-  "flex flex-col gap-0.5",
-  "not-first-of-type:border-t not-first-of-type:border-nav-hairline not-first-of-type:pt-2",
-].join(" ")
+export const ADMIN_SIDEBAR_GROUP =
+  "flex flex-col gap-1.5 not-first-of-type:mt-2 not-last-of-type:mb-1"
+
+export const ADMIN_SIDEBAR_SINGLE = "flex flex-col"
 
 export const ADMIN_SIDEBAR_GROUP_LABEL =
-  "px-3 pb-1 font-ui text-2xs font-semibold uppercase tracking-eyebrow text-nav-fg-muted"
+  "px-3 font-ui text-2xs font-semibold uppercase tracking-eyebrow text-gold-lift"
+
+export const ADMIN_SIDEBAR_LIST = [
+  "m-0 ml-3 flex list-none flex-col gap-0.5 p-0 pl-1.5",
+  "border-l border-nav-hairline",
+].join(" ")
 
 export const ADMIN_SIDEBAR_LINK = [
   "block rounded-full px-3 py-2 no-underline",
