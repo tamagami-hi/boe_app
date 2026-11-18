@@ -50,7 +50,7 @@ const RECORDING_SELECTION = sql`
   left join client_value_entry_categories c on c.entry_id = v.id
 `
 
-const RECORDING_FILTER = sql`v.entry_type = 'contribution' and o.type = 'recorded_offline'`
+const RECORDING_FILTER = sql`v.entry_type = 'contribution' and o.type in ('recorded_offline', 'sip_installment')`
 
 export const createRecordingCategoryRepository = (): RecordingCategoryRepository => ({
   listRecordings: async (tx, input) => {

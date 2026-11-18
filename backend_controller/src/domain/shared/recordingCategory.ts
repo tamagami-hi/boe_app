@@ -61,8 +61,6 @@ export const ASSIGNED_CATEGORY_LABEL: Readonly<Record<AssignedRecordingCategory,
 
 export const MONTHLY_RECORDING_REASON: RecordingReasonCode = "recorded_offline_monthly_investment"
 
-export const isInvestmentRecording = (reasonCode: string): boolean => recordingCategoryOf(reasonCode) !== "correction"
-
 export const assignedCategoryOf = (
   input: Readonly<{ linked: boolean; oneTime: boolean }>,
 ): AssignedRecordingCategory | null => {

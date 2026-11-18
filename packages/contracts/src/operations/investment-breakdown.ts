@@ -26,7 +26,7 @@ export const InvestmentBreakdownSip = z.strictObject({
 export type InvestmentBreakdownSip = z.infer<typeof InvestmentBreakdownSip>
 
 export const InvestmentBreakdownOneTime = z.strictObject({
-  allocationId: Uuid,
+  entryId: Uuid,
   effectiveDate: IsoDate,
   investedPaise: SignedPaise,
   valuePaise: SignedPaise,

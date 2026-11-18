@@ -12,6 +12,7 @@ import type { ClientNomineeRequestsTable } from "./schema/nomineeRequests.js"
 import type { SipEarlyExitsTable } from "./schema/sipEarlyExits.js"
 import type { AdminStepUpConfirmationsTable } from "./schema/stepUp.js"
 import type { ClientValueEntryCategoriesTable } from "./schema/recordingCategories.js"
+import type { ClientEarlierGrowthSplitEntriesTable, ClientEarlierGrowthSplitPartsTable, ClientEarlierGrowthSplitsTable, ClientGrowthPartsTable } from "./schema/investmentBreakdown.js"
 
 export type * from "./schema/identity.js"
 export type * from "./schema/platform.js"
@@ -27,6 +28,7 @@ export type * from "./schema/nomineeRequests.js"
 export type * from "./schema/sipEarlyExits.js"
 export type * from "./schema/stepUp.js"
 export type * from "./schema/recordingCategories.js"
+export type * from "./schema/investmentBreakdown.js"
 
 export interface Database {
   applications: ApplicationsTable
@@ -99,4 +101,8 @@ export interface Database {
   sip_early_exits: SipEarlyExitsTable
   admin_step_up_confirmations: AdminStepUpConfirmationsTable
   client_value_entry_categories: ClientValueEntryCategoriesTable
+  client_growth_parts: ClientGrowthPartsTable
+  client_earlier_growth_splits: ClientEarlierGrowthSplitsTable
+  client_earlier_growth_split_parts: ClientEarlierGrowthSplitPartsTable
+  client_earlier_growth_split_entries: ClientEarlierGrowthSplitEntriesTable
 }

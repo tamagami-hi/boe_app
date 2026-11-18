@@ -51969,7 +51969,7 @@
                                 "items": {
                                   "type": "object",
                                   "properties": {
-                                    "allocationId": {
+                                    "entryId": {
                                       "type": "string",
                                       "format": "uuid"
                                     },
@@ -52001,7 +52001,7 @@
                                     }
                                   },
                                   "required": [
-                                    "allocationId",
+                                    "entryId",
                                     "effectiveDate",
                                     "investedPaise",
                                     "valuePaise",

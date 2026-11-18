@@ -9,7 +9,6 @@ import type { AuditWriteRepository } from "../../repositories/auditRepository.js
 import type { ClientGrowthRepository } from "../../repositories/clientGrowthRepository.js"
 import type { RecordingCategoryRepository, RecordingRow } from "../../repositories/recordingCategoryRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
-import { isInvestmentRecording } from "../shared/recordingCategory.js"
 import { requireRecordableClient } from "./recordContribution.js"
 import { commitSipMonthLink } from "./sipMonthLink.js"
 import { endMonthOf, isMonthInSchedule } from "./sipScheduleMonths.js"
@@ -43,13 +42,11 @@ export interface MarkOneTimeCommand {
 }
 
 const CLOSED_MESSAGE = "This SIP schedule is closed. Reopen it before linking months to it."
-const CORRECTION_MESSAGE = "A correction is neither a SIP payment nor a one-time investment."
 const REVERSED_MESSAGE = "This recording was reversed, so it no longer counts and cannot be given a category."
 const LINKED_MESSAGE = "This recording is linked to a SIP month, so it is already a SIP payment."
 const ONE_TIME_MESSAGE = "This recording is already marked as a one-time investment."
 
-export const isSipLinkAllowed = (row: RecordingRow): boolean =>
-  isInvestmentRecording(row.reasonCode) && !row.reversed && !row.linked
+export const isSipLinkAllowed = (row: RecordingRow): boolean => !row.reversed && !row.linked
 
 export const isOneTimeAllowed = (row: RecordingRow): boolean => isSipLinkAllowed(row) && !row.oneTime
 
@@ -64,7 +61,6 @@ const monthRefusal = (schedule: LockedSipSchedule, paid: ReadonlySet<string>, mo
 
 const entryRefusal = (recording: RecordingRow | undefined): string | null => {
   if (recording === undefined) return "is not a recording of this client in this schedule's fund"
-  if (!isInvestmentRecording(recording.reasonCode)) return "is a correction, which cannot be linked to a SIP month"
   if (recording.reversed) return "was reversed"
   return recording.linked ? "is already linked to a SIP month" : null
 }
@@ -157,15 +153,13 @@ export const linkEarlierRecordings = async (
 }
 
 const refuseCategory = (recording: RecordingRow): void => {
-  const message = !isInvestmentRecording(recording.reasonCode)
-    ? CORRECTION_MESSAGE
-    : recording.reversed
-      ? REVERSED_MESSAGE
-      : recording.linked
-        ? LINKED_MESSAGE
-        : recording.oneTime
-          ? ONE_TIME_MESSAGE
-          : null
+  const message = recording.reversed
+    ? REVERSED_MESSAGE
+    : recording.linked
+      ? LINKED_MESSAGE
+      : recording.oneTime
+        ? ONE_TIME_MESSAGE
+        : null
   if (message !== null) throw new AppError("STATE_CONFLICT", { message })
 }
 

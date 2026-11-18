@@ -28574,7 +28574,7 @@ export interface operations {
                                 }[];
                                 oneTime: {
                                     /** Format: uuid */
-                                    allocationId: string;
+                                    entryId: string;
                                     effectiveDate: string;
                                     investedPaise: string;
                                     valuePaise: string;

@@ -11,11 +11,14 @@ import { createClientGrowthRepository } from "../../src/repositories/clientGrowt
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
 import { createClientReceiptRepository } from "../../src/repositories/clientReceiptRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
+import { createInvestmentBreakdownRepository } from "../../src/repositories/investmentBreakdownRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createRecordingCategoryRepository } from "../../src/repositories/recordingCategoryRepository.js"
 import { registerAdminClientPositionRoutes } from "../../src/routes/adminClientPositionRoutes.js"
+import { registerAdminInvestmentCleanupRoutes } from "../../src/routes/adminInvestmentCleanupRoutes.js"
 import { registerAdminRecordingCategoryRoutes } from "../../src/routes/adminRecordingCategoryRoutes.js"
 import { registerAdminSipScheduleRoutes } from "../../src/routes/adminSipScheduleRoutes.js"
+import { registerClientInvestmentBreakdownRoutes } from "../../src/routes/clientInvestmentBreakdownRoutes.js"
 import { registerClientReceiptRoutes } from "../../src/routes/clientReceiptRoutes.js"
 import { registerClientSipScheduleRoutes } from "../../src/routes/clientSipScheduleRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -133,9 +136,16 @@ export class RecordingCategoryHarness {
           notificationRepository: createNotificationRepository(),
         })
         registerAdminRecordingCategoryRoutes(instance, { ...shared, config: { idempotencyTtlMs: 86_400_000 } })
+        const investmentBreakdownRepository = createInvestmentBreakdownRepository()
+        registerAdminInvestmentCleanupRoutes(instance, {
+          ...shared,
+          investmentBreakdownRepository,
+          config: { idempotencyTtlMs: 86_400_000, cursorKey: randomBytes(32) },
+        })
         registerAdminSipScheduleRoutes(instance, { ...shared, config: { idempotencyTtlMs: 86_400_000, cursorKey: randomBytes(32) } })
         const clientDeps = { accessTokenService: tokens, database: stack.database, clientWeb: { originAllowlist: [] }, clock: stack.clock }
         registerClientSipScheduleRoutes(instance, { ...clientDeps, sipScheduleRepository })
+        registerClientInvestmentBreakdownRoutes(instance, { ...clientDeps, investmentBreakdownRepository })
         registerClientReceiptRoutes(instance, {
           ...clientDeps,
           clientReceiptRepository: createClientReceiptRepository(),

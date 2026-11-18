@@ -95,7 +95,7 @@ describe("linking earlier monthly recordings to a past-dated SIP schedule", () =
       ["2025-06", 6, false, null],
     ])
     expect(proposal.candidates.map((row) => row.entryId).sort()).toEqual(
-      [ids.december, ids.january, ids.februaryEarly, ids.februaryLate, ids.marchEarlier, ids.may].sort(),
+      [ids.december, ids.january, ids.februaryEarly, ids.februaryLate, ids.marchEarlier, ids.marchCorrection, ids.may].sort(),
     )
 
     expect((await harness.markOneTime(client.id, ids.may)).statusCode).toBe(201)
@@ -200,7 +200,6 @@ describe("linking earlier monthly recordings to a past-dated SIP schedule", () =
       "links.1.month",
       "links.2.entryId",
       "links.3.entryId",
-      "links.4.entryId",
       "links.5.entryId",
       "links.6.entryId",
       "links.7.month",
@@ -305,7 +304,7 @@ describe("marking an earlier recording as one-time", () => {
     )
   })
 
-  test("can be changed to a SIP month later, and refuses corrections, reversed or linked recordings and other clients", async () => {
+  test("can be changed to a SIP month later, and refuses reversed or linked recordings and other clients", async () => {
     const client = await harness.stack.seedUser()
     const stranger = await harness.stack.seedUser()
     const fundId = await harness.seedFund("Recategorised Fund")
@@ -323,11 +322,9 @@ describe("marking an earlier recording as one-time", () => {
     )
     expect((audit.metadata as Record<string, unknown>).previousCategory).toBe("one_time")
 
-    const correction = await recordOn(client.id, fundId, "2025-03-03", CORRECTION)
     const reversed = await recordOn(client.id, fundId, "2025-03-04", EARLIER)
     await reverse(client.id, reversed)
     const before = await historyCounts()
-    expectConflict(await harness.markOneTime(client.id, correction))
     expectConflict(await harness.markOneTime(client.id, reversed))
     expectConflict(await harness.markOneTime(client.id, entryId))
     expect((await harness.markOneTime(stranger.id, entryId)).statusCode).toBe(404)
