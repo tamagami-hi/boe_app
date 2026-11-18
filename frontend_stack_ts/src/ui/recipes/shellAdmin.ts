@@ -10,13 +10,13 @@ export const ADMIN_MESH = [
 export const ADMIN_TOPBAR = [
   "sticky top-[var(--be-chrome-offset)] z-header flex items-center gap-3",
   "min-h-[calc(var(--be-header-h)+var(--be-chrome-safe-top))]",
-  "px-[max(var(--be-space-5),var(--be-safe-left))]",
+  "pl-[max(var(--be-space-5),var(--be-safe-left))] pr-[max(var(--be-space-5),var(--be-safe-right))]",
   "pt-[calc(var(--be-space-2)+var(--be-chrome-safe-top))] pb-2",
   "bg-[color-mix(in_srgb,var(--be-parchment-2)_78%,transparent)]",
   "backdrop-blur-[18px] backdrop-saturate-150",
   "shadow-[0_1px_0_var(--be-hairline)]",
   "lg:min-h-0 lg:justify-end lg:bg-transparent lg:pt-8 lg:pb-4",
-  "lg:px-[max(var(--be-page-pad-x-lg),var(--be-safe-right))]",
+  "lg:pl-[max(var(--be-page-pad-x-lg),var(--be-safe-left))] lg:pr-[max(var(--be-page-pad-x-lg),var(--be-safe-right))]",
   "lg:shadow-none lg:backdrop-blur-none lg:backdrop-saturate-100",
 ].join(" ")
 
@@ -36,7 +36,7 @@ export const ADMIN_ACTION_LINK = [
 
 export const ADMIN_DOMAIN_STRIP = [
   "relative z-1 flex gap-2 overflow-x-auto lg:hidden",
-  "px-[max(var(--be-space-5),var(--be-safe-left))] py-3",
+  "pl-[max(var(--be-space-5),var(--be-safe-left))] pr-[max(var(--be-space-5),var(--be-safe-right))] py-3",
   "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
 ].join(" ")
 

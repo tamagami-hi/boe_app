@@ -8,7 +8,7 @@ export const CLIENT_MESH = [
 export const CLIENT_HEADER = [
   "sticky top-[var(--be-chrome-offset)] z-header flex items-center gap-2 lg:hidden",
   "min-h-[calc(var(--be-header-h)+var(--be-chrome-safe-top))]",
-  "px-[max(var(--be-space-4),var(--be-safe-left))]",
+  "pl-[max(var(--be-space-4),var(--be-safe-left))] pr-[max(var(--be-space-4),var(--be-safe-right))]",
   "pt-[calc(var(--be-space-2)+var(--be-chrome-safe-top))] pb-2",
   "bg-[color-mix(in_srgb,var(--be-parchment-2)_78%,transparent)]",
   "backdrop-blur-[18px] backdrop-saturate-150",

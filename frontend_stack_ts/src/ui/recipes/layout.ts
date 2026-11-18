@@ -2,9 +2,9 @@ export type PageWidth = "default" | "wide" | "form"
 
 export const PAGE_BASE = [
   "relative mx-auto flex w-full flex-col",
-  "px-[max(var(--be-page-pad-x),var(--be-safe-left))]",
-  "md:px-[max(var(--be-page-pad-x-md),var(--be-safe-left))]",
-  "lg:px-[max(var(--be-page-pad-x-lg),var(--be-safe-left))]",
+  "pl-[max(var(--be-page-pad-x),var(--be-safe-left))] pr-[max(var(--be-page-pad-x),var(--be-safe-right))]",
+  "md:pl-[max(var(--be-page-pad-x-md),var(--be-safe-left))] md:pr-[max(var(--be-page-pad-x-md),var(--be-safe-right))]",
+  "lg:pl-[max(var(--be-page-pad-x-lg),var(--be-safe-left))] lg:pr-[max(var(--be-page-pad-x-lg),var(--be-safe-right))]",
   "pt-8 md:pt-10 lg:pt-16",
   "pb-[var(--be-space-12)] lg:pb-16",
   "gap-8 md:gap-10 lg:gap-12",
