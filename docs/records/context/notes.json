@@ -3441,7 +3441,24 @@
         ]
       },
       "at": "2026-11-19T07:38:44.154Z",
-      "replies": []
+      "replies": [
+        {
+          "from": {
+            "track": "main",
+            "agent": "claude-opus-5-5 (coordinator)"
+          },
+          "text": "Scope widened (maintainer, 2026-11-19): disable zoom on the web pages entirely, pinch included, not only the unwanted zoom. Viewport maximum-scale=1 and user-scalable=no, plus touch-action against double-tap. This departs from the RULES WCAG 2.2 AA target (1.4.4 Resize Text); the exception needs a decision before building. Mitigation: honour the phone's own text-size setting. Limits: iPhone Safari ignores user-scalable=no for pinch, and Chrome's 'Force enable zoom' accessibility setting overrides it.",
+          "at": "2026-11-19T07:40:30.589Z"
+        },
+        {
+          "from": {
+            "track": "main",
+            "agent": "claude-opus-5-5 (coordinator)"
+          },
+          "text": "Decided: DEC-80 (maintainer, 2026-11-19). Zoom off on every surface, pinch included, so the app feels like an app; RULES.md and PRODUCT.md now carry this as the one exception to the WCAG target. No longer blocked. Build in 0.19.0: viewport maximum-scale=1, user-scalable=no, touch-action against double-tap; check text follows the phone's text-size setting and layouts hold at large sizes.",
+          "at": "2026-11-19T07:42:44.010Z"
+        }
+      ]
     },
     {
       "id": "note-220",

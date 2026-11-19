@@ -790,6 +790,16 @@
       "state": "in force",
       "by": "operator",
       "on": "2026-11-19T07:30:25.247Z"
+    },
+    {
+      "id": "DEC-80",
+      "group": "admin-improvements",
+      "text": "Page zoom is off on every surface, web and APK, pinch included, so the app feels like an app and not a browser (maintainer, 2026-11-19). This is the one exception to the WCAG 2.2 AA target in RULES.md (1.4.4 Resize Text), written into RULES.md and PRODUCT.md. The APKs already set zoomEnabled false; the web pages get viewport maximum-scale=1 and user-scalable=no plus touch-action against double-tap, built in 0.19.0 (note-219). Text follows the phone's own text-size setting instead, and layouts must hold at large text sizes. Limits outside the app: iPhone Safari ignores user-scalable=no for pinch, and Chrome's Force enable zoom setting overrides it.",
+      "since": "2026-11-19",
+      "status": "in force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-19T07:42:43.682Z"
     }
   ],
   "replaced": [

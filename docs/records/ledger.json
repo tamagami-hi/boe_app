@@ -2831,6 +2831,10 @@
     {
       "commit": "468b02f",
       "note": "Release cut v0.18.6 by the maintainer: 0.18.5's code plus two records-only commits, cut so origin/main and the tag match for the production export (0.18.6-20261118T191706Z)."
+    },
+    {
+      "commit": "3c09adb",
+      "note": "RULES.md and PRODUCT.md: page zoom off on every surface, the one exception to the WCAG 2.2 AA target (DEC-80, maintainer 2026-11-19)"
     }
   ]
 }
