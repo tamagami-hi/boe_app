@@ -76,4 +76,5 @@ informed, never rushed or talked down to.
 
 WCAG 2.2 AA, as RULES.md "Product, copy, and accessibility" sets out. Treat plain
 language, readable type and generous touch targets as part of accessibility on
-every surface, phone and web alike.
+every surface, phone and web alike. Page zoom is off everywhere so the app feels
+like an app; text follows the phone's own text-size setting instead (DEC-80).

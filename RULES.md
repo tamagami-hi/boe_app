@@ -260,6 +260,9 @@ verification, and documentation maintenance.** It consolidates the former
   never a chart series. Reuse the existing design layer.
 - Target WCAG 2.2 AA: semantic controls/labels, keyboard operation, visible focus,
   readable contrast, generous touch targets, and reduced-motion alternatives.
+  One exception: page zoom is off on the web and in the APKs, pinch included, so
+  the app feels like an app and not a browser (DEC-80). Text follows the phone's
+  own text-size setting instead, and layouts must hold at large text sizes.
 
 ## Preparing context
 
