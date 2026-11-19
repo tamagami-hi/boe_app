@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 219,
+  "nextNumber": 221,
   "notes": [
     {
       "id": "note-1",
@@ -3423,6 +3423,43 @@
         ]
       },
       "at": "2026-11-18T20:44:32.394Z",
+      "replies": []
+    },
+    {
+      "id": "note-219",
+      "from": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "to": "all",
+      "kind": "request",
+      "text": "For 0.19.0 (maintainer, 2026-11-19): stop the web page zooming in on some phones (mobile browsers; the APKs already set zoomEnabled false). Text inputs are 16px (INPUT_BASE text-md), so check smaller controls that trigger focus zoom (selects, comboboxes, textareas) and double-tap zoom (touch-action: manipulation). index.html viewport has no maximum-scale; blocking pinch zoom fails WCAG 1.4.4, so settle that at design. Ask which phones and browsers.",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/index.html",
+          "frontend_stack_ts/src/ui/recipes/field.ts"
+        ]
+      },
+      "at": "2026-11-19T07:38:44.154Z",
+      "replies": []
+    },
+    {
+      "id": "note-220",
+      "from": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "to": "all",
+      "kind": "request",
+      "text": "For 0.19.0 (maintainer, 2026-11-19): on phones using the 3-button navigation bar (not gestures), the apps leave extra space under the bottom nav. The OS already reserves the bar's height, and BOTTOM_NAV adds pb-safe-bottom (--be-safe-bottom = SystemBars insetsHandling 'css' --safe-area-inset-bottom, else env()), so the space is likely counted twice. Fix so the inset applies only when the WebView draws behind the bar. Check other users of --be-safe-bottom (sheets, auth, toasts). Test on the AVD in 3-button and gesture modes.",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/src/ui/recipes/layout.ts",
+          "frontend_stack_ts/src/ui/tokens/tokens-core.css",
+          "frontend_stack_ts/capacitor.config.ts"
+        ]
+      },
+      "at": "2026-11-19T07:38:44.387Z",
       "replies": []
     }
   ]
