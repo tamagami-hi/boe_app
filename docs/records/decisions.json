@@ -780,6 +780,16 @@
       "state": "in force",
       "by": "operator",
       "on": "2026-11-18T14:22:21.810Z"
+    },
+    {
+      "id": "DEC-79",
+      "group": "admin-improvements",
+      "text": "Production is built from a production branch on origin that the maintainer pushes a release onto first (approved 2026-11-19, landed 87d03f5). status.sh > Git > Push a release to production, also offered after Cut a release (default No), shows production's tip and newest tags, then lists up to 5 newer release tags on main not yet on production; a confirmed choice is pushed fast-forward only, never forced, and only from a terminal. export.sh --prod builds only that branch's tip, which must be exactly a release tag, in a temporary worktree under .temp/prod-export/ (no --tag); production APKs build there too. deploy.sh --prod needs a stable, clean bundle whose commit is both origin's live production tip and its live tag. The branch means approved for production, not live; after a rollback it stays at the newer release and the fix is a newer tag. Records commits on main after a cut no longer block a production export. Agents never push. The first export through this flow is the first release cut after 87d03f5; the maintainer creates production once by pushing v0.18.6 from the menu.",
+      "since": "2026-11-19",
+      "status": "in force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-19T07:30:25.247Z"
     }
   ],
   "replaced": [

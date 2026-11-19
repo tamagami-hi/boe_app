@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "track": "p-prod-branch",
+  "current": {
+    "task": "P-prod-branch",
+    "from": "claude-opus-5-5 builder p-prod-branch",
+    "track": "p-prod-branch",
+    "at": "2026-11-18T20:51:28.002Z",
+    "lines": [
+      "Rebuild (push-first, p-prod-branch-2.prompt.md) on top of round 1 (b52783a1..7dbe82bd). New commits: 11cd2487 feat (push menu, production-branch export and APKs, deploy gate, review fixes); b6f98b73 docs (WORKFLOW, DEPLOY Production gate, release_manager README); 21135e23 test (missing-production message).",
+      "status.sh Git → 4) Push a release to production (lib/production_push.sh): git fetch --no-tags origin + one ls-remote of main, production and v* tags; refuses on either failure. Shows production's tip and newest 5 tags on it (tip marked), then up to 5 newest vX.Y.Z on origin main, not on production, descending from its tip. Confirm → git push origin <sha>:refs/heads/production (no force), then ls-remote check. No terminal: prints the command. Offered y/N after Cut a release.",
+      "export.sh --prod (lib/prod_export.sh): --tag removed. Reads origin production live; tip must be exactly an origin release tag, VERSION must match, local tag must equal it (fetched if missing); worktree under .temp/prod-export/; runs the tag's own export.sh with --production-worktree. That flag works only in a detached checkout under .temp/prod-export/, and the child refuses to build unless stable AND origin production + tag == HEAD. BOE_PROD_EXPORT_CHILD is gone. Traps set before mktemp.",
+      "status.sh Exports → Build + ship APKs → production now builds in the same production worktree (prod_apk_from_production) and ships with expected git = production tip, mode prod.",
+      "deploy.sh --prod: version stable, git_sha 40-hex, git_dirty via manifest_git_dirty (only boolean false passes; string \"false\", null, missing refused), git_sha == origin production tip AND origin tag (one ls-remote). Ancestry check and post-deploy offer removed. remote_release_refs_match (origin/main) removed with its two release_tag_contract asserts.",
+      "Dashboard: show_production_branch reads production live via ls-remote, shows it next to the prod stack version status already fetched, warns on mismatch, says when the newest tag is not on production.",
+      "Green: verify.sh on 21135e23 = 20261118T204932Z-2107050 (119 passed, 0 failed, 1 skipped --remote). Evidence: deploy.sh --prod smoke with stubbed ssh = 20261118T205009Z-2130792 (dev, dirty, \"false\", missing sha refused; v0.18.6 refused: origin has no production branch yet).",
+      "Red (21135e23, restored + cmp): G1 tostring git_dirty 20261118T205022Z-2134318; G2 no 40-hex 20261118T205022Z-2134575; G3 no prod-tip check 20261118T205022Z-2134879; G4 no tag check 20261118T205023Z-2135215; G5 release gate no remote tag 20261118T205023Z-2135607.",
+      "Red push: P1 on-production filter off 20261118T205035Z-2137564; P2 descendant filter off 20261118T205036Z-2138189; P3 limit 50 20261118T205037Z-2139135; P4 needs tip when absent 20261118T205037Z-2139502; P5 --force 20261118T205037Z-2139914; P6 no confirmation 20261118T205038Z-2140804; P7 ignore fetch failure 20261118T205038Z-2141217.",
+      "Red export: E1 cleanup off 20261118T205054Z-2144248; E2 env honoured 20261118T205054Z-2144480; E3 missing-production check off 20261118T205055Z-2145041; E4 tip-tag check off 20261118T205055Z-2145173; E5 local-tag check off 20261118T205055Z-2145351; E6 VERSION check off 20261118T205056Z-2145843; E7 manifest check off 20261118T205056Z-2146563; E8 worktree at operator HEAD 20261118T205056Z-2146947. tally files all reds as 'other' (it does not read the shell tests' FAIL: line).",
+      "Choices: tags are read from origin with ls-remote (peeled), not from local tags, and the fetch uses --no-tags so a stale local tag cannot block the menu; the export fetches only the one tag it needs and refuses if the local copy differs. The child refuses non-stable builds up front instead of building a dev bundle.",
+      "UNVERIFIED: --with-apk and production APK paths (npm ci + Gradle in the worktree) not run; Ctrl-C cleanup not tested; shellcheck not run (not installed, not in CI).",
+      "Operator: first push v0.18.6 via Git → Push a release to production to create production. The first production export through this flow is the first release cut after this lane lands (each export runs its tag's own scripts)."
+    ]
+  },
+  "history": [
+    {
+      "task": "P-prod-branch",
+      "from": "claude-opus-5-5 builder p-prod-branch",
+      "track": "p-prod-branch",
+      "at": "2026-11-18T20:27:04.580Z",
+      "lines": [
+        "Commits on track/p-prod-branch (base 468b02fd): b52783a1 tag gate + origin/production; e350a406 prod export from a temp tag worktree; 91dcf68a status dashboard block (status.sh split into lib/status_dashboard.sh, rule 12); 915876a2 docs (WORKFLOW, DEPLOY Production gate, release_manager README); aa54ca72 + 7dbe82bd test cases for the local tag.",
+        "New libs: release_manager/lib/production_gate.sh (production_release_gate, production_deploy_gate, production_branch_eval/push/offer), lib/prod_export.sh (prod_export_from_tag, bundle_prune_oldest), lib/status_dashboard.sh (moved unchanged + show_production_branch).",
+        "Tests: release_manager/tests/production_gate.test.sh, prod_export_worktree.test.sh; both wired into verify.sh (116 assertions, was 109).",
+        "Green: verify.sh on final head 7dbe82bd = 20261118T202510Z-1877498 (116 passed, 0 failed, 1 skipped: --remote). Evidence: deploy.sh --prod gate smoke with stubbed ssh = 20261118T202256Z-1832736 (read-only ls-remote of origin; no VPS).",
+        "Red controls on 7dbe82bd (each restored, cmp + git diff clean): R1 old origin/main gate 20261118T202503Z-1874999; R2 no remote tag check 20261118T202503Z-1875129; R3 no clean check 20261118T202503Z-1875298; R4 no HEAD==local tag 20261118T202452Z-1872351; R5 ancestry off 20261118T202452Z-1872515; R6 worktree cleanup off 20261118T202452Z-1872893; R7 manifest check off 20261118T202452Z-1873031; R8 forced push 20261118T202503Z-1875434.",
+        "tally recorded every red as 'other': its classifier does not read the shell tests' 'FAIL:' line. Each log shows the failing assertion. First R4 (20261118T202421Z-1865205, aa54ca72) exited 0 and exposed a test gap, fixed in 7dbe82bd.",
+        "Choice: the worktree runs the TAG's own export.sh, so a bundle is a function of the tag incl. tooling. Tags <= v0.18.6 carry the old origin/main gate: their worktree build comes out dev and the parent refuses it. The next cut after landing works.",
+        "Choice: --with-apk links keystore.properties, keystore/* files, local.properties from the operator checkout (each must be gitignored at the tag) and runs npm ci in packages/contracts and frontend_stack_ts. UNVERIFIED: not run (Gradle needs permission). STATIC: links keep a clone clean; frontend reads only VITE_BEO_* vars that boe_update.sh sets, so no .env.local in the worktree is harmless.",
+        "Choice: --yes or no terminal never moves origin/production; the git push command is printed. Missing git_dirty in a manifest now counts as dirty (old jq default read it clean). Dev export labels use the same tag gate (stable when origin has the tag, main irrelevant); dev deploy unchanged.",
+        "Left: status.sh Exports > Build + ship APKs (production) still uses prepare_release_git + remote_release_refs_match, so it needs main == origin/main == tag; documented in DEPLOY/README. Prod APKs go in the bundle instead.",
+        "Not run: shellcheck (not installed, not in CI). Signal (Ctrl-C) cleanup relies on the subshell INT/TERM/EXIT traps; not tested.",
+        "One-time setup for the maintainer: git push origin 468b02fd447b97aec81c15914929eaee3348763f:refs/heads/production ; check with git ls-remote origin refs/heads/production.",
+        "No app code, no runtime steps for the emulator. rule 11: tooling only; manifest format unchanged; the staged 0.18.6 prod bundle passes the new gate; rollback.sh untouched."
+      ]
+    }
+  ]
+}

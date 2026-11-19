@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "date": "2026-11-19",
+  "events": [
+    {
+      "at": "2026-11-19T07:27:05.046Z",
+      "session": "c118a63a-a045-45c3-b2b1-2101cc1a8f96",
+      "track": "main",
+      "agent": "claude-opus-5-5 (coordinator)",
+      "verb": "session_expire",
+      "target": "idle 629 min"
+    },
+    {
+      "at": "2026-11-19T07:30:25.256Z",
+      "session": "cli",
+      "track": "main",
+      "agent": "cli",
+      "verb": "decision_add",
+      "target": "admin-improvements / DEC-79: in force"
+    },
+    {
+      "at": "2026-11-19T07:30:45.670Z",
+      "session": "bc6ebd0f-d328-45a7-8090-0f3f41df5299",
+      "track": "main",
+      "agent": "claude-opus-5-5 (coordinator)",
+      "verb": "session_open"
+    }
+  ]
+}

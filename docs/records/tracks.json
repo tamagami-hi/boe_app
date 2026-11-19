@@ -1719,7 +1719,12 @@
         "track": "main",
         "agent": "claude-opus-5-5 (coordinator)"
       },
-      "openedAt": "2026-11-18T19:56:07.348Z"
+      "openedAt": "2026-11-18T19:56:07.348Z",
+      "closedAt": "2026-11-18T20:57:49.130Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      }
     }
   ]
 }

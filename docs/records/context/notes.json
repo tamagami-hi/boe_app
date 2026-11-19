@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 215,
+  "nextNumber": 219,
   "notes": [
     {
       "id": "note-1",
@@ -3347,6 +3347,82 @@
         "task": "M19-patches-0-18:P-fixes-0185"
       },
       "at": "2026-11-18T17:26:02.888Z",
+      "replies": []
+    },
+    {
+      "id": "note-215",
+      "from": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "to": "all",
+      "kind": "request",
+      "text": "For 0.19.0 (maintainer, 2026-11-19): in the admin user ledger (UserDetailScreen), under Portfolio summary, add a breakdown of the client's funds. Today PortfolioSummarySection shows only totals across all funds (ReturnFigures). Per fund: invested, current value and return, likely opening into that fund's SIP and one-time investments as the client's Breakdown tab shows them (DEC-76). Build on getAdminClientInvestments and the breakdown pass, not a new calculation. Settle the depth (per-fund totals or the full SIP/one-time split) at the 0.19.0 design.",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/src/features/admin/client-returns/PortfolioSummarySection.tsx",
+          "frontend_stack_ts/src/features/admin/users/UserDetailScreen.tsx"
+        ]
+      },
+      "at": "2026-11-18T20:17:44.554Z",
+      "replies": []
+    },
+    {
+      "id": "note-216",
+      "from": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "to": "all",
+      "kind": "request",
+      "text": "For 0.19.0 (maintainer, 2026-11-19): a visible Back button to the parent page in the web view of both apps, e.g. Users > a user's ledger > Back returns to Users. Admin has none: only Android Back uses the routes' declared parents (adminRoutes back: {kind: 'parent'}, NativeBackCoordinator). The client's Go back sits in CLIENT_HEADER, which is lg:hidden, so wide screens lose it. Reuse the same parent paths for one button in both shells; keep list filters and tabs on return (see L6, Back dropping ?view=breakdown).",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/src/shells/admin/AdminFrame.tsx",
+          "frontend_stack_ts/src/shells/client/ClientFrame.tsx",
+          "frontend_stack_ts/src/ui/recipes/shellClient.ts",
+          "frontend_stack_ts/src/app/routing/adminRoutes.ts"
+        ]
+      },
+      "at": "2026-11-18T20:38:10.834Z",
+      "replies": []
+    },
+    {
+      "id": "note-217",
+      "from": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "to": "all",
+      "kind": "request",
+      "text": "For 0.19.0 (maintainer, 2026-11-19): exempt the .env-seeded logins (prod: client@boe.local, admin@beonedge.in; no mailboxes) from all email. Today mail is blocked only after a provider bounce/complaint (email_suppressions, reason bounce|complaint, needs source_event_id). Proposed: an admin 'Email off' switch per account on the user ledger, recorded with actor and time; dispatch cancels, recipient counts and admin sends exclude it; expand-only migration. Alternative to settle at design: skip SEED_*_EMAIL addresses automatically.",
+      "about": {
+        "paths": [
+          "backend_controller/src/domain/email/dispatchDueDeliveries.ts",
+          "backend_controller/src/repositories/emailSuppressionRepository.ts",
+          "backend_controller/src/repositories/appUpdateAnnouncementRepository.ts",
+          "frontend_stack_ts/src/features/admin/users/UserDetailScreen.tsx"
+        ]
+      },
+      "at": "2026-11-18T20:42:04.978Z",
+      "replies": []
+    },
+    {
+      "id": "note-218",
+      "from": {
+        "track": "main",
+        "agent": "claude-opus-5-5 (coordinator)"
+      },
+      "to": "all",
+      "kind": "request",
+      "text": "For 0.19.0 (maintainer, 2026-11-19): one-click full returns. (1) By 'Withdrawal amount in rupees' (MaturityPanel, per fund): a button filling the exact current value to the paisa. (2) Return one investment whole (a SIP or one-time block): new, since withdrawals spread over the fund and per-investment maturity is a DEC-76 non-goal. (3) Return everything for a client across all funds in one confirmed action. A full return must leave every block at exactly zero, with no stray paise blocking exit (M1, note-214: Rs 0.15 left at value 0).",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/src/features/admin/client-values/MaturityPanel.tsx",
+          "backend_controller/src/domain/client/investmentBreakdownPass.ts"
+        ]
+      },
+      "at": "2026-11-18T20:44:32.394Z",
       "replies": []
     }
   ]

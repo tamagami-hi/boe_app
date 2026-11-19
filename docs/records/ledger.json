@@ -2649,14 +2649,16 @@
         {
           "id": "P-prod-branch",
           "track": "p-prod-branch",
-          "status": "planned",
+          "status": "landed",
+          "commit": "87d03f5",
           "also": [],
           "brief": "Production gate on the vX.Y.Z tag instead of origin/main; production export from a temporary worktree at the tag; origin/production branch fast-forwarded after each production deploy and required as an ancestor; tests with red controls; WORKFLOW, DEPLOY and release_manager README.",
           "paths": [
             "release_manager",
             "WORKFLOW.md",
             "DEPLOY.md"
-          ]
+          ],
+          "landedAt": "2026-11-18T20:57:24.438Z"
         }
       ]
     }

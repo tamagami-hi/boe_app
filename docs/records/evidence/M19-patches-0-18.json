@@ -16312,6 +16312,903 @@
       "note": "R3: splitBodyOf without the zero-part filter; expect the zero-parts body case to fail",
       "head": "f093e202bb2d08c0b02e5e0b3d8ec0da30a0b211",
       "dirty": true
+    },
+    {
+      "id": "78d6b398-cc9b-442d-ac22-28b5690ca9df",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "green",
+      "command": [
+        "bash",
+        "release_manager/verify.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:22:15Z",
+      "seconds": 26,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202215Z-1810084-green.log",
+        "sha256": "c84316d3f53d58e96725dd95ae9c18cb79303b776207780aa5692e88969b6ba5",
+        "bytes": 7479
+      },
+      "note": "release_manager/verify.sh on 915876a2: shell syntax, path contracts and all 17 release_manager tests incl. production_gate and prod_export_worktree",
+      "head": "915876a27adc8a90124bc44845ef50685ada9bf2",
+      "dirty": false
+    },
+    {
+      "id": "e0a0260f-c0a5-466b-9eb5-b575bcc5a23b",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "evidence",
+      "command": [
+        "bash",
+        ".temp/p-prod-branch/deploy-smoke.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:22:56Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202256Z-1832736-evidence.log",
+        "sha256": "ba00827920a926e4f88901dc2c3ecae37322f899a04656e707700a7ddcc0c339",
+        "bytes": 1062
+      },
+      "note": "deploy.sh --prod gate smoke: crafted bundles, failing ssh stub, bogus SSH alias; read-only ls-remote of origin's v0.18.6 tag and production branch",
+      "head": "915876a27adc8a90124bc44845ef50685ada9bf2",
+      "dirty": false
+    },
+    {
+      "id": "3fe6017c-7a94-473f-9a7b-bf16f6c348b6",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "green",
+      "command": [
+        "bash",
+        "release_manager/verify.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:23:38Z",
+      "seconds": 26,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202338Z-1840550-green.log",
+        "sha256": "c84316d3f53d58e96725dd95ae9c18cb79303b776207780aa5692e88969b6ba5",
+        "bytes": 7479
+      },
+      "note": "release_manager/verify.sh on aa54ca72 (final head): shell syntax, path contracts and all 17 release_manager tests",
+      "head": "aa54ca72a07dc39604d6dfc3b928ecbf87f23ddd",
+      "dirty": false
+    },
+    {
+      "id": "570ee0ef-9483-4b07-aa7f-0c276101e6ab",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:24:13Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202413Z-1863138-red.log",
+        "sha256": "7ce3e55cea4d05df7a9b93c8ab2b6e7d86a3cd960040213ef83c569584def4c1",
+        "bytes": 87
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R1: gate put back on origin/main (remote_release_refs_match) must refuse the clean tag checkout while main is ahead",
+      "head": "aa54ca72a07dc39604d6dfc3b928ecbf87f23ddd",
+      "dirty": true
+    },
+    {
+      "id": "169e1aa2-33ae-4a57-a904-6c71215256b7",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:24:20Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202420Z-1864904-red.log",
+        "sha256": "9a7cece16cadb384bb825f3bd8a0a21eb7cd240e19eff0c94432771f91ac542b",
+        "bytes": 71
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R2: gate without the live origin tag check must fail on a moved or missing remote tag",
+      "head": "aa54ca72a07dc39604d6dfc3b928ecbf87f23ddd",
+      "dirty": true
+    },
+    {
+      "id": "e11186a5-a3b0-4e1c-8c3a-0cd48f096ee9",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:24:20Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202420Z-1865069-red.log",
+        "sha256": "1e09e710675482b2d711f54f84d734071ee76cc7815e46ae0bef4ff8a27cb4b7",
+        "bytes": 57
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R3: gate without the clean-tree check must fail on a dirty tree",
+      "head": "aa54ca72a07dc39604d6dfc3b928ecbf87f23ddd",
+      "dirty": true
+    },
+    {
+      "id": "8db90ada-ffd4-4fb7-91bb-260d60577277",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:24:21Z",
+      "seconds": 0,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202421Z-1865205-red.log",
+        "sha256": "fb8e08e07e619e9a318ee8bb7ae0173f8924f54fe2aff31d80c91cfb12bd350f",
+        "bytes": 87
+      },
+      "note": "recorded as other, not red: it exited 0; R4: gate without the HEAD-is-the-local-tag check must fail",
+      "head": "aa54ca72a07dc39604d6dfc3b928ecbf87f23ddd",
+      "dirty": true
+    },
+    {
+      "id": "5959a6ff-a368-4780-856f-c3157f60d8ff",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:24:52Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202452Z-1872351-red.log",
+        "sha256": "c67f963674c16b5d4c98d3f0af8d34e07322fff3fa4808a3791716867aa139e6",
+        "bytes": 81
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R4: gate without the HEAD-is-the-local-tag comparison must fail on a stale local tag",
+      "head": "7dbe82bd853fcd3985a029dbccd05e188cda8de6",
+      "dirty": true
+    },
+    {
+      "id": "742255ba-765c-485f-a4df-15e4817afff4",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:24:52Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202452Z-1872515-red.log",
+        "sha256": "6439bbb3b3b0be0f9246726174a4deef55805b20c8262d59825568d43e2e536a",
+        "bytes": 67
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R5: origin/production ancestry disabled must let an older or diverged release through and fail the test",
+      "head": "7dbe82bd853fcd3985a029dbccd05e188cda8de6",
+      "dirty": true
+    },
+    {
+      "id": "bc470ace-ec54-479b-adf0-3914bee9aea0",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/prod_export_worktree.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:24:52Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202452Z-1872893-red.log",
+        "sha256": "e4d2e7e87ca524ed37695ab4c5e6daf1bd1b0142aa2e8bda80eef1e5873d638f",
+        "bytes": 62
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R6: worktree cleanup disabled must leave the temporary worktree behind after a failed export",
+      "head": "7dbe82bd853fcd3985a029dbccd05e188cda8de6",
+      "dirty": true
+    },
+    {
+      "id": "b22f2d04-bad9-4cb3-bb3b-5f6e0381894d",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/prod_export_worktree.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:24:52Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202452Z-1873031-red.log",
+        "sha256": "9d99b3ab9af7f6a33a2546775d9d230843b19823f12423cd95ccc2e84865139b",
+        "bytes": 66
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R7: manifest check disabled must stage a dev-labelled bundle as the production export",
+      "head": "7dbe82bd853fcd3985a029dbccd05e188cda8de6",
+      "dirty": true
+    },
+    {
+      "id": "aab43a71-7961-436e-be20-a00cf81cc16f",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:25:03Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202503Z-1874999-red.log",
+        "sha256": "7ce3e55cea4d05df7a9b93c8ab2b6e7d86a3cd960040213ef83c569584def4c1",
+        "bytes": 87
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R1 (final head): gate put back on origin/main must refuse the clean tag checkout while main is ahead",
+      "head": "7dbe82bd853fcd3985a029dbccd05e188cda8de6",
+      "dirty": true
+    },
+    {
+      "id": "b7eca141-077c-46f8-96e4-01ae63749fad",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:25:03Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202503Z-1875129-red.log",
+        "sha256": "9a7cece16cadb384bb825f3bd8a0a21eb7cd240e19eff0c94432771f91ac542b",
+        "bytes": 71
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R2 (final head): gate without the live origin tag check must fail on a moved or missing remote tag",
+      "head": "7dbe82bd853fcd3985a029dbccd05e188cda8de6",
+      "dirty": true
+    },
+    {
+      "id": "22b4360a-3509-4cca-b400-bbac796bee58",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:25:03Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202503Z-1875298-red.log",
+        "sha256": "1e09e710675482b2d711f54f84d734071ee76cc7815e46ae0bef4ff8a27cb4b7",
+        "bytes": 57
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R3 (final head): gate without the clean-tree check must fail on a dirty tree",
+      "head": "7dbe82bd853fcd3985a029dbccd05e188cda8de6",
+      "dirty": true
+    },
+    {
+      "id": "3a45296d-fe9b-4e4f-a403-7f8dae93578c",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:25:03Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202503Z-1875434-red.log",
+        "sha256": "b8dcfeade653b4549d6f1a049b6e28afde050e1fef161af0e8322d991c1dae7a",
+        "bytes": 54
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; R8: a forced branch push must move origin/production off a non-fast-forward and fail the test",
+      "head": "7dbe82bd853fcd3985a029dbccd05e188cda8de6",
+      "dirty": true
+    },
+    {
+      "id": "65e7a08a-6246-4cf6-8ec4-c1ed0c02fb1b",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "green",
+      "command": [
+        "bash",
+        "release_manager/verify.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:25:10Z",
+      "seconds": 26,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T202510Z-1877498-green.log",
+        "sha256": "c84316d3f53d58e96725dd95ae9c18cb79303b776207780aa5692e88969b6ba5",
+        "bytes": 7479
+      },
+      "note": "release_manager/verify.sh on 7dbe82bd (final head): shell syntax, path contracts and all 17 release_manager tests",
+      "head": "7dbe82bd853fcd3985a029dbccd05e188cda8de6",
+      "dirty": false
+    },
+    {
+      "id": "02ee3fce-8efd-4bf4-a7d2-d6035283ece7",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "green",
+      "command": [
+        "bash",
+        "release_manager/verify.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:49:32Z",
+      "seconds": 27,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T204932Z-2107050-green.log",
+        "sha256": "4ae47f5a23ba8911e5c8d243640c9a5ca413d9fcd106f6c919da2d53f99ba3bb",
+        "bytes": 7674
+      },
+      "note": "rebuild (push-first): release_manager/verify.sh on 21135e23, all 18 release_manager tests incl. production_gate, production_push, prod_export_worktree",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": false
+    },
+    {
+      "id": "383af7b2-563a-4921-8b0e-f565cf4a25e0",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "evidence",
+      "command": [
+        "bash",
+        ".temp/p-prod-branch/deploy-smoke.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:09Z",
+      "seconds": 4,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205009Z-2130792-evidence.log",
+        "sha256": "e86abefd3a2b274b9b70df2dfb88fd2fbe5b8ef8ac7d0471163432d01b70557c",
+        "bytes": 824
+      },
+      "note": "rebuild: deploy.sh --prod gate smoke on 21135e23 with crafted bundles, failing ssh stub and bogus SSH alias; read-only ls-remote of origin (no production branch yet)",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": false
+    },
+    {
+      "id": "40e3d866-df73-4ca4-aa8e-24568365ab0b",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:22Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205022Z-2134318-red.log",
+        "sha256": "bfdc8f593ca7c45231598dfa694ef3f8710a530ff98ffd0669fb400b8527dd9e",
+        "bytes": 80
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; G1: git_dirty read with tostring must let the string \"false\" through and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "9f717133-cbbf-4a72-85b2-6f65cde6a9ae",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:22Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205022Z-2134575-red.log",
+        "sha256": "f5e38d0bb5f2845c0d0a883751c6d85661ddd926ff0c5e77cddc0d913e99a0b6",
+        "bytes": 48
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; G2: deploy gate without the explicit 40-hex git_sha check must fail on a missing or short git_sha",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "b9844a07-d93c-431d-a267-2ce21184c0e5",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:22Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205022Z-2134879-red.log",
+        "sha256": "91258a97b2ca4c3f7088a0995f20947960fed02f2659da958385cb561ba949a4",
+        "bytes": 75
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; G3: deploy gate without the production-tip check must accept a tagged release that is not production and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "14cf589c-7f84-4301-b75c-201dabd81276",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:23Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205023Z-2135215-red.log",
+        "sha256": "818dd7bb0d48c9dd08c80937a36673bc25c8501afd9671b4ce97a79650269997",
+        "bytes": 78
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; G4: deploy gate without the live tag check must accept a moved tag and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "d9fa2145-bead-4a4f-a6f4-b206598ca9cc",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_gate.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:23Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205023Z-2135607-red.log",
+        "sha256": "9a7cece16cadb384bb825f3bd8a0a21eb7cd240e19eff0c94432771f91ac542b",
+        "bytes": 71
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; G5: release gate without the live origin tag check must fail on a moved or missing remote tag",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "fc261f0e-4016-4cac-9e9f-469ef51fae97",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_push.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:35Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205035Z-2137564-red.log",
+        "sha256": "997fe6d8f7bc2ed449e0209639886bd552a18b857c94bcdcbbc29d206530385a",
+        "bytes": 113
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; P1: menu without the on-production filter must offer the production release again and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "80e6ce6d-77d0-4e6b-9b10-0b7184bbd588",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_push.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:36Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205036Z-2138189-red.log",
+        "sha256": "a9200dee93bcc82acdb8f9b0a220c435e14ec856c2c7f90aa24596f79f007f46",
+        "bytes": 110
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; P2: menu without the descendant filter must offer non-fast-forward releases and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "c4c512fa-8d8a-4a9b-a78a-4cb31202a6af",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_push.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:37Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205037Z-2139135-red.log",
+        "sha256": "cddb72d854711bd66e045875badf9ce2602891943a86efc27f8f77a9a77f549e",
+        "bytes": 152
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; P3: menu without the five-entry limit must offer more than five and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "dccad6b3-21d5-4730-b0f4-05343229da53",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_push.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:37Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205037Z-2139502-red.log",
+        "sha256": "54baa1d96e20b6e1f62667ca588c2c2389d20002cd9569f3445fb7e23400721e",
+        "bytes": 90
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; P4: menu that needs a production tip must offer nothing when production is absent and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "b50a293b-7159-4ffc-b978-6b5ee92760ea",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_push.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:37Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205037Z-2139914-red.log",
+        "sha256": "e2dd56fc9add2c513223e0c9520d61409d6679f6a60eecf7f43179ab6ffd069c",
+        "bytes": 57
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; P5: a forced production push must move production off a non-fast-forward and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "33fc5352-b61d-42b3-9b11-c0034e496bc9",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_push.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:38Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205038Z-2140804-red.log",
+        "sha256": "cd062eae6b9d1a360c51f8c3d98319b37e20acabeb6ef4ddb1be7a9f2ddfa93f",
+        "bytes": 71
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; P6: a push that does not wait for a terminal confirmation must push and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "63042276-79d2-472d-9378-74edb953a988",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/production_push.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:38Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205038Z-2141217-red.log",
+        "sha256": "8a6d0e7d1abbfdd5d37b353951233dcb3efba297afbdeb7b8601b378e19cdf8e",
+        "bytes": 46
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; P7: a menu that ignores a failed fetch must list releases from stale refs and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "f9f029f2-91cc-44b1-b220-7522aefbb60b",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/prod_export_worktree.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:54Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205054Z-2144248-red.log",
+        "sha256": "e4d2e7e87ca524ed37695ab4c5e6daf1bd1b0142aa2e8bda80eef1e5873d638f",
+        "bytes": 62
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; E1: worktree cleanup disabled must leave the temporary worktree behind and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "9cd6fa31-74d8-464e-b2b3-750243b425d4",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/prod_export_worktree.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:54Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205054Z-2144480-red.log",
+        "sha256": "941b10a423676036b64ddcda667dd37654257d281f2476d2ca23e0a5ddfe97a4",
+        "bytes": 86
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; E2: a mode check that honours an inherited BOE_PROD_EXPORT_CHILD must fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "38031310-3453-4583-9145-9e849853bae8",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/prod_export_worktree.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:55Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205055Z-2145041-red.log",
+        "sha256": "d10a61c526a072cff7e582ee6a4ec2e1082973a76c4f265eb6e2961e2e658276",
+        "bytes": 50
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; E3: export without the missing-production check must fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "fe6b0b3a-9559-4c88-adc2-86a214aba808",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/prod_export_worktree.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:55Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205055Z-2145173-red.log",
+        "sha256": "61d0660841fba295ae32411d1d65fdf213909794a14a68abc236fe728023c2f8",
+        "bytes": 47
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; E4: export without the tip-is-a-release-tag check must fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "c76a1207-c2d6-42b2-9757-49284f309ffa",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/prod_export_worktree.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:55Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205055Z-2145351-red.log",
+        "sha256": "8d524391131522391ad24c5b280ff2b7c5c38716ce719247948fa90f06b2ef5b",
+        "bytes": 60
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; E5: export without the local-tag check must build past a stale local tag and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "e7a37873-0c02-449e-9fa7-b665a6f73d55",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/prod_export_worktree.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:56Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205056Z-2145843-red.log",
+        "sha256": "a2272148eb44b93ceca914f497c8f0e8ba5051939a4657f10335d08d2d3eda3f",
+        "bytes": 41
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; E6: export without the VERSION check must fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "f926bbf1-1cac-43af-910d-05575a90e336",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/prod_export_worktree.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:56Z",
+      "seconds": 0,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205056Z-2146563-red.log",
+        "sha256": "9d99b3ab9af7f6a33a2546775d9d230843b19823f12423cd95ccc2e84865139b",
+        "bytes": 66
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; E7: export without the manifest check must stage a dev-labelled bundle and fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "a2b14fff-ad83-453b-a503-0cbcaf7703ee",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 builder p-prod-branch",
+      "kind": "other",
+      "command": [
+        "bash",
+        "release_manager/tests/prod_export_worktree.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:50:56Z",
+      "seconds": 1,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205056Z-2146947-red.log",
+        "sha256": "296695350fd45f5ed1b7987ff0abff64b3fa9eb9f2473e58d1fb869a22bd453f",
+        "bytes": 533
+      },
+      "note": "recorded as other, not red: it exited 1 with no failed test, such as a compile or usage error; E8: a worktree at the operator HEAD instead of production tip must fail the test",
+      "head": "21135e23264e132bcc4b6602c808246e1aea6b97",
+      "dirty": true
+    },
+    {
+      "id": "719603a1-1fad-46e6-b792-3fd310b24a20",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "agent": "claude-opus-5-5 (coordinator, landing p-prod-branch)",
+      "kind": "green",
+      "command": [
+        "bash",
+        "release_manager/verify.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/p-prod-branch",
+      "started": "2026-11-18T20:55:00Z",
+      "seconds": 27,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/p-prod-branch/20261118T205500Z-2202793-green.log",
+        "sha256": "4ae47f5a23ba8911e5c8d243640c9a5ca413d9fcd106f6c919da2d53f99ba3bb",
+        "bytes": 7674
+      },
+      "note": "squashed head 56ef95a1 with the review-2 low fixes (strict git_dirty in the export check, HUP trap)",
+      "head": "56ef95a1d11c033bc3acb0e311677c4157044bb4",
+      "dirty": false
     }
   ]
 }

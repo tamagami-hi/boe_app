@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextId": 111,
+  "nextId": 113,
   "reviews": [
     {
       "id": "review-1",
@@ -2399,6 +2399,46 @@
         "agent": "claude-opus-5-5 (coordinator)"
       },
       "at": "2026-11-18T17:00:12.496Z"
+    },
+    {
+      "id": "review-111",
+      "milestone": "M19-patches-0-18",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "commit": "7dbe82b",
+      "reviewer": "claude-opus-5-5 code-reviewer subagent (independent, read-only)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 1,
+        "low": 4
+      },
+      "summary": "Round 1 (tag gate, worktree export at the tag, origin/production moved after deploy). No way found for a wrong bundle to reach production. Medium: deploy read git_dirty with tostring, so the string \"false\" passed. Lows: empty git_sha fell back to HEAD in remote_release_tag_matches; traps set after mktemp; an inherited BOE_PROD_EXPORT_CHILD switched --prod to the checkout; the dashboard read a stale local origin/production. All fixed in the push-first rebuild, which the maintainer approved after this review.",
+      "by": {
+        "track": "p-prod-branch",
+        "agent": "claude-opus-5-5 (coordinator, landing p-prod-branch)"
+      },
+      "at": "2026-11-18T20:55:36.058Z"
+    },
+    {
+      "id": "review-112",
+      "milestone": "M19-patches-0-18",
+      "task": "P-prod-branch",
+      "track": "p-prod-branch",
+      "commit": "21135e2",
+      "reviewer": "claude-opus-5-5 code-reviewer subagent (independent, read-only, fresh)",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 2
+      },
+      "summary": "Whole lane 468b02fd..21135e23, push-first design (p-prod-branch-2.prompt.md). Traced push menu, export child mode, production APK route, deploy gate, removed code and docs; all 18 release tests exit 0; no path to a wrong commit in production, no force push, no push without a terminal confirm. Lows: no HUP trap in the export worktree; prod_export_check_manifest still read git_dirty with tostring (deploy re-checks strictly). Both fixed in the squashed 56ef95a1; verify.sh green 20261118T205500Z-2202793.",
+      "follows": "review-111",
+      "by": {
+        "track": "p-prod-branch",
+        "agent": "claude-opus-5-5 (coordinator, landing p-prod-branch)"
+      },
+      "at": "2026-11-18T20:55:43.053Z"
     }
   ]
 }
